@@ -261,6 +261,7 @@ class AmclNode
     double init_cov_[3];
     laser_model_t laser_model_type_;
     bool tf_broadcast_;
+    bool tf_reverse_;
 
     void reconfigureCB(amcl::AMCLConfig &config, uint32_t level);
 
@@ -404,6 +405,7 @@ AmclNode::AmclNode() :
   private_nh_.param("recovery_alpha_slow", alpha_slow_, 0.001);
   private_nh_.param("recovery_alpha_fast", alpha_fast_, 0.1);
   private_nh_.param("tf_broadcast", tf_broadcast_, true);
+  private_nh_.param("tf_reverse", tf_reverse_, false);
 
   transform_tolerance_.fromSec(tmp_tol);
 
@@ -529,6 +531,7 @@ void AmclNode::reconfigureCB(AMCLConfig &config, uint32_t level)
   alpha_slow_ = config.recovery_alpha_slow;
   alpha_fast_ = config.recovery_alpha_fast;
   tf_broadcast_ = config.tf_broadcast;
+  tf_reverse_ = config.tf_reverse;
 
   do_beamskip_= config.do_beamskip; 
   beam_skip_distance_ = config.beam_skip_distance; 
@@ -1377,6 +1380,12 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
         tf::StampedTransform tmp_tf_stamped(latest_tf_.inverse(),
                                             transform_expiration,
                                             global_frame_id_, odom_frame_id_);
+        if (tf_reverse_ == true)
+        {
+          tmp_tf_stamped = tf::StampedTransform(latest_tf_,
+                                            transform_expiration,
+                                            odom_frame_id_, global_frame_id_);
+        }
         this->tfb_->sendTransform(tmp_tf_stamped);
         sent_first_transform_ = true;
       }
@@ -1397,6 +1406,12 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
       tf::StampedTransform tmp_tf_stamped(latest_tf_.inverse(),
                                           transform_expiration,
                                           global_frame_id_, odom_frame_id_);
+      if (tf_reverse_ == true)
+      {
+        tmp_tf_stamped = tf::StampedTransform(latest_tf_,
+                                          transform_expiration,
+                                          odom_frame_id_, global_frame_id_);
+      }
       this->tfb_->sendTransform(tmp_tf_stamped);
     }
 
