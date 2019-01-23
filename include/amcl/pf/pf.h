@@ -35,6 +35,12 @@
 extern "C" {
 #endif
 
+typedef enum
+{
+  PF_RESAMPLE_MULTINOMIAL,
+  PF_RESAMPLE_SYSTEMATIC,
+} pf_resample_model_t;
+
 // Forward declarations
 struct _pf_t;
 struct _rtk_fig_t;
@@ -110,6 +116,8 @@ typedef struct _pf_sample_set_t
 // Information for an entire filter
 typedef struct _pf_t
 {
+  pf_resample_model_t resample_model;
+
   // This min and max number of samples
   int min_samples, max_samples;
 
@@ -140,6 +148,9 @@ typedef struct _pf_t
 pf_t *pf_alloc(int min_samples, int max_samples,
                double alpha_slow, double alpha_fast,
                pf_init_model_fn_t random_pose_fn, void *random_pose_data);
+
+// Set the resample model
+void pf_set_resample_model(pf_t *pf, pf_resample_model_t resample_model);
 
 // Free an existing filter
 void pf_free(pf_t *pf);

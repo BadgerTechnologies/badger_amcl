@@ -57,6 +57,7 @@ pf_t *pf_alloc(int min_samples, int max_samples,
 
   pf = calloc(1, sizeof(pf_t));
 
+  pf->resample_model = PF_RESAMPLE_MULTINOMIAL;
   pf->random_pose_fn = random_pose_fn;
   pf->random_pose_data = random_pose_data;
 
@@ -110,6 +111,11 @@ pf_t *pf_alloc(int min_samples, int max_samples,
   pf_init_converged(pf);
 
   return pf;
+}
+
+void pf_set_resample_model(pf_t *pf, pf_resample_model_t resample_model)
+{
+  pf->resample_model = resample_model;
 }
 
 // Free an existing filter
@@ -310,8 +316,96 @@ void pf_update_sensor(pf_t *pf, pf_sensor_model_fn_t sensor_fn, void *sensor_dat
 }
 
 
-// Resample the distribution
-void pf_update_resample(pf_t *pf)
+static double pf_resample_systematic(pf_t *pf, double w_diff)
+{
+  int i;
+  double total;
+  pf_sample_set_t *set_a, *set_b;
+  pf_sample_t *sample_a, *sample_b;
+
+  double* c;
+
+  set_a = pf->sets + pf->current_set;
+  set_b = pf->sets + (pf->current_set + 1) % 2;
+
+  // Build up cumulative probability table for resampling.
+  c = (double*)malloc(sizeof(double)*(set_a->sample_count+1));
+  c[0] = 0.0;
+  for(i=0;i<set_a->sample_count;i++)
+    c[i+1] = c[i]+set_a->samples[i].weight;
+
+  // Draw samples from set a to create set b.
+  total = 0;
+  set_b->sample_count = 0;
+
+  // Approximate set_b's leaf_count from set_a's
+  int new_count = pf_resample_limit(pf, set_a->kdtree->leaf_count);
+  // Try to add particles for randomness.
+  // No need to throw away our (possibly good) particles when we have free space in the filter for random ones.
+  if(w_diff > 0.0)
+  {
+    new_count *= (1.0 + w_diff);
+    if (new_count > pf->max_samples)
+    {
+      new_count = pf->max_samples;
+    }
+  }
+  set_b->sample_count = new_count;
+  int n_rand = w_diff * set_b->sample_count;
+  int n_systematic_sampled = set_b->sample_count - n_rand;
+
+  double systematic_sample_start = drand48();
+  // Find the starting point for systematic sampling.
+  double systematic_sample_delta = 1.0 / n_systematic_sampled;
+  int c_i;
+  for(c_i=0;c_i<set_a->sample_count;c_i++)
+  {
+    if((c[c_i] <= systematic_sample_start) && (systematic_sample_start < c[c_i+1]))
+      break;
+  }
+  for(i=0; i<n_rand; ++i)
+  {
+    sample_b = set_b->samples + i;
+    sample_b->pose = (pf->random_pose_fn)(pf->random_pose_data);
+    sample_b->weight = 1.0;
+    total += sample_b->weight;
+
+    // Add sample to histogram
+    pf_kdtree_insert(set_b->kdtree, sample_b->pose, sample_b->weight);
+  }
+  double target = systematic_sample_start;
+  for(; i<set_b->sample_count; ++i)
+  {
+    while(!((c[c_i] <= target) && (target < c[c_i+1])))
+    {
+      c_i++;
+      if(c_i >= set_a->sample_count)
+      {
+        c_i=0;
+      }
+    }
+    target += systematic_sample_delta;
+    if(target > 1.0)
+    {
+      target = 0.0;
+    }
+    sample_a = set_a->samples + c_i;
+    sample_b = set_b->samples + i;
+    sample_b->pose = sample_a->pose;
+
+    sample_b->weight = 1.0;
+    total += sample_b->weight;
+
+    // Add sample to histogram
+    pf_kdtree_insert(set_b->kdtree, sample_b->pose, sample_b->weight);
+  }
+
+  free(c);
+  return total;
+}
+
+
+static double pf_resample_multinomial(pf_t *pf, double w_diff)
 {
   int i;
   double total;
@@ -322,8 +416,6 @@ void pf_update_resample(pf_t *pf)
   //int m;
   //double count_inv;
   double* c;
-
-  double w_diff;
 
   set_a = pf->sets + pf->current_set;
   set_b = pf->sets + (pf->current_set + 1) % 2;
@@ -336,17 +428,9 @@ void pf_update_resample(pf_t *pf)
   for(i=0;i<set_a->sample_count;i++)
     c[i+1] = c[i]+set_a->samples[i].weight;
 
-  // Create the kd tree for adaptive sampling
-  pf_kdtree_clear(set_b->kdtree);
-  
   // Draw samples from set a to create set b.
   total = 0;
   set_b->sample_count = 0;
-
-  w_diff = 1.0 - pf->w_fast / pf->w_slow;
-  if(w_diff < 0.0)
-    w_diff = 0.0;
-  //printf("w_diff: %9.6f\n", w_diff);
 
   // Can't (easily) combine low-variance sampler with KLD adaptive
   // sampling, so we'll take the more traditional route.
@@ -418,12 +502,46 @@ void pf_update_resample(pf_t *pf)
     if (set_b->sample_count > pf_resample_limit(pf, set_b->kdtree->leaf_count))
       break;
   }
-  
+
+  free(c);
+  return total;
+}
+
+
+// Resample the distribution
+void pf_update_resample(pf_t *pf)
+{
+  int i;
+  double total;
+  pf_sample_set_t *set_a, *set_b;
+  pf_sample_t *sample_a, *sample_b;
+
+  double w_diff;
+
+  set_a = pf->sets + pf->current_set;
+  set_b = pf->sets + (pf->current_set + 1) % 2;
+
+  // Create the kd tree for adaptive sampling
+  pf_kdtree_clear(set_b->kdtree);
+
+  w_diff = 1.0 - pf->w_fast / pf->w_slow;
+  if(w_diff < 0.0)
+    w_diff = 0.0;
+
+  switch(pf->resample_model)
+  {
+    case PF_RESAMPLE_MULTINOMIAL:
+    default:
+      total = pf_resample_multinomial(pf, w_diff);
+      break;
+    case PF_RESAMPLE_SYSTEMATIC:
+      total = pf_resample_systematic(pf, w_diff);
+      break;
+  }
+
   // Reset averages, to avoid spiraling off into complete randomness.
   if(w_diff > 0.0)
     pf->w_slow = pf->w_fast = 0.0;
-
-  //fprintf(stderr, "\n\n");
 
   // Normalize weights
   for (i = 0; i < set_b->sample_count; i++)
@@ -440,7 +558,6 @@ void pf_update_resample(pf_t *pf)
 
   pf_update_converged(pf);
 
-  free(c);
   return;
 }
 

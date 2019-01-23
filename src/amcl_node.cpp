@@ -200,6 +200,7 @@ class AmclNode
     bool pf_init_;
     pf_vector_t pf_odom_pose_;
     double d_thresh_, a_thresh_;
+    pf_resample_model_t resample_model_type_;
     int resample_interval_;
     int resample_count_;
     double laser_min_range_;
@@ -415,6 +416,18 @@ AmclNode::AmclNode() :
   private_nh_.param("global_frame_id", global_frame_id_, std::string("map"));
   private_nh_.param("global_alt_frame_id", global_alt_frame_id_, std::string(""));
   private_nh_.param("resample_interval", resample_interval_, 2);
+  private_nh_.param("resample_model_type", tmp_model_type, std::string("multinomial"));
+  if(tmp_model_type == "multinomial")
+    resample_model_type_ = PF_RESAMPLE_MULTINOMIAL;
+  else if(tmp_model_type == "systematic")
+    resample_model_type_ = PF_RESAMPLE_SYSTEMATIC;
+  else
+  {
+    ROS_WARN("Unknown resample model type \"%s\"; defaulting to multinomial model",
+             tmp_model_type.c_str());
+    resample_model_type_ = PF_RESAMPLE_MULTINOMIAL;
+  }
+
   double tmp_tol;
   private_nh_.param("transform_tolerance", tmp_tol, 0.1);
   private_nh_.param("recovery_alpha_slow", alpha_slow_, 0.001);
@@ -506,6 +519,16 @@ void AmclNode::reconfigureCB(AMCLConfig &config, uint32_t level)
   a_thresh_ = config.update_min_a;
 
   resample_interval_ = config.resample_interval;
+  if(config.resample_model_type == "multinomial")
+    resample_model_type_ = PF_RESAMPLE_MULTINOMIAL;
+  else if(config.resample_model_type == "systematic")
+    resample_model_type_ = PF_RESAMPLE_SYSTEMATIC;
+  else
+  {
+    ROS_WARN("Unknown resample model type \"%s\"; defaulting to multinomial model",
+             config.resample_model_type.c_str());
+    resample_model_type_ = PF_RESAMPLE_MULTINOMIAL;
+  }
 
   laser_min_range_ = config.laser_min_range;
   laser_max_range_ = config.laser_max_range;
@@ -573,6 +596,7 @@ void AmclNode::reconfigureCB(AMCLConfig &config, uint32_t level)
   pf_z_ = config.kld_z; 
   pf_->pop_err = pf_err_;
   pf_->pop_z = pf_z_;
+  pf_set_resample_model(pf_, resample_model_type_);
 
   // Initialize the filter
   pf_vector_t pf_init_pose_mean = pf_vector_zero();
@@ -857,6 +881,7 @@ AmclNode::handleMapMessage(const nav_msgs::OccupancyGrid& msg)
                  (void *)map_);
   pf_->pop_err = pf_err_;
   pf_->pop_z = pf_z_;
+  pf_set_resample_model(pf_, resample_model_type_);
 
   // Initialize the filter
   updatePoseFromServer();
