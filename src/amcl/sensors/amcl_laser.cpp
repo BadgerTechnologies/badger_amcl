@@ -48,6 +48,10 @@ AMCLLaser::AMCLLaser(size_t max_beams, map_t* map) : AMCLSensor(),
   this->max_beams = max_beams;
   this->map = map;
 
+  off_map_factor = 1.0;
+  non_free_space_factor = 1.0;
+  non_free_space_radius = 0.0;
+
   return;
 }
 
@@ -115,6 +119,14 @@ AMCLLaser::SetModelLikelihoodFieldProb(double z_hit,
   map_update_cspace(this->map, max_occ_dist);
 }
 
+void AMCLLaser::SetMapFactors(double off_map_factor,
+              double non_free_space_factor,
+              double non_free_space_radius)
+{
+  this->off_map_factor = off_map_factor;
+  this->non_free_space_factor = non_free_space_factor;
+  this->non_free_space_radius = non_free_space_radius;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Apply the laser sensor model
@@ -124,18 +136,73 @@ bool AMCLLaser::UpdateSensor(pf_t *pf, AMCLSensorData *data)
     return false;
 
   // Apply the laser sensor model
-  if(this->model_type == LASER_MODEL_BEAM)
-    pf_update_sensor(pf, (pf_sensor_model_fn_t) BeamModel, data);
-  else if(this->model_type == LASER_MODEL_LIKELIHOOD_FIELD)
-    pf_update_sensor(pf, (pf_sensor_model_fn_t) LikelihoodFieldModel, data);  
-  else if(this->model_type == LASER_MODEL_LIKELIHOOD_FIELD_PROB)
-    pf_update_sensor(pf, (pf_sensor_model_fn_t) LikelihoodFieldModelProb, data);  
-  else
-    pf_update_sensor(pf, (pf_sensor_model_fn_t) BeamModel, data);
+  pf_update_sensor(pf, (pf_sensor_model_fn_t) ApplyModelToSampleSet, data);
 
   return true;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// Apply the laser sensor model to a sample set
+double AMCLLaser::ApplyModelToSampleSet(AMCLSensorData *data, pf_sample_set_t *set)
+{
+  AMCLLaser *self;
+  double rv = 0.0;
+  int j;
+  pf_sample_t *sample;
+  pf_vector_t pose;
+  int mi, mj;
+
+  self = (AMCLLaser*) data->sensor;
+
+  if (self->max_beams < 2)
+    return 0.0;
+
+  // Apply the laser sensor model
+  if(self->model_type == LASER_MODEL_BEAM)
+    rv = BeamModel((AMCLLaserData*)data, set);
+  else if(self->model_type == LASER_MODEL_LIKELIHOOD_FIELD)
+    rv = LikelihoodFieldModel((AMCLLaserData*)data, set);
+  else if(self->model_type == LASER_MODEL_LIKELIHOOD_FIELD_PROB)
+    rv = LikelihoodFieldModelProb((AMCLLaserData*)data, set);
+
+  // Apply the any configured correction factors from map
+  if (rv > 0.0)
+  {
+    // Re-calculate total
+    rv = 0.0;
+    for (j = 0; j < set->sample_count; j++)
+    {
+      sample = set->samples + j;
+      pose = sample->pose;
+
+      // Convert to map grid coords.
+      mi = MAP_GXWX(self->map, pose.v[0]);
+      mj = MAP_GYWY(self->map, pose.v[1]);
+
+      // Apply off map factor
+      if(!MAP_VALID(self->map, mi, mj))
+      {
+        sample->weight *= self->off_map_factor;
+      }
+      // Apply non free space factor
+      else if((self->map->cells[MAP_INDEX(self->map, mi, mj)].occ_state != -1))
+      {
+        sample->weight *= self->non_free_space_factor;
+      }
+      // Interpolate non free space factor based on radius
+      else if(self->map->cells[MAP_INDEX(self->map, mi, mj)].occ_dist < self->non_free_space_radius)
+      {
+        double delta_d = self->map->cells[MAP_INDEX(self->map, mi, mj)].occ_dist / self->non_free_space_radius;
+        double f = self->non_free_space_factor;
+        f += delta_d * (1.0 - self->non_free_space_factor);
+        sample->weight *= f;
+      }
+      rv += sample->weight;
+    }
+  }
+
+  return rv;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Determine the probability for the given pose

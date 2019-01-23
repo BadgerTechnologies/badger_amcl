@@ -269,6 +269,9 @@ class AmclNode
     bool do_beamskip_;
     double beam_skip_distance_, beam_skip_threshold_, beam_skip_error_threshold_;
     double laser_likelihood_max_dist_;
+    double laser_off_map_factor_;
+    double laser_non_free_space_factor_;
+    double laser_non_free_space_radius_;
     odom_model_t odom_model_type_;
     double init_pose_[3];
     double init_cov_[3];
@@ -375,6 +378,9 @@ AmclNode::AmclNode() :
   private_nh_.param("laser_sigma_hit", sigma_hit_, 0.2);
   private_nh_.param("laser_lambda_short", lambda_short_, 0.1);
   private_nh_.param("laser_likelihood_max_dist", laser_likelihood_max_dist_, 2.0);
+  private_nh_.param("laser_off_map_factor", laser_off_map_factor_, 1.0);
+  private_nh_.param("laser_non_free_space_factor", laser_non_free_space_factor_, 1.0);
+  private_nh_.param("laser_non_free_space_radius", laser_non_free_space_radius_, 0.0);
   std::string tmp_model_type;
   private_nh_.param("laser_model_type", tmp_model_type, std::string("likelihood_field"));
   if(tmp_model_type == "beam")
@@ -552,6 +558,9 @@ void AmclNode::reconfigureCB(AMCLConfig &config, uint32_t level)
   sigma_hit_ = config.laser_sigma_hit;
   lambda_short_ = config.laser_lambda_short;
   laser_likelihood_max_dist_ = config.laser_likelihood_max_dist;
+  laser_off_map_factor_ = config.laser_off_map_factor;
+  laser_non_free_space_factor_ = config.laser_non_free_space_factor;
+  laser_non_free_space_radius_ = config.laser_non_free_space_radius;
 
   if(config.laser_model_type == "beam")
     laser_model_type_ = LASER_MODEL_BEAM;
@@ -637,6 +646,7 @@ void AmclNode::reconfigureCB(AMCLConfig &config, uint32_t level)
                                     laser_likelihood_max_dist_);
     ROS_INFO("Done initializing likelihood field model.");
   }
+  laser_->SetMapFactors(laser_off_map_factor_, laser_non_free_space_factor_, laser_non_free_space_radius_);
 
   odom_frame_id_ = config.odom_frame_id;
   base_frame_id_ = config.base_frame_id;
@@ -924,6 +934,7 @@ AmclNode::handleMapMessage(const nav_msgs::OccupancyGrid& msg)
                                     laser_likelihood_max_dist_);
     ROS_INFO("Done initializing likelihood field model.");
   }
+  laser_->SetMapFactors(laser_off_map_factor_, laser_non_free_space_factor_, laser_non_free_space_radius_);
 
   // In case the initial pose message arrived before the first map,
   // try to apply the initial pose now that the map has arrived.

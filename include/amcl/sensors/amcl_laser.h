@@ -86,9 +86,22 @@ class AMCLLaser : public AMCLSensor
 					   double beam_skip_threshold, 
 					   double beam_skip_error_threshold);
 
+  // Set factors related to a poses position on the map.
+  // off_map_factor: factor to multiply a sample weight by when map out of bounds.
+  // non_free_space_factor: factor to multiply by when not in free space
+  // non_free_space_radius: non_free_space_factor is interploated up to 1.0 based on this parameter.
+  //   The formula is non_free_space_factor += (1.0 - non_free_space_factor) * (distance_to_non_free_space / radius)
+  public: void SetMapFactors(double off_map_factor,
+                             double non_free_space_factor,
+                             double non_free_space_radius);
+
   // Update the filter based on the sensor model.  Returns true if the
   // filter has been updated.
   public: virtual bool UpdateSensor(pf_t *pf, AMCLSensorData *data);
+
+  // Update a sample set based on the sensor model.
+  // Returns total weights of particles, or 0.0 on failure.
+  public: static double ApplyModelToSampleSet(AMCLSensorData *data, pf_sample_set_t *set);
 
   // Set the laser's pose after construction
   public: void SetLaserPose(pf_vector_t& laser_pose) 
@@ -148,6 +161,10 @@ class AMCLLaser : public AMCLSensor
   private: double lambda_short;
   // Threshold for outlier rejection (unused)
   private: double chi_outlier;
+
+  private: double off_map_factor;
+  private: double non_free_space_factor;
+  private: double non_free_space_radius;
 };
 
 
