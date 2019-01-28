@@ -39,7 +39,8 @@ typedef enum
 {
   LASER_MODEL_BEAM,
   LASER_MODEL_LIKELIHOOD_FIELD,
-  LASER_MODEL_LIKELIHOOD_FIELD_PROB
+  LASER_MODEL_LIKELIHOOD_FIELD_PROB,
+  LASER_MODEL_LIKELIHOOD_FIELD_GOMPERTZ,
 } laser_model_t;
 
 // Laser sensor data
@@ -86,6 +87,17 @@ class AMCLLaser : public AMCLSensor
 					   double beam_skip_threshold, 
 					   double beam_skip_error_threshold);
 
+  public: void SetModelLikelihoodFieldGompertz(double z_hit,
+                                               double z_rand,
+                                               double sigma_hit,
+                                               double max_occ_dist,
+                                               double gompertz_a,
+                                               double gompertz_b,
+                                               double gompertz_c,
+                                               double input_shift,
+                                               double input_scale,
+                                               double output_shift);
+
   // Set factors related to a poses position on the map.
   // off_map_factor: factor to multiply a sample weight by when map out of bounds.
   // non_free_space_factor: factor to multiply by when not in free space
@@ -117,6 +129,14 @@ class AMCLLaser : public AMCLSensor
   // Determine the probability for the given pose - more probablistic model 
   private: static double LikelihoodFieldModelProb(AMCLLaserData *data, 
 					     pf_sample_set_t* set);
+
+  // Apply gompertz transform function to given input
+  public: double applyGompertz( double p );
+
+  // Determine the probability for the given pose and apply a Gompertz function
+  private: static double LikelihoodFieldModelGompertz(AMCLLaserData *data, 
+                                                      pf_sample_set_t* set);
+
 
   private: void reallocTempData(int max_samples, int max_obs);
 
@@ -161,6 +181,14 @@ class AMCLLaser : public AMCLSensor
   private: double lambda_short;
   // Threshold for outlier rejection (unused)
   private: double chi_outlier;
+
+  // Parameters for applying Gompertz function to sample weights
+  private: double gompertz_a;
+  private: double gompertz_b;
+  private: double gompertz_c;
+  private: double input_shift;
+  private: double input_scale;
+  private: double output_shift;
 
   private: double off_map_factor;
   private: double non_free_space_factor;

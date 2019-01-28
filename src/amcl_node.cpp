@@ -269,6 +269,12 @@ class AmclNode
     bool do_beamskip_;
     double beam_skip_distance_, beam_skip_threshold_, beam_skip_error_threshold_;
     double laser_likelihood_max_dist_;
+    double laser_gompertz_a_;
+    double laser_gompertz_b_;
+    double laser_gompertz_c_;
+    double laser_gompertz_input_shift_;
+    double laser_gompertz_input_scale_;
+    double laser_gompertz_output_shift_;
     double laser_off_map_factor_;
     double laser_non_free_space_factor_;
     double laser_non_free_space_radius_;
@@ -378,6 +384,12 @@ AmclNode::AmclNode() :
   private_nh_.param("laser_sigma_hit", sigma_hit_, 0.2);
   private_nh_.param("laser_lambda_short", lambda_short_, 0.1);
   private_nh_.param("laser_likelihood_max_dist", laser_likelihood_max_dist_, 2.0);
+  private_nh_.param("laser_gompertz_a", laser_gompertz_a_, 1.0);
+  private_nh_.param("laser_gompertz_b", laser_gompertz_b_, 1.0);
+  private_nh_.param("laser_gompertz_c", laser_gompertz_c_, 1.0);
+  private_nh_.param("laser_gompertz_input_shift", laser_gompertz_input_shift_, 0.0);
+  private_nh_.param("laser_gompertz_input_scale", laser_gompertz_input_scale_, 1.0);
+  private_nh_.param("laser_gompertz_output_shift", laser_gompertz_output_shift_, 0.0);
   private_nh_.param("laser_off_map_factor", laser_off_map_factor_, 1.0);
   private_nh_.param("laser_non_free_space_factor", laser_non_free_space_factor_, 1.0);
   private_nh_.param("laser_non_free_space_radius", laser_non_free_space_radius_, 0.0);
@@ -387,9 +399,10 @@ AmclNode::AmclNode() :
     laser_model_type_ = LASER_MODEL_BEAM;
   else if(tmp_model_type == "likelihood_field")
     laser_model_type_ = LASER_MODEL_LIKELIHOOD_FIELD;
-  else if(tmp_model_type == "likelihood_field_prob"){
+  else if(tmp_model_type == "likelihood_field_prob")
     laser_model_type_ = LASER_MODEL_LIKELIHOOD_FIELD_PROB;
-  }
+  else if(tmp_model_type == "likelihood_field_gompertz")
+    laser_model_type_ = LASER_MODEL_LIKELIHOOD_FIELD_GOMPERTZ;
   else
   {
     ROS_WARN("Unknown laser model type \"%s\"; defaulting to likelihood_field model",
@@ -562,12 +575,21 @@ void AmclNode::reconfigureCB(AMCLConfig &config, uint32_t level)
   laser_non_free_space_factor_ = config.laser_non_free_space_factor;
   laser_non_free_space_radius_ = config.laser_non_free_space_radius;
 
+  laser_gompertz_a_ = config.laser_gompertz_a;
+  laser_gompertz_b_ = config.laser_gompertz_b;
+  laser_gompertz_c_ = config.laser_gompertz_c;
+  laser_gompertz_input_shift_ = config.laser_gompertz_input_shift;
+  laser_gompertz_input_scale_ = config.laser_gompertz_input_scale;
+  laser_gompertz_output_shift_ = config.laser_gompertz_output_shift;
+
   if(config.laser_model_type == "beam")
     laser_model_type_ = LASER_MODEL_BEAM;
   else if(config.laser_model_type == "likelihood_field")
     laser_model_type_ = LASER_MODEL_LIKELIHOOD_FIELD;
   else if(config.laser_model_type == "likelihood_field_prob")
     laser_model_type_ = LASER_MODEL_LIKELIHOOD_FIELD_PROB;
+  else if(config.laser_model_type == "likelihood_field_gompertz")
+    laser_model_type_ = LASER_MODEL_LIKELIHOOD_FIELD_GOMPERTZ;
 
   if(config.odom_model_type == "diff")
     odom_model_type_ = ODOM_MODEL_DIFF;
@@ -645,6 +667,25 @@ void AmclNode::reconfigureCB(AMCLConfig &config, uint32_t level)
     laser_->SetModelLikelihoodField(z_hit_, z_rand_, sigma_hit_,
                                     laser_likelihood_max_dist_);
     ROS_INFO("Done initializing likelihood field model.");
+  }
+  else if(laser_model_type_ == LASER_MODEL_LIKELIHOOD_FIELD_GOMPERTZ){
+    ROS_INFO("Initializing likelihood field (gompertz) model; this can take some time on large maps...");
+    laser_->SetModelLikelihoodFieldGompertz(z_hit_, z_rand_, sigma_hit_,
+                                            laser_likelihood_max_dist_,
+                                            laser_gompertz_a_,
+                                            laser_gompertz_b_,
+                                            laser_gompertz_c_,
+                                            laser_gompertz_input_shift_,
+                                            laser_gompertz_input_scale_,
+                                            laser_gompertz_output_shift_);
+    ROS_INFO("Gompertz key points by total laser scan match: "
+        "0.0: %f, 0.25: %f, 0.5: %f, 0.75: %f, 1.0: %f",
+        laser_->applyGompertz(z_rand_),
+        laser_->applyGompertz(z_rand_ + z_hit_ * .25),
+        laser_->applyGompertz(z_rand_ + z_hit_ * .5),
+        laser_->applyGompertz(z_rand_ + z_hit_ * .75),
+        laser_->applyGompertz(z_rand_ + z_hit_));
+    ROS_INFO("Done initializing likelihood (gompertz) field model.");
   }
   laser_->SetMapFactors(laser_off_map_factor_, laser_non_free_space_factor_, laser_non_free_space_radius_);
 
@@ -926,6 +967,25 @@ AmclNode::handleMapMessage(const nav_msgs::OccupancyGrid& msg)
 					do_beamskip_, beam_skip_distance_, 
 					beam_skip_threshold_, beam_skip_error_threshold_);
     ROS_INFO("Done initializing likelihood field model.");
+  }
+  else if(laser_model_type_ == LASER_MODEL_LIKELIHOOD_FIELD_GOMPERTZ){
+    ROS_INFO("Initializing likelihood field (gompertz) model; this can take some time on large maps...");
+    laser_->SetModelLikelihoodFieldGompertz(z_hit_, z_rand_, sigma_hit_,
+                                            laser_likelihood_max_dist_,
+                                            laser_gompertz_a_,
+                                            laser_gompertz_b_,
+                                            laser_gompertz_c_,
+                                            laser_gompertz_input_shift_,
+                                            laser_gompertz_input_scale_,
+                                            laser_gompertz_output_shift_);
+    ROS_INFO("Gompertz key points by total laser scan match: "
+        "0.0: %f, 0.25: %f, 0.5: %f, 0.75: %f, 1.0: %f",
+        laser_->applyGompertz(z_rand_),
+        laser_->applyGompertz(z_rand_ + z_hit_ * .25),
+        laser_->applyGompertz(z_rand_ + z_hit_ * .5),
+        laser_->applyGompertz(z_rand_ + z_hit_ * .75),
+        laser_->applyGompertz(z_rand_ + z_hit_));
+    ROS_INFO("Done initializing likelihood (gompertz) field model.");
   }
   else
   {

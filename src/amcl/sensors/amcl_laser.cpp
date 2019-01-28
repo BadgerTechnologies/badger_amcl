@@ -119,6 +119,33 @@ AMCLLaser::SetModelLikelihoodFieldProb(double z_hit,
   map_update_cspace(this->map, max_occ_dist);
 }
 
+void
+AMCLLaser::SetModelLikelihoodFieldGompertz(double z_hit,
+                                           double z_rand,
+                                           double sigma_hit,
+                                           double max_occ_dist,
+                                           double gompertz_a,
+                                           double gompertz_b,
+                                           double gompertz_c,
+                                           double input_shift,
+                                           double input_scale,
+                                           double output_shift)
+{
+  this->model_type = LASER_MODEL_LIKELIHOOD_FIELD_GOMPERTZ;
+  this->z_hit = z_hit;
+  this->z_rand = z_rand;
+  this->sigma_hit = sigma_hit;
+
+  this->gompertz_a = gompertz_a;
+  this->gompertz_b = gompertz_b;
+  this->gompertz_c = gompertz_c;
+  this->input_shift = input_shift;
+  this->input_scale = input_scale;
+  this->output_shift = output_shift;
+
+  map_update_cspace(this->map, max_occ_dist);
+}
+
 void AMCLLaser::SetMapFactors(double off_map_factor,
               double non_free_space_factor,
               double non_free_space_radius)
@@ -164,6 +191,8 @@ double AMCLLaser::ApplyModelToSampleSet(AMCLSensorData *data, pf_sample_set_t *s
     rv = LikelihoodFieldModel((AMCLLaserData*)data, set);
   else if(self->model_type == LASER_MODEL_LIKELIHOOD_FIELD_PROB)
     rv = LikelihoodFieldModelProb((AMCLLaserData*)data, set);
+  else if(self->model_type == LASER_MODEL_LIKELIHOOD_FIELD_GOMPERTZ)
+    rv = LikelihoodFieldModelGompertz((AMCLLaserData*)data, set);
 
   // Apply the any configured correction factors from map
   if (rv > 0.0)
@@ -555,6 +584,111 @@ double AMCLLaser::LikelihoodFieldModelProb(AMCLLaserData *data, pf_sample_set_t*
 
   delete [] obs_count; 
   delete [] obs_mask;
+  return(total_weight);
+}
+
+double AMCLLaser::applyGompertz( double p )
+{
+  // shift and scale p
+  p = p * this->input_scale + this->input_shift;
+  // apply gompertz
+  p = this->gompertz_a * exp( -1.0 * this->gompertz_b * exp( -1.0 * this->gompertz_c * p ) );
+  // shift output
+  p += this->output_shift;
+
+  return p;
+}
+
+double AMCLLaser::LikelihoodFieldModelGompertz(AMCLLaserData *data, pf_sample_set_t* set)
+{
+  AMCLLaser *self;
+  int i, j, step;
+  double z, pz;
+  double p;
+  double obs_range, obs_bearing;
+  double total_weight;
+  pf_sample_t *sample;
+  pf_vector_t pose;
+  pf_vector_t hit;
+
+  self = (AMCLLaser*) data->sensor;
+
+  total_weight = 0.0;
+
+  // Compute the sample weights
+  for (j = 0; j < set->sample_count; j++)
+  {
+    sample = set->samples + j;
+    pose = sample->pose;
+
+    // Take account of the laser pose relative to the robot
+    pose = pf_vector_coord_add(self->laser_pose, pose);
+
+    // Pre-compute a couple of things
+    double z_hit_denom = 2 * self->sigma_hit * self->sigma_hit;
+
+    step = (data->range_count - 1) / (self->max_beams - 1);
+
+    // Step size must be at least 1
+    if(step < 1)
+      step = 1;
+
+    int valid_beams = 0;
+    double sum_pz = 0.0;
+    for (i = 0; i < data->range_count; i += step)
+    {
+      obs_range = data->ranges[i][0];
+      obs_bearing = data->ranges[i][1];
+
+      // This model ignores max range readings
+      if(obs_range >= data->range_max)
+        continue;
+
+      // Check for NaN
+      if(obs_range != obs_range)
+        continue;
+
+      valid_beams++;
+      pz = 0.0;
+
+      // Compute the endpoint of the beam
+      hit.v[0] = pose.v[0] + obs_range * cos(pose.v[2] + obs_bearing);
+      hit.v[1] = pose.v[1] + obs_range * sin(pose.v[2] + obs_bearing);
+
+      // Convert to map grid coords.
+      int mi, mj;
+      mi = MAP_GXWX(self->map, hit.v[0]);
+      mj = MAP_GYWY(self->map, hit.v[1]);
+
+      // Part 1: Get distance from the hit to closest obstacle.
+      // Off-map penalized as max distance
+      if(!MAP_VALID(self->map, mi, mj))
+        z = self->map->max_occ_dist;
+      else
+        z = self->map->cells[MAP_INDEX(self->map,mi,mj)].occ_dist;
+      // Gaussian model
+      pz += self->z_hit * exp(-(z * z) / z_hit_denom);
+      // Part 2: random measurements
+      pz += self->z_rand;
+
+      sum_pz += pz;
+    }
+
+    if (valid_beams > 0)
+    {
+      p = sum_pz / valid_beams;
+      p = self->applyGompertz(p);
+    }
+    else
+    {
+      // Hmm. No valid beams. Don't change the weight.
+      p = 1.0;
+    }
+
+    sample->weight *= p;
+    total_weight += sample->weight;
+  }
+
   return(total_weight);
 }
 
