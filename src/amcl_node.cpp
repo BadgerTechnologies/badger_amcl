@@ -175,6 +175,7 @@ class AmclNode
 
     bool use_map_topic_;
     bool first_map_only_;
+    int map_scale_up_factor_;
 
     ros::Duration gui_publish_period;
     ros::Time save_pose_last_time;
@@ -352,6 +353,12 @@ AmclNode::AmclNode() :
   // Grab params off the param server
   private_nh_.param("use_map_topic", use_map_topic_, false);
   private_nh_.param("first_map_only", first_map_only_, false);
+  private_nh_.param("map_scale_up_factor", map_scale_up_factor_, 1);
+  // Prevent nonsense and crashes due to wacky values
+  if (map_scale_up_factor_ < 1)
+    map_scale_up_factor_ = 1;
+  if (map_scale_up_factor_ > 16)
+    map_scale_up_factor_ = 16;
 
   double tmp;
   private_nh_.param("gui_publish_rate", tmp, -1.0);
@@ -1029,22 +1036,29 @@ AmclNode::convertMap( const nav_msgs::OccupancyGrid& map_msg )
   map_t* map = map_alloc();
   ROS_ASSERT(map);
 
-  map->size_x = map_msg.info.width;
-  map->size_y = map_msg.info.height;
-  map->scale = map_msg.info.resolution;
+  map->size_x = map_msg.info.width * map_scale_up_factor_;
+  map->size_y = map_msg.info.height * map_scale_up_factor_;
+  map->scale = map_msg.info.resolution / map_scale_up_factor_;
   map->origin_x = map_msg.info.origin.position.x + (map->size_x / 2) * map->scale;
   map->origin_y = map_msg.info.origin.position.y + (map->size_y / 2) * map->scale;
   // Convert to player format
   map->cells = (map_cell_t*)malloc(sizeof(map_cell_t)*map->size_x*map->size_y);
   ROS_ASSERT(map->cells);
-  for(int i=0;i<map->size_x * map->size_y;i++)
+  for(int y=0;y<map->size_y;y++)
   {
-    if(map_msg.data[i] == 0)
-      map->cells[i].occ_state = -1;
-    else if(map_msg.data[i] == 100)
-      map->cells[i].occ_state = +1;
-    else
-      map->cells[i].occ_state = 0;
+    int i=y*map->size_x;
+    const int msg_row=(y/map_scale_up_factor_)*(map_msg.info.width);
+    for(int x=0;x<map->size_x;x++,i++)
+    {
+      const int msg_i=msg_row+x/map_scale_up_factor_;
+
+      if(map_msg.data[msg_i] == 0)
+        map->cells[i].occ_state = -1;
+      else if(map_msg.data[msg_i] == 100)
+        map->cells[i].occ_state = +1;
+      else
+        map->cells[i].occ_state = 0;
+    }
   }
 
   return map;
