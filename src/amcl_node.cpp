@@ -149,7 +149,7 @@ class AmclNode
 
     void laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan);
     void initialPoseReceived(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg);
-    void handleInitialPoseMessage(const geometry_msgs::PoseWithCovarianceStamped& msg);
+    void handleInitialPoseMessage(const geometry_msgs::PoseWithCovarianceStamped& orig_msg);
     void mapReceived(const nav_msgs::OccupancyGridConstPtr& msg);
 
     void handleMapMessage(const nav_msgs::OccupancyGrid& msg);
@@ -169,6 +169,7 @@ class AmclNode
     //parameter for what base to use
     std::string base_frame_id_;
     std::string global_frame_id_;
+    std::string global_alt_frame_id_;
 
     bool use_map_topic_;
     bool first_map_only_;
@@ -229,6 +230,8 @@ class AmclNode
     ros::NodeHandle private_nh_;
     ros::Publisher pose_pub_;
     ros::Publisher particlecloud_pub_;
+    ros::Publisher alt_pose_pub_;
+    ros::Publisher alt_particlecloud_pub_;
     ros::ServiceServer global_loc_srv_;
     ros::ServiceServer nomotion_update_srv_; //to let amcl update samples without requiring motion
     ros::ServiceServer set_map_srv_;
@@ -395,6 +398,7 @@ AmclNode::AmclNode() :
   private_nh_.param("odom_frame_id", odom_frame_id_, std::string("odom"));
   private_nh_.param("base_frame_id", base_frame_id_, std::string("base_link"));
   private_nh_.param("global_frame_id", global_frame_id_, std::string("map"));
+  private_nh_.param("global_alt_frame_id", global_alt_frame_id_, std::string(""));
   private_nh_.param("resample_interval", resample_interval_, 2);
   double tmp_tol;
   private_nh_.param("transform_tolerance", tmp_tol, 0.1);
@@ -419,6 +423,11 @@ AmclNode::AmclNode() :
 
   pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("amcl_pose", 2, true);
   particlecloud_pub_ = nh_.advertise<geometry_msgs::PoseArray>("particlecloud", 2, true);
+  if (global_alt_frame_id_.size() > 0)
+  {
+    alt_pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("amcl_pose_in_"+global_alt_frame_id_, 2, true);
+    alt_particlecloud_pub_ = nh_.advertise<geometry_msgs::PoseArray>("particlecloud_in_"+global_alt_frame_id_, 2, true);
+  }
   global_loc_srv_ = nh_.advertiseService("global_localization", 
 					 &AmclNode::globalLocalizationCallback,
                                          this);
@@ -1227,6 +1236,12 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
                         cloud_msg.poses[i]);
       }
       particlecloud_pub_.publish(cloud_msg);
+      if (global_alt_frame_id_.size() > 0)
+      {
+        geometry_msgs::PoseArray alt_cloud_msg(cloud_msg);
+        alt_cloud_msg.header.frame_id = global_alt_frame_id_;
+        alt_particlecloud_pub_.publish(alt_cloud_msg);
+      }
     }
   }
 
@@ -1311,6 +1326,12 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
 
       pose_pub_.publish(p);
       last_published_pose = p;
+      if (global_alt_frame_id_.size() > 0)
+      {
+        geometry_msgs::PoseWithCovarianceStamped alt_p(p);
+        alt_p.header.frame_id = global_alt_frame_id_;
+        alt_pose_pub_.publish(alt_p);
+      }
 
       ROS_DEBUG("New pose: %6.3f %6.3f %6.3f",
                hyps[max_weight_hyp].pf_pose_mean.v[0],
@@ -1413,9 +1434,17 @@ AmclNode::initialPoseReceived(const geometry_msgs::PoseWithCovarianceStampedCons
 }
 
 void
-AmclNode::handleInitialPoseMessage(const geometry_msgs::PoseWithCovarianceStamped& msg)
+AmclNode::handleInitialPoseMessage(const geometry_msgs::PoseWithCovarianceStamped& orig_msg)
 {
   boost::recursive_mutex::scoped_lock prl(configuration_mutex_);
+  geometry_msgs::PoseWithCovarianceStamped msg(orig_msg);
+  // Rewrite to our global frame if received in the alt frame.
+  // This allows us to run with multiple localizers using tf_reverse and pose them all at once.
+  // And it is much cheaper to rewrite here than to run a separate topic tool transformer.
+  if(tf_->resolve(msg.header.frame_id) == tf_->resolve(global_alt_frame_id_))
+  {
+    msg.header.frame_id = global_frame_id_;
+  }
   if(msg.header.frame_id == "")
   {
     // This should be removed at some point
