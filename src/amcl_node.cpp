@@ -46,6 +46,8 @@
 #include "geometry_msgs/PoseWithCovarianceStamped.h"
 #include "geometry_msgs/PoseArray.h"
 #include "geometry_msgs/Pose.h"
+#include "geometry_msgs/Pose2D.h"
+#include "nav_msgs/Odometry.h"
 #include "nav_msgs/GetMap.h"
 #include "nav_msgs/SetMap.h"
 #include "std_srvs/Empty.h"
@@ -203,6 +205,16 @@ class AmclNode
     double laser_min_range_;
     double laser_max_range_;
 
+    // Odometry integrator
+    void integrateOdom(const nav_msgs::OdometryConstPtr& msg);
+    void initOdomIntegrator();
+    void resetOdomIntegrator();
+    ros::Subscriber odom_integrator_sub_;
+    std::string odom_integrator_topic_;
+    bool odom_integrator_ready_;
+    pf_vector_t odom_integrator_last_pose_;
+    pf_vector_t odom_integrator_absolute_motion_;
+
     //Nomotion update control
     bool m_force_update;  // used to temporarily let amcl update samples even when no motion occurs...
 
@@ -229,6 +241,7 @@ class AmclNode
     ros::NodeHandle nh_;
     ros::NodeHandle private_nh_;
     ros::Publisher pose_pub_;
+    ros::Publisher absolute_motion_pub_;
     ros::Publisher particlecloud_pub_;
     ros::Publisher alt_pose_pub_;
     ros::Publisher alt_particlecloud_pub_;
@@ -386,6 +399,8 @@ AmclNode::AmclNode() :
     odom_model_type_ = ODOM_MODEL_DIFF_CORRECTED;
   else if(tmp_model_type == "omni-corrected")
     odom_model_type_ = ODOM_MODEL_OMNI_CORRECTED;
+  else if(tmp_model_type == "gaussian")
+    odom_model_type_ = ODOM_MODEL_GAUSSIAN;
   else
   {
     ROS_WARN("Unknown odom model type \"%s\"; defaulting to diff model",
@@ -406,6 +421,7 @@ AmclNode::AmclNode() :
   private_nh_.param("recovery_alpha_fast", alpha_fast_, 0.1);
   private_nh_.param("tf_broadcast", tf_broadcast_, true);
   private_nh_.param("tf_reverse", tf_reverse_, false);
+  private_nh_.param("odom_integrator_topic", odom_integrator_topic_, std::string(""));
 
   transform_tolerance_.fromSec(tmp_tol);
 
@@ -443,6 +459,11 @@ AmclNode::AmclNode() :
   laser_scan_filter_->registerCallback(boost::bind(&AmclNode::laserReceived,
                                                    this, _1));
   initial_pose_sub_ = nh_.subscribe("initialpose", 2, &AmclNode::initialPoseReceived, this);
+
+  if (odom_integrator_topic_.size()) {
+    odom_integrator_sub_ = nh_.subscribe(odom_integrator_topic_, 20, &AmclNode::integrateOdom, this);
+    absolute_motion_pub_ = nh_.advertise<geometry_msgs::Pose2D>("amcl_absolute_motion", 20, false);
+  }
 
   if(use_map_topic_) {
     map_sub_ = nh_.subscribe("map", 1, &AmclNode::mapReceived, this);
@@ -524,6 +545,8 @@ void AmclNode::reconfigureCB(AMCLConfig &config, uint32_t level)
     odom_model_type_ = ODOM_MODEL_DIFF_CORRECTED;
   else if(config.odom_model_type == "omni-corrected")
     odom_model_type_ = ODOM_MODEL_OMNI_CORRECTED;
+  else if(config.odom_model_type == "gaussian");
+    odom_model_type_ = ODOM_MODEL_GAUSSIAN;
 
   if(config.min_particles > config.max_particles)
   {
@@ -942,6 +965,73 @@ AmclNode::~AmclNode()
   // TODO: delete everything allocated in constructor
 }
 
+void
+AmclNode::initOdomIntegrator()
+{
+  odom_integrator_ready_ = false;
+}
+
+void
+AmclNode::resetOdomIntegrator()
+{
+  odom_integrator_absolute_motion_ = pf_vector_zero();
+}
+
+void
+AmclNode::integrateOdom(const nav_msgs::OdometryConstPtr& msg)
+{
+  // Integrate absolute motion relative to the base,
+  // by finding the delta from one odometry message to another.
+  // NOTE: assume this odom topic is from our odom frame to our base frame.
+  tf::Pose tf_pose;
+  poseMsgToTF(msg->pose.pose, tf_pose);
+  pf_vector_t pose;
+  pose.v[0] = tf_pose.getOrigin().x();
+  pose.v[1] = tf_pose.getOrigin().y();
+  double yaw,pitch,roll;
+  tf_pose.getBasis().getEulerYPR(yaw, pitch, roll);
+  pose.v[2] = yaw;
+
+  if (!odom_integrator_ready_) {
+    resetOdomIntegrator();
+    odom_integrator_ready_ = true;
+  } else {
+    pf_vector_t delta;
+
+    delta.v[0] = pose.v[0] - odom_integrator_last_pose_.v[0];
+    delta.v[1] = pose.v[1] - odom_integrator_last_pose_.v[1];
+    delta.v[2] = angle_diff(pose.v[2], odom_integrator_last_pose_.v[2]);
+
+    // project bearing change onto average orientation, x is forward translation, y is strafe
+    double delta_trans, delta_rot, delta_bearing;
+    delta_trans = sqrt(delta.v[0]*delta.v[0] + delta.v[1]*delta.v[1]);
+    delta_rot = delta.v[2];
+    if (delta_trans < 1e-6)
+    {
+      // For such a small translation, we either didn't move or rotated in place.
+      // Assume the very small motion was forward, not strafe.
+      delta_bearing = 0;
+    }
+    else
+    {
+      delta_bearing = angle_diff(atan2(delta.v[1], delta.v[0]),
+                                 odom_integrator_last_pose_.v[2] + delta_rot/2);
+    }
+    double cs_bearing = cos(delta_bearing);
+    double sn_bearing = sin(delta_bearing);
+
+    // Accumulate absolute motion
+    odom_integrator_absolute_motion_.v[0] += fabs(delta_trans * cs_bearing);
+    odom_integrator_absolute_motion_.v[1] += fabs(delta_trans * sn_bearing);
+    odom_integrator_absolute_motion_.v[2] += fabs(delta_rot);
+
+    // We could also track velocity and acceleration here, for motion models that adjust for velocity/acceleration.
+    // We could also track the covariance of the odometry message and accumulate a total covariance across the time
+    // region for a motion model that uses the reported covariance directly.
+  }
+  odom_integrator_last_pose_ = pose;
+}
+
 bool
 AmclNode::getOdomPose(tf::Stamped<tf::Pose>& odom_pose,
                       double& x, double& y, double& yaw,
@@ -1091,9 +1181,17 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
     delta.v[2] = angle_diff(pose.v[2], pf_odom_pose_.v[2]);
 
     // See if we should update the filter
-    bool update = fabs(delta.v[0]) > d_thresh_ ||
-                  fabs(delta.v[1]) > d_thresh_ ||
-                  fabs(delta.v[2]) > a_thresh_;
+    bool update;
+    if (odom_integrator_topic_.size()) {
+      double abs_trans = sqrt(odom_integrator_absolute_motion_.v[0]*odom_integrator_absolute_motion_.v[0] +
+                              odom_integrator_absolute_motion_.v[1]*odom_integrator_absolute_motion_.v[1]);
+      double abs_rot = odom_integrator_absolute_motion_.v[2];
+      update = abs_trans >= d_thresh_ || abs_rot >= a_thresh_;
+    } else {
+      update = fabs(delta.v[0]) > d_thresh_ ||
+               fabs(delta.v[1]) > d_thresh_ ||
+               fabs(delta.v[2]) > a_thresh_;
+    }
     update = update || m_force_update;
     m_force_update=false;
 
@@ -1119,6 +1217,8 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
     force_publication = true;
 
     resample_count_ = 0;
+
+    initOdomIntegrator();
   }
   // If the robot has moved, update the filter
   else if(pf_init_ && lasers_update_[laser_index])
@@ -1132,12 +1232,23 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
     // Modify the delta in the action data so the filter gets
     // updated correctly
     odata.delta = delta;
+    odata.absolute_motion = odom_integrator_absolute_motion_;
+    if (odom_integrator_topic_.size())
+    {
+      geometry_msgs::Pose2D p;
+      p.x = odata.absolute_motion.v[0];
+      p.y = odata.absolute_motion.v[1];
+      p.theta = odata.absolute_motion.v[2];
+      absolute_motion_pub_.publish(p);
+    }
 
     // Use the action data to update the filter
     odom_->UpdateAction(pf_, (AMCLSensorData*)&odata);
 
     // Pose at last filter update
     //this->pf_odom_pose = pose;
+
+    resetOdomIntegrator();
   }
 
   bool resampled = false;

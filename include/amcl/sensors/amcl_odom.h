@@ -40,7 +40,8 @@ typedef enum
   ODOM_MODEL_DIFF,
   ODOM_MODEL_OMNI,
   ODOM_MODEL_DIFF_CORRECTED,
-  ODOM_MODEL_OMNI_CORRECTED
+  ODOM_MODEL_OMNI_CORRECTED,
+  ODOM_MODEL_GAUSSIAN,
 } odom_model_t;
 
 // Odometric sensor data
@@ -51,6 +52,9 @@ class AMCLOdomData : public AMCLSensorData
 
   // Change in odometric pose
   public: pf_vector_t delta;
+
+  // Total absolute motion (relative to base)
+  public: pf_vector_t absolute_motion;
 };
 
 
@@ -68,6 +72,12 @@ class AMCLOdom : public AMCLSensor
   public: void SetModelOmni(double alpha1, 
                             double alpha2, 
                             double alpha3, 
+                            double alpha4,
+                            double alpha5);
+
+  public: void SetModelGaussian(double alpha1,
+                            double alpha2,
+                            double alpha3,
                             double alpha4,
                             double alpha5);
 
