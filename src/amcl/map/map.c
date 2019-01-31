@@ -52,7 +52,8 @@ map_t *map_alloc(void)
   
   // Allocate storage for main map
   map->cells = (map_cell_t*) NULL;
-  
+  map->distances = NULL;
+
   return map;
 }
 
@@ -60,6 +61,7 @@ map_t *map_alloc(void)
 // Destroy a map
 void map_free(map_t *map)
 {
+  free(map->distances);
   free(map->cells);
   free(map);
   return;

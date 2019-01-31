@@ -25,6 +25,22 @@
 #include <string.h>
 #include "map.h"
 
+// Must not be called until after map dimenstions are set
+static void map_alloc_distances(map_t *map)
+{
+  if (map->distances)
+    free(map->distances);
+  map->distances = (float*)malloc(sizeof(float)*map->size_x*map->size_y);
+}
+
+static void set_map_occ_dist(map_t *map, int i, int j, float d)
+{
+  if (MAP_VALID(map, i, j))
+  {
+    map->distances[MAP_INDEX(map,i,j)] = d;
+  }
+}
+
 class CellData
 {
   public:
@@ -68,7 +84,7 @@ class CachedDistanceMap
 
 bool operator<(const CellData& a, const CellData& b)
 {
-  return a.map_->cells[MAP_INDEX(a.map_, a.i_, a.j_)].occ_dist > a.map_->cells[MAP_INDEX(b.map_, b.i_, b.j_)].occ_dist;
+  return map_occ_dist(a.map_, a.i_, a.j_) > map_occ_dist(b.map_, b.i_, b.j_);
 }
 
 CachedDistanceMap*
@@ -102,7 +118,7 @@ void enqueue(map_t* map, unsigned int i, unsigned int j,
   if(distance > cdm->cell_radius_)
     return;
 
-  map->cells[MAP_INDEX(map, i, j)].occ_dist = distance * map->scale;
+  set_map_occ_dist(map, i, j, distance * map->scale);
 
   CellData cell;
   cell.map_ = map;
@@ -122,6 +138,8 @@ void map_update_cspace(map_t *map, double max_occ_dist)
   unsigned char* marked;
   std::priority_queue<CellData> Q;
 
+  map_alloc_distances(map);
+
   marked = new unsigned char[map->size_x*map->size_y];
   memset(marked, 0, sizeof(unsigned char) * map->size_x*map->size_y);
 
@@ -139,13 +157,13 @@ void map_update_cspace(map_t *map, double max_occ_dist)
     {
       if(map->cells[MAP_INDEX(map, i, j)].occ_state == +1)
       {
-	map->cells[MAP_INDEX(map, i, j)].occ_dist = 0.0;
+	set_map_occ_dist(map, i, j, 0.0);
 	cell.src_j_ = cell.j_ = j;
 	marked[MAP_INDEX(map, i, j)] = 1;
 	Q.push(cell);
       }
       else
-	map->cells[MAP_INDEX(map, i, j)].occ_dist = max_occ_dist;
+	set_map_occ_dist(map, i, j, max_occ_dist);
     }
   }
 

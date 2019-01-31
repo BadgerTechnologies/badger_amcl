@@ -46,10 +46,7 @@ struct _rtk_fig_t;
 typedef struct
 {
   // Occupancy state (-1 = free, 0 = unknown, +1 = occ)
-  int occ_state;
-
-  // Distance to the nearest occupied cell
-  double occ_dist;
+  int8_t occ_state;
 
   // Wifi levels
   //int wifi_levels[MAP_WIFI_MAX_LEVELS];
@@ -69,8 +66,11 @@ typedef struct
   // Map dimensions (number of cells)
   int size_x, size_y;
   
-  // The map data, stored as a grid
+  // The map occupancy data, stored as a grid
   map_cell_t *cells;
+
+  // The map distance data, stored as a grid
+  float * distances;
 
   // Max distance at which we care about obstacles, for constructing
   // likelihood field
@@ -142,6 +142,16 @@ void map_draw_wifi(map_t *map, struct _rtk_fig_t *fig, int index);
 
 // Compute the cell index for the given map coords.
 #define MAP_INDEX(map, i, j) ((i) + (j) * map->size_x)
+
+// Find the distance to nearest occupied cell
+inline float map_occ_dist(map_t *map, int i, int j)
+{
+  if(MAP_VALID(map, i, j))
+  {
+    return map->distances[MAP_INDEX(map, i, j)];
+  }
+  return map->max_occ_dist;
+}
 
 #ifdef __cplusplus
 }

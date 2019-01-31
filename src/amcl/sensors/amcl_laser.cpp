@@ -219,9 +219,9 @@ double AMCLLaser::ApplyModelToSampleSet(AMCLSensorData *data, pf_sample_set_t *s
         sample->weight *= self->non_free_space_factor;
       }
       // Interpolate non free space factor based on radius
-      else if(self->map->cells[MAP_INDEX(self->map, mi, mj)].occ_dist < self->non_free_space_radius)
+      else if(map_occ_dist(self->map, mi, mj) < self->non_free_space_radius)
       {
-        double delta_d = self->map->cells[MAP_INDEX(self->map, mi, mj)].occ_dist / self->non_free_space_radius;
+        double delta_d = map_occ_dist(self->map, mi, mj) / self->non_free_space_radius;
         double f = self->non_free_space_factor;
         f += delta_d * (1.0 - self->non_free_space_factor);
         sample->weight *= f;
@@ -372,7 +372,7 @@ double AMCLLaser::LikelihoodFieldModel(AMCLLaserData *data, pf_sample_set_t* set
       if(!MAP_VALID(self->map, mi, mj))
         z = self->map->max_occ_dist;
       else
-        z = self->map->cells[MAP_INDEX(self->map,mi,mj)].occ_dist;
+        z = map_occ_dist(self->map,mi,mj);
       // Gaussian model
       // NOTE: this should have a normalization of 1/(sqrt(2pi)*sigma)
       pz += self->z_hit * exp(-(z * z) / z_hit_denom);
@@ -509,7 +509,7 @@ double AMCLLaser::LikelihoodFieldModelProb(AMCLLaserData *data, pf_sample_set_t*
 	pz += self->z_hit * max_dist_prob;
       }
       else{
-	z = self->map->cells[MAP_INDEX(self->map,mi,mj)].occ_dist;
+	z = map_occ_dist(self->map,mi,mj);
 	if(z < beam_skip_distance){
 	  obs_count[beam_ind] += 1;
 	}
@@ -665,7 +665,7 @@ double AMCLLaser::LikelihoodFieldModelGompertz(AMCLLaserData *data, pf_sample_se
       if(!MAP_VALID(self->map, mi, mj))
         z = self->map->max_occ_dist;
       else
-        z = self->map->cells[MAP_INDEX(self->map,mi,mj)].occ_dist;
+        z = map_occ_dist(self->map,mi,mj);
       // Gaussian model
       pz += self->z_hit * exp(-(z * z) / z_hit_denom);
       // Part 2: random measurements
