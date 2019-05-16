@@ -182,6 +182,7 @@ class AmclNode
     int map_scale_up_factor_;
 
     ros::Duration gui_publish_period;
+    ros::Duration transform_publish_period;
     ros::Time save_pose_last_time;
     ros::Duration save_pose_period;
 
@@ -251,6 +252,7 @@ class AmclNode
     ros::Publisher particlecloud_pub_;
     ros::Publisher alt_pose_pub_;
     ros::Publisher alt_particlecloud_pub_;
+    ros::Publisher map_odom_transform_pub_;
     ros::ServiceServer global_loc_srv_;
     ros::ServiceServer nomotion_update_srv_; //to let amcl update samples without requiring motion
     ros::ServiceServer set_map_srv_;
@@ -262,9 +264,11 @@ class AmclNode
     bool first_reconfigure_call_;
 
     boost::recursive_mutex configuration_mutex_;
+    boost::recursive_mutex tf_mutex_;
     dynamic_reconfigure::Server<amcl::AMCLConfig> *dsrv_;
     amcl::AMCLConfig default_config_;
     ros::Timer check_laser_timer_;
+    ros::Timer publish_transform_timer_;
 
     int max_beams_, min_particles_, max_particles_;
     double alpha1_, alpha2_, alpha3_, alpha4_, alpha5_;
@@ -302,6 +306,9 @@ class AmclNode
     ros::Time last_laser_received_ts_;
     ros::Duration laser_check_interval_;
     void checkLaserReceived(const ros::TimerEvent& event);
+
+    ros::Duration publish_transform_interval_;
+    void publishTransform(const ros::TimerEvent& event);
 };
 
 std::vector<std::pair<int,int> > AmclNode::free_space_indices;
@@ -376,6 +383,8 @@ AmclNode::AmclNode() :
   double tmp;
   private_nh_.param("gui_publish_rate", tmp, -1.0);
   gui_publish_period = ros::Duration(1.0/tmp);
+  private_nh_.param("transform_publish_rate", tmp, 50.0);
+  transform_publish_period = ros::Duration(1.0/tmp);
   private_nh_.param("save_pose_rate", tmp, 0.5);
   save_pose_period = ros::Duration(1.0/tmp);
 
@@ -391,7 +400,7 @@ AmclNode::AmclNode() :
   private_nh_.param("odom_alpha3", alpha3_, 0.2);
   private_nh_.param("odom_alpha4", alpha4_, 0.2);
   private_nh_.param("odom_alpha5", alpha5_, 0.2);
-  
+
   private_nh_.param("do_beamskip", do_beamskip_, false);
   private_nh_.param("beam_skip_distance", beam_skip_distance_, 0.5);
   private_nh_.param("beam_skip_threshold", beam_skip_threshold_, 0.3);
@@ -502,17 +511,18 @@ AmclNode::AmclNode() :
     alt_pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("amcl_pose_in_"+global_alt_frame_id_, 2, true);
     alt_particlecloud_pub_ = nh_.advertise<geometry_msgs::PoseArray>("particlecloud_in_"+global_alt_frame_id_, 2, true);
   }
-  global_loc_srv_ = nh_.advertiseService("global_localization", 
+  map_odom_transform_pub_ = nh_.advertise<nav_msgs::Odometry>("amcl_map_odom_transform", 1);
+  global_loc_srv_ = nh_.advertiseService("global_localization",
 					 &AmclNode::globalLocalizationCallback,
                                          this);
   nomotion_update_srv_= nh_.advertiseService("request_nomotion_update", &AmclNode::nomotionUpdateCallback, this);
   set_map_srv_= nh_.advertiseService("set_map", &AmclNode::setMapCallback, this);
 
   laser_scan_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, scan_topic_, 100);
-  laser_scan_filter_ = 
-          new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_scan_sub_, 
-                                                        *tf_, 
-                                                        odom_frame_id_, 
+  laser_scan_filter_ =
+          new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_scan_sub_,
+                                                        *tf_,
+                                                        odom_frame_id_,
                                                         100);
   laser_scan_filter_->registerCallback(boost::bind(&AmclNode::laserReceived,
                                                    this, _1));
@@ -537,8 +547,12 @@ AmclNode::AmclNode() :
 
   // 15s timer to warn on lack of receipt of laser scans, #5209
   laser_check_interval_ = ros::Duration(15.0);
-  check_laser_timer_ = nh_.createTimer(laser_check_interval_, 
+  check_laser_timer_ = nh_.createTimer(laser_check_interval_,
                                        boost::bind(&AmclNode::checkLaserReceived, this, _1));
+
+  publish_transform_interval_ = ros::Duration(transform_publish_period);
+  publish_transform_timer_ = nh_.createTimer(publish_transform_interval_,
+                                             boost::bind(&AmclNode::publishTransform, this, _1));
 }
 
 void AmclNode::reconfigureCB(AMCLConfig &config, uint32_t level)
@@ -579,6 +593,7 @@ void AmclNode::reconfigureCB(AMCLConfig &config, uint32_t level)
   laser_max_range_ = config.laser_max_range;
 
   gui_publish_period = ros::Duration(1.0/config.gui_publish_rate);
+  transform_publish_period = ros::Duration(1.0/config.transform_publish_rate);
   save_pose_period = ros::Duration(1.0/config.save_pose_rate);
 
   transform_tolerance_.fromSec(config.transform_tolerance);
@@ -647,16 +662,16 @@ void AmclNode::reconfigureCB(AMCLConfig &config, uint32_t level)
   tf_broadcast_ = config.tf_broadcast;
   tf_reverse_ = config.tf_reverse;
 
-  do_beamskip_= config.do_beamskip; 
-  beam_skip_distance_ = config.beam_skip_distance; 
-  beam_skip_threshold_ = config.beam_skip_threshold; 
+  do_beamskip_= config.do_beamskip;
+  beam_skip_distance_ = config.beam_skip_distance;
+  beam_skip_threshold_ = config.beam_skip_threshold;
 
   pf_ = pf_alloc(min_particles_, max_particles_,
                  alpha_slow_, alpha_fast_,
                  (pf_init_model_fn_t)AmclNode::uniformPoseGenerator,
                  (void *)this);
-  pf_err_ = config.kld_err; 
-  pf_z_ = config.kld_z; 
+  pf_err_ = config.kld_err;
+  pf_z_ = config.kld_z;
   pf_->pop_err = pf_err_;
   pf_->pop_z = pf_z_;
   pf_set_resample_model(pf_, resample_model_type_);
@@ -689,8 +704,8 @@ void AmclNode::reconfigureCB(AMCLConfig &config, uint32_t level)
   else if(laser_model_type_ == LASER_MODEL_LIKELIHOOD_FIELD_PROB){
     ROS_INFO("Initializing likelihood field model; this can take some time on large maps...");
     laser_->SetModelLikelihoodFieldProb(z_hit_, z_rand_, sigma_hit_,
-					laser_likelihood_max_dist_, 
-					do_beamskip_, beam_skip_distance_, 
+					laser_likelihood_max_dist_,
+					do_beamskip_, beam_skip_distance_,
 					beam_skip_threshold_, beam_skip_error_threshold_);
     ROS_INFO("Done initializing likelihood field model with probabilities.");
   }
@@ -726,10 +741,10 @@ void AmclNode::reconfigureCB(AMCLConfig &config, uint32_t level)
   global_frame_id_ = config.global_frame_id;
 
   delete laser_scan_filter_;
-  laser_scan_filter_ = 
-          new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_scan_sub_, 
-                                                        *tf_, 
-                                                        odom_frame_id_, 
+  laser_scan_filter_ =
+          new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_scan_sub_,
+                                                        *tf_,
+                                                        odom_frame_id_,
                                                         100);
   laser_scan_filter_->registerCallback(boost::bind(&AmclNode::laserReceived,
                                                    this, _1));
@@ -839,16 +854,17 @@ void AmclNode::savePoseToServer()
   private_nh_.setParam("initial_pose_x", map_pose.getOrigin().x());
   private_nh_.setParam("initial_pose_y", map_pose.getOrigin().y());
   private_nh_.setParam("initial_pose_a", yaw);
-  private_nh_.setParam("initial_cov_xx", 
+  private_nh_.setParam("initial_cov_xx",
                                   last_published_pose.pose.covariance[6*0+0]);
-  private_nh_.setParam("initial_cov_yy", 
+  private_nh_.setParam("initial_cov_yy",
                                   last_published_pose.pose.covariance[6*1+1]);
-  private_nh_.setParam("initial_cov_aa", 
+  private_nh_.setParam("initial_cov_aa",
                                   last_published_pose.pose.covariance[6*5+5]);
 }
 
 void AmclNode::updatePoseFromServer()
 {
+  ROS_WARN("Updating pose from server");
   init_pose_[0] = 0.0;
   init_pose_[1] = 0.0;
   init_pose_[2] = 0.0;
@@ -860,7 +876,7 @@ void AmclNode::updatePoseFromServer()
   private_nh_.param("initial_pose_x", tmp_pos, init_pose_[0]);
   if(!std::isnan(tmp_pos))
     init_pose_[0] = tmp_pos;
-  else 
+  else
     ROS_WARN("ignoring NAN in initial pose X position");
   private_nh_.param("initial_pose_y", tmp_pos, init_pose_[1]);
   if(!std::isnan(tmp_pos))
@@ -886,10 +902,10 @@ void AmclNode::updatePoseFromServer()
   if(!std::isnan(tmp_pos))
     init_cov_[2] = tmp_pos;
   else
-    ROS_WARN("ignoring NAN in initial covariance AA");	
+    ROS_WARN("ignoring NAN in initial covariance AA");
 }
 
-void 
+void
 AmclNode::checkLaserReceived(const ros::TimerEvent& event)
 {
   ros::Duration d = ros::Time::now() - last_laser_received_ts_;
@@ -990,8 +1006,8 @@ AmclNode::handleMapMessage(const nav_msgs::OccupancyGrid& msg)
   else if(laser_model_type_ == LASER_MODEL_LIKELIHOOD_FIELD_PROB){
     ROS_INFO("Initializing likelihood field model; this can take some time on large maps...");
     laser_->SetModelLikelihoodFieldProb(z_hit_, z_rand_, sigma_hit_,
-					laser_likelihood_max_dist_, 
-					do_beamskip_, beam_skip_distance_, 
+					laser_likelihood_max_dist_,
+					do_beamskip_, beam_skip_distance_,
 					beam_skip_threshold_, beam_skip_error_threshold_);
     ROS_INFO("Done initializing likelihood field model.");
   }
@@ -1293,7 +1309,7 @@ AmclNode::globalLocalizationCallback(std_srvs::Empty::Request& req,
 }
 
 // force nomotion updates (amcl updating without requiring motion)
-bool 
+bool
 AmclNode::nomotionUpdateCallback(std_srvs::Empty::Request& req,
                                      std_srvs::Empty::Response& res)
 {
@@ -1695,28 +1711,10 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
         return;
       }
 
+      boost::recursive_mutex::scoped_lock tfl(tf_mutex_);
       latest_tf_ = tf::Transform(tf::Quaternion(odom_to_map.getRotation()),
                                  tf::Point(odom_to_map.getOrigin()));
       latest_tf_valid_ = true;
-
-      if (tf_broadcast_ == true)
-      {
-        // We want to send a transform that is good up until a
-        // tolerance time so that odom can be used
-        ros::Time transform_expiration = (laser_scan->header.stamp +
-                                          transform_tolerance_);
-        tf::StampedTransform tmp_tf_stamped(latest_tf_.inverse(),
-                                            transform_expiration,
-                                            global_frame_id_, odom_frame_id_);
-        if (tf_reverse_ == true)
-        {
-          tmp_tf_stamped = tf::StampedTransform(latest_tf_,
-                                            transform_expiration,
-                                            odom_frame_id_, global_frame_id_);
-        }
-        this->tfb_->sendTransform(tmp_tf_stamped);
-        sent_first_transform_ = true;
-      }
     }
     else
     {
@@ -1725,23 +1723,6 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
   }
   else if(latest_tf_valid_)
   {
-    if (tf_broadcast_ == true)
-    {
-      // Nothing changed, so we'll just republish the last transform, to keep
-      // everybody happy.
-      ros::Time transform_expiration = (laser_scan->header.stamp +
-                                        transform_tolerance_);
-      tf::StampedTransform tmp_tf_stamped(latest_tf_.inverse(),
-                                          transform_expiration,
-                                          global_frame_id_, odom_frame_id_);
-      if (tf_reverse_ == true)
-      {
-        tmp_tf_stamped = tf::StampedTransform(latest_tf_,
-                                          transform_expiration,
-                                          odom_frame_id_, global_frame_id_);
-      }
-      this->tfb_->sendTransform(tmp_tf_stamped);
-    }
 
     // Is it time to save our last pose to the param server
     ros::Time now = ros::Time::now();
@@ -1753,6 +1734,46 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
     }
   }
 
+}
+
+void
+AmclNode::publishTransform(const ros::TimerEvent& event)
+{
+  boost::recursive_mutex::scoped_lock tfl(tf_mutex_);
+  if (tf_broadcast_ == true && latest_tf_valid_)
+  {
+    // We want to send a transform that is good up until a
+    // tolerance time so that odom can be used
+    ros::Time transform_expiration = (ros::Time::now() + transform_tolerance_);
+    tf::StampedTransform tmp_tf_stamped;
+    tf::Transform tf_transform;
+    if (tf_reverse_ == true)
+    {
+      tmp_tf_stamped = tf::StampedTransform(latest_tf_, transform_expiration,
+                                            odom_frame_id_, global_frame_id_);
+      tf_transform = latest_tf_;
+    } else {
+      tmp_tf_stamped = tf::StampedTransform(latest_tf_.inverse(), transform_expiration,
+                                            global_frame_id_, odom_frame_id_);
+      tf_transform = latest_tf_.inverse();
+    }
+    geometry_msgs::Quaternion quaternion;
+    tf::quaternionTFToMsg(tf_transform.getRotation(), quaternion);
+    geometry_msgs::Vector3 origin;
+    tf::vector3TFToMsg(tf_transform.getOrigin(), origin);
+    nav_msgs::Odometry odom;
+    odom.header.stamp = ros::Time::now();
+    odom.header.frame_id = global_frame_id_;
+    odom.child_frame_id = odom_frame_id_;
+    odom.pose.pose.position.x = origin.x;
+    odom.pose.pose.position.y = origin.y;
+    odom.pose.pose.position.z = origin.z;
+    odom.pose.pose.orientation = quaternion;
+    map_odom_transform_pub_.publish(odom);
+
+    this->tfb_->sendTransform(tmp_tf_stamped);
+    sent_first_transform_ = true;
+  }
 }
 
 double
@@ -1772,6 +1793,7 @@ AmclNode::initialPoseReceived(const geometry_msgs::PoseWithCovarianceStampedCons
 void
 AmclNode::handleInitialPoseMessage(const geometry_msgs::PoseWithCovarianceStamped& orig_msg)
 {
+  ROS_WARN("initial pose received");
   boost::recursive_mutex::scoped_lock prl(configuration_mutex_);
   geometry_msgs::PoseWithCovarianceStamped msg(orig_msg);
   // Rewrite to our global frame if received in the alt frame.
@@ -1815,6 +1837,7 @@ AmclNode::handleInitialPoseMessage(const geometry_msgs::PoseWithCovarianceStampe
     // global_frame_id_ frame doesn't exist.  We only care about in-time
     // transformation for on-the-move pose-setting, so ignoring this
     // startup condition doesn't really cost us anything.
+    boost::recursive_mutex::scoped_lock tfl(tf_mutex_);
     if(sent_first_transform_)
       ROS_WARN("Failed to transform initial pose in time (%s)", e.what());
     tx_odom.setIdentity();
