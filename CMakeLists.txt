@@ -10,6 +10,7 @@ find_package(catkin REQUIRED
             tf
             dynamic_reconfigure
             nav_msgs
+            badger_file_lib
         )
 
 find_package(Boost REQUIRED)
@@ -25,6 +26,7 @@ catkin_package(
         roscpp
         dynamic_reconfigure
         tf
+        badger_file_lib
   INCLUDE_DIRS include
   LIBRARIES amcl_sensors amcl_map amcl_pf
 )
@@ -62,6 +64,7 @@ target_link_libraries(amcl
     amcl_sensors amcl_map amcl_pf
     ${Boost_LIBRARIES}
     ${catkin_LIBRARIES}
+    yaml-cpp
 )
 
 install( TARGETS
