@@ -63,11 +63,6 @@
 #include "dynamic_reconfigure/server.h"
 #include "amcl/AMCLConfig.h"
 
-// Allows AMCL to run from bag file
-#include <rosbag/bag.h>
-#include <rosbag/view.h>
-#include <boost/foreach.hpp>
-
 using namespace amcl;
 
 // Pose hypothesis
@@ -112,11 +107,6 @@ class AmclNode
   public:
     AmclNode();
     ~AmclNode();
-
-    /**
-     * @brief Uses TF and LaserScan messages from bag file to drive AMCL instead
-     */
-    void runFromBag(const std::string &in_bag_fn);
 
     int process();
     void savePoseToServer();
@@ -231,9 +221,6 @@ class AmclNode
     ros::Duration cloud_pub_interval;
     ros::Time last_cloud_pub_time;
 
-    // For slowing play-back when reading directly from a bag file
-    ros::WallDuration bag_scan_period_;
-
     void requestMap();
 
     // Helper to get odometric pose from transform system
@@ -340,10 +327,6 @@ main(int argc, char** argv)
   {
     // run using ROS input
     ros::spin();
-  }
-  else if ((argc == 3) && (std::string(argv[1]) == "--run-from-bag"))
-  {
-    amcl_node_ptr->runFromBag(argv[2]);
   }
 
   // Without this, our boost locks are not shut down nicely
@@ -491,12 +474,6 @@ AmclNode::AmclNode() :
   private_nh_.param("odom_integrator_topic", odom_integrator_topic_, std::string(""));
 
   transform_tolerance_.fromSec(tmp_tol);
-
-  {
-    double bag_scan_period;
-    private_nh_.param("bag_scan_period", bag_scan_period, -1.0);
-    bag_scan_period_.fromSec(bag_scan_period);
-  }
 
   updatePoseFromServer();
 
@@ -751,94 +728,6 @@ void AmclNode::reconfigureCB(AMCLConfig &config, uint32_t level)
 
   initial_pose_sub_ = nh_.subscribe("initialpose", 2, &AmclNode::initialPoseReceived, this);
 }
-
-
-void AmclNode::runFromBag(const std::string &in_bag_fn)
-{
-  rosbag::Bag bag;
-  bag.open(in_bag_fn, rosbag::bagmode::Read);
-  std::vector<std::string> topics;
-  topics.push_back(std::string("tf"));
-  std::string scan_topic_name = "base_scan"; // TODO determine what topic this actually is from ROS
-  topics.push_back(scan_topic_name);
-  rosbag::View view(bag, rosbag::TopicQuery(topics));
-
-  ros::Publisher laser_pub = nh_.advertise<sensor_msgs::LaserScan>(scan_topic_name, 100);
-  ros::Publisher tf_pub = nh_.advertise<tf2_msgs::TFMessage>("/tf", 100);
-
-  // Sleep for a second to let all subscribers connect
-  ros::WallDuration(1.0).sleep();
-
-  ros::WallTime start(ros::WallTime::now());
-
-  // Wait for map
-  while (ros::ok())
-  {
-    {
-      boost::recursive_mutex::scoped_lock cfl(configuration_mutex_);
-      if (map_)
-      {
-        ROS_INFO("Map is ready");
-        break;
-      }
-    }
-    ROS_INFO("Waiting for map...");
-    ros::getGlobalCallbackQueue()->callAvailable(ros::WallDuration(1.0));
-  }
-
-  BOOST_FOREACH(rosbag::MessageInstance const msg, view)
-  {
-    if (!ros::ok())
-    {
-      break;
-    }
-
-    // Process any ros messages or callbacks at this point
-    ros::getGlobalCallbackQueue()->callAvailable(ros::WallDuration());
-
-    tf2_msgs::TFMessage::ConstPtr tf_msg = msg.instantiate<tf2_msgs::TFMessage>();
-    if (tf_msg != NULL)
-    {
-      tf_pub.publish(msg);
-      for (size_t ii=0; ii<tf_msg->transforms.size(); ++ii)
-      {
-        tf_->getBuffer().setTransform(tf_msg->transforms[ii], "rosbag_authority");
-      }
-      continue;
-    }
-
-    sensor_msgs::LaserScan::ConstPtr base_scan = msg.instantiate<sensor_msgs::LaserScan>();
-    if (base_scan != NULL)
-    {
-      laser_pub.publish(msg);
-      laser_scan_filter_->add(base_scan);
-      if (bag_scan_period_ > ros::WallDuration(0))
-      {
-        bag_scan_period_.sleep();
-      }
-      continue;
-    }
-
-    ROS_WARN_STREAM("Unsupported message type" << msg.getTopic());
-  }
-
-  bag.close();
-
-  double runtime = (ros::WallTime::now() - start).toSec();
-  ROS_INFO("Bag complete, took %.1f seconds to process, shutting down", runtime);
-
-  const geometry_msgs::Quaternion & q(last_published_pose.pose.pose.orientation);
-  double yaw, pitch, roll;
-  tf::Matrix3x3(tf::Quaternion(q.x, q.y, q.z, q.w)).getEulerYPR(yaw,pitch,roll);
-  ROS_INFO("Final location %.3f, %.3f, %.3f with stamp=%f",
-            last_published_pose.pose.pose.position.x,
-            last_published_pose.pose.pose.position.y,
-            yaw, last_published_pose.header.stamp.toSec()
-            );
-
-  ros::shutdown();
-}
-
 
 void AmclNode::savePoseToServer()
 {
