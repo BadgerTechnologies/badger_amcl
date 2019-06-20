@@ -42,9 +42,9 @@ add_library(amcl_pf
                     src/amcl/pf/eig3.c)
 
 add_library(amcl_map
-                    src/amcl/map/map.c
+                    src/amcl/map/map.cpp
                     src/amcl/map/map_cspace.cpp
-                    src/amcl/map/map_range.c)
+                    src/amcl/map/map_range.cpp)
 
 add_library(amcl_sensors
                     src/amcl/sensors/amcl_sensor.cpp

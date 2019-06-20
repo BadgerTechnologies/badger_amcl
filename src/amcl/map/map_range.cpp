@@ -47,7 +47,7 @@ double map_calc_range(map_t *map, double ox, double oy, double oa, double max_ra
 
   x0 = MAP_GXWX(map,ox);
   y0 = MAP_GYWY(map,oy);
-  
+
   x1 = MAP_GXWX(map,ox + max_range * cos(oa));
   y1 = MAP_GYWY(map,oy + max_range * sin(oa));
 

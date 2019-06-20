@@ -30,9 +30,6 @@
 
 #include <stdint.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // Description for a single map cell.
 typedef struct
@@ -93,7 +90,6 @@ void map_update_cspace(map_t *map, double max_occ_dist);
 // Extract a single range reading from the map
 double map_calc_range(map_t *map, double ox, double oy, double oa, double max_range);
 
-
 /**************************************************************************
  * Map manipulation macros
  **************************************************************************/
@@ -121,9 +117,5 @@ inline float map_occ_dist(map_t *map, int i, int j)
   }
   return map->max_occ_dist;
 }
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
