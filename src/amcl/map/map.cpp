@@ -44,12 +44,12 @@ map_t *map_alloc(void)
   // Assume we start at (0, 0)
   map->origin_x = 0;
   map->origin_y = 0;
-  
+
   // Make the size odd
   map->size_x = 0;
   map->size_y = 0;
   map->scale = 0;
-  
+
   // Allocate storage for main map
   map->cells = (map_cell_t*) NULL;
   map->distances = NULL;
