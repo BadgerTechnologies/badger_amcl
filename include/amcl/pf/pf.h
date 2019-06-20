@@ -178,18 +178,6 @@ void pf_get_cep_stats(pf_t *pf, pf_vector_t *mean, double *var);
 int pf_get_cluster_stats(pf_t *pf, int cluster, double *weight,
                          pf_vector_t *mean, pf_matrix_t *cov);
 
-// Display the sample set
-void pf_draw_samples(pf_t *pf, struct _rtk_fig_t *fig, int max_samples);
-
-// Draw the histogram (kdtree)
-void pf_draw_hist(pf_t *pf, struct _rtk_fig_t *fig);
-
-// Draw the CEP statistics
-void pf_draw_cep_stats(pf_t *pf, struct _rtk_fig_t *fig);
-
-// Draw the cluster statistics
-void pf_draw_cluster_stats(pf_t *pf, struct _rtk_fig_t *fig);
-
 //calculate if the particle filter has converged - 
 //and sets the converged flag in the current set and the pf 
 int pf_update_converged(pf_t *pf);
