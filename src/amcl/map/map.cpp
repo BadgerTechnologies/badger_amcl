@@ -25,44 +25,30 @@
  * CVS: $Id: map.c 1713 2003-08-23 04:03:43Z inspectorg $
 **************************************************************************/
 
-#include <assert.h>
-#include <math.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
-
 #include "map.h"
+#include <stdint.h>
 
+using namespace amcl;
 
 // Create a new map
-map_t *map_alloc(void)
+Map::Map()
 {
-  map_t *map;
-
-  map = (map_t*) malloc(sizeof(map_t));
-
-  // Assume we start at (0, 0)
-  map->origin_x = 0;
-  map->origin_y = 0;
-
-  // Make the size odd
-  map->size_x = 0;
-  map->size_y = 0;
-  map->scale = 0;
-
-  // Allocate storage for main map
-  map->cells = (map_cell_t*) NULL;
-  map->distances = NULL;
-
-  return map;
+  scale = 0;
 }
 
-
 // Destroy a map
-void map_free(map_t *map)
+Map::~Map()
 {
-  free(map->distances);
-  free(map->cells);
-  free(map);
-  return;
+}
+
+double
+Map::getScale()
+{
+  return scale;
+}
+
+void
+Map::setScale(double _scale)
+{
+  scale = _scale;
 }

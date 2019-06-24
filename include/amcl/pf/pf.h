@@ -43,7 +43,6 @@ typedef enum
 
 // Forward declarations
 struct _pf_t;
-struct _rtk_fig_t;
 struct _pf_sample_set_t;
 
 // Function prototype for the initialization model; generates a sample pose from

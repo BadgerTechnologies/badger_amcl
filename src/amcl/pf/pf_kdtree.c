@@ -51,17 +51,7 @@ static void pf_kdtree_cluster_node(pf_kdtree_t *self, pf_kdtree_node_t *node, in
 // Recursive node printing
 //static void pf_kdtree_print_node(pf_kdtree_t *self, pf_kdtree_node_t *node);
 
-
-#ifdef INCLUDE_RTKGUI
-
-// Recursively draw nodes
-static void pf_kdtree_draw_node(pf_kdtree_t *self, pf_kdtree_node_t *node, rtk_fig_t *fig);
-
-#endif
-
-
-
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 // Create a tree
 pf_kdtree_t *pf_kdtree_alloc(int max_size)
 {
@@ -437,50 +427,3 @@ void pf_kdtree_cluster_node(pf_kdtree_t *self, pf_kdtree_node_t *node, int depth
   }
   return;
 }
-
-
-
-#ifdef INCLUDE_RTKGUI
-
-////////////////////////////////////////////////////////////////////////////////
-// Draw the tree
-void pf_kdtree_draw(pf_kdtree_t *self, rtk_fig_t *fig)
-{
-  if (self->root != NULL)
-    pf_kdtree_draw_node(self, self->root, fig);
-  return;
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-// Recursively draw nodes
-void pf_kdtree_draw_node(pf_kdtree_t *self, pf_kdtree_node_t *node, rtk_fig_t *fig)
-{
-  double ox, oy;
-  char text[64];
-
-  if (node->leaf)
-  {
-    ox = (node->key[0] + 0.5) * self->size[0];
-    oy = (node->key[1] + 0.5) * self->size[1];
-
-    rtk_fig_rectangle(fig, ox, oy, 0.0, self->size[0], self->size[1], 0);
-
-    //snprintf(text, sizeof(text), "%0.3f", node->value);
-    //rtk_fig_text(fig, ox, oy, 0.0, text);
-
-    snprintf(text, sizeof(text), "%d", node->cluster);
-    rtk_fig_text(fig, ox, oy, 0.0, text);
-  }
-  else
-  {
-    assert(node->children[0] != NULL);
-    assert(node->children[1] != NULL);
-    pf_kdtree_draw_node(self, node->children[0], fig);
-    pf_kdtree_draw_node(self, node->children[1], fig);
-  }
-
-  return;
-}
-
-#endif

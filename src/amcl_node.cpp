@@ -32,6 +32,7 @@
 #include <signal.h>
 
 #include "map/map.h"
+#include "map/occupancy_map.h"
 #include "pf/pf.h"
 #include "sensors/amcl_odom.h"
 #include "sensors/amcl_laser.h"
@@ -133,6 +134,9 @@ class AmclNode
 
     TransformListenerWrapper* tf_;
 
+    // 2: 2d, 3: 3d, else: none
+    int map_type_;
+
     bool sent_first_transform_;
 
     tf::Transform latest_tf_;
@@ -149,24 +153,20 @@ class AmclNode
     // Callbacks
     bool globalLocalizationCallback(std_srvs::Empty::Request& req,
                                     std_srvs::Empty::Response& res);
-    bool nomotionUpdateCallback(std_srvs::Empty::Request& req,
-                                    std_srvs::Empty::Response& res);
-    bool setMapCallback(nav_msgs::SetMap::Request& req,
-                        nav_msgs::SetMap::Response& res);
-
     void laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan);
     void initialPoseReceived(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg);
     void handleInitialPoseMessage(const geometry_msgs::PoseWithCovarianceStamped& orig_msg);
     void mapReceived(const nav_msgs::OccupancyGridConstPtr& msg);
 
-    void handleMapMessage(const nav_msgs::OccupancyGrid& msg);
+    void initFromNewMap();
     void freeMapDependentMemory();
-    map_t* convertMap( const nav_msgs::OccupancyGrid& map_msg );
+    OccupancyMap* convertMap( const nav_msgs::OccupancyGrid& map_msg );
     std::string makeFilepathFromName( const std::string filename );
     void loadPose();
     void publishInitPose();
     bool loadPoseFromServer();
     bool loadPoseFromFile();
+
     YAML::Node loadYamlFromFile();
     void applyInitialPose();
 
@@ -184,7 +184,6 @@ class AmclNode
     std::string global_frame_id_;
     std::string global_alt_frame_id_;
 
-    bool use_map_topic_;
     bool first_map_only_;
     int map_scale_up_factor_;
 
@@ -197,7 +196,7 @@ class AmclNode
 
     geometry_msgs::PoseWithCovarianceStamped last_published_pose;
 
-    map_t* map_;
+    Map* map_;
     char* mapdata;
     int sx, sy;
     double resolution;
@@ -240,8 +239,6 @@ class AmclNode
     ros::Duration cloud_pub_interval;
     ros::Time last_cloud_pub_time;
 
-    void requestMap();
-
     // Helper to get odometric pose from transform system
     bool getOdomPose(tf::Stamped<tf::Pose>& pose,
                      double& x, double& y, double& yaw,
@@ -261,8 +258,6 @@ class AmclNode
     ros::Publisher map_odom_transform_pub_;
     ros::Publisher initial_pose_pub_;
     ros::ServiceServer global_loc_srv_;
-    ros::ServiceServer nomotion_update_srv_; //to let amcl update samples without requiring motion
-    ros::ServiceServer set_map_srv_;
     ros::Subscriber initial_pose_sub_old_;
     ros::Subscriber map_sub_;
 
@@ -371,7 +366,7 @@ AmclNode::AmclNode() :
         resample_count_(0),
         odom_(NULL),
         laser_(NULL),
-	      private_nh_("~"),
+	    private_nh_("~"),
         initial_pose_hyp_(NULL),
         first_map_received_(false),
         first_reconfigure_call_(true),
@@ -380,8 +375,9 @@ AmclNode::AmclNode() :
 {
   boost::recursive_mutex::scoped_lock cfl(configuration_mutex_);
 
+  // 2: 2d, 3: 3d, else: none
+  private_nh_.param("map_type", map_type_, 0);
   // Grab params off the param server
-  private_nh_.param("use_map_topic", use_map_topic_, false);
   private_nh_.param("first_map_only", first_map_only_, false);
   private_nh_.param("map_scale_up_factor", map_scale_up_factor_, 1);
   // Prevent nonsense and crashes due to wacky values
@@ -530,8 +526,6 @@ AmclNode::AmclNode() :
   global_loc_srv_ = nh_.advertiseService("global_localization",
 					 &AmclNode::globalLocalizationCallback,
                                          this);
-  nomotion_update_srv_= nh_.advertiseService("request_nomotion_update", &AmclNode::nomotionUpdateCallback, this);
-  set_map_srv_= nh_.advertiseService("set_map", &AmclNode::setMapCallback, this);
 
   laser_scan_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, scan_topic_, 100);
   laser_scan_filter_ =
@@ -548,12 +542,9 @@ AmclNode::AmclNode() :
     absolute_motion_pub_ = nh_.advertise<geometry_msgs::Pose2D>("amcl_absolute_motion", 20, false);
   }
 
-  if(use_map_topic_) {
-    map_sub_ = nh_.subscribe("map", 1, &AmclNode::mapReceived, this);
-    ROS_INFO("Subscribed to map topic.");
-  } else {
-    requestMap();
-  }
+  map_sub_ = nh_.subscribe("map", 1, &AmclNode::mapReceived, this);
+  ROS_INFO("Subscribed to map topic.");
+
   m_force_update = false;
 
   dsrv_ = new dynamic_reconfigure::Server<amcl::AMCLConfig>(ros::NodeHandle("~"));
@@ -588,6 +579,9 @@ void AmclNode::reconfigureCB(AMCLConfig &config, uint32_t level)
     //avoid looping
     config.restore_defaults = false;
   }
+
+  // 2: 2d, 3: 3d, else: none
+  map_type_ = config.map_type;
 
   d_thresh_ = config.update_min_d;
   a_thresh_ = config.update_min_a;
@@ -712,7 +706,7 @@ void AmclNode::reconfigureCB(AMCLConfig &config, uint32_t level)
   odom_->SetModel( odom_model_type_, alpha1_, alpha2_, alpha3_, alpha4_, alpha5_ );
   // Laser
   delete laser_;
-  laser_ = new AMCLLaser(max_beams_, map_);
+  laser_ = new AMCLLaser(max_beams_, (OccupancyMap*)map_);
   ROS_ASSERT(laser_);
   if(laser_model_type_ == LASER_MODEL_BEAM)
     laser_->SetModelBeam(z_hit_, z_short_, z_max_, z_rand_,
@@ -1103,55 +1097,35 @@ AmclNode::checkLaserReceived(const ros::TimerEvent& event)
 }
 
 void
-AmclNode::requestMap()
-{
-  boost::recursive_mutex::scoped_lock cfl(configuration_mutex_);
-
-  // get map via RPC
-  nav_msgs::GetMap::Request  req;
-  nav_msgs::GetMap::Response resp;
-  ROS_INFO("Requesting the map...");
-  while(!ros::service::call("static_map", req, resp))
-  {
-    ROS_WARN("Request for map failed; trying again...");
-    ros::Duration d(0.5);
-    d.sleep();
-  }
-  handleMapMessage( resp.map );
-}
-
-void
 AmclNode::mapReceived(const nav_msgs::OccupancyGridConstPtr& msg)
 {
   if( first_map_only_ && first_map_received_ ) {
     return;
   }
 
-  handleMapMessage( *msg );
-
-  first_map_received_ = true;
-}
-
-void
-AmclNode::handleMapMessage(const nav_msgs::OccupancyGrid& msg)
-{
   boost::recursive_mutex::scoped_lock cfl(configuration_mutex_);
 
   ROS_INFO("Received a %d X %d map @ %.3f m/pix\n",
-           msg.info.width,
-           msg.info.height,
-           msg.info.resolution);
+           msg->info.width,
+           msg->info.height,
+           msg->info.resolution);
 
   freeMapDependentMemory();
-  // Clear queued laser objects because they hold pointers to the existing
-  // map, #5202.
+  // Clear queued laser objects because they hold pointers to the existing map
   lasers_.clear();
   lasers_update_.clear();
   frame_to_laser_.clear();
   delete last_laser_data_;
   last_laser_data_ = NULL;
 
-  map_ = convertMap(msg);
+  map_ = convertMap(*msg);
+  initFromNewMap();
+
+  first_map_received_ = true;
+}
+
+void AmclNode::initFromNewMap()
+{
 
   // Create the particle filter
   pf_ = pf_alloc(min_particles_, max_particles_,
@@ -1181,7 +1155,7 @@ AmclNode::handleMapMessage(const nav_msgs::OccupancyGrid& msg)
   odom_->SetModel( odom_model_type_, alpha1_, alpha2_, alpha3_, alpha4_, alpha5_ );
   // Laser
   delete laser_;
-  laser_ = new AMCLLaser(max_beams_, map_);
+  laser_ = new AMCLLaser(max_beams_, (OccupancyMap*)map_);
   ROS_ASSERT(laser_);
   if(laser_model_type_ == LASER_MODEL_BEAM)
     laser_->SetModelBeam(z_hit_, z_short_, z_max_, z_rand_,
@@ -1225,10 +1199,11 @@ AmclNode::handleMapMessage(const nav_msgs::OccupancyGrid& msg)
   // Index of free space
   // Must be calculated after the occ_dist is setup by the laser model
   free_space_indices.resize(0);
-  for(int i = 0; i < map_->size_x; i++)
-    for(int j = 0; j < map_->size_y; j++)
-      if(map_->cells[MAP_INDEX(map_,i,j)].occ_state == -1)
-        if(map_occ_dist(map_,i,j) > laser_non_free_space_radius_)
+  std::vector<int> size_vec = map_->getSize();
+  for(int i = 0; i < size_vec[0]; i++)
+    for(int j = 0; j < size_vec[1]; j++)
+      if(((OccupancyMap*)map_)->getCells()[((OccupancyMap*)map_)->computeCellIndex(i,j)].occ_state == -1)
+        if(((OccupancyMap*)map_)->occDist(i,j) > laser_non_free_space_radius_)
           free_space_indices.push_back(std::make_pair(i,j));
 
   // In case the initial pose message arrived before the first map,
@@ -1240,7 +1215,7 @@ void
 AmclNode::freeMapDependentMemory()
 {
   if( map_ != NULL ) {
-    map_free( map_ );
+    delete map_;
     map_ = NULL;
   }
   if( pf_ != NULL ) {
@@ -1255,36 +1230,39 @@ AmclNode::freeMapDependentMemory()
 
 /**
  * Convert an OccupancyGrid map message into the internal
- * representation.  This allocates a map_t and returns it.
+ * representation.  This allocates an OccupancyMap and returns it.
  */
-map_t*
+OccupancyMap*
 AmclNode::convertMap( const nav_msgs::OccupancyGrid& map_msg )
 {
-  map_t* map = map_alloc();
+  OccupancyMap* map = new OccupancyMap();
   ROS_ASSERT(map);
-
-  map->size_x = map_msg.info.width * map_scale_up_factor_;
-  map->size_y = map_msg.info.height * map_scale_up_factor_;
-  map->scale = map_msg.info.resolution / map_scale_up_factor_;
-  map->origin_x = map_msg.info.origin.position.x + (map->size_x / 2) * map->scale;
-  map->origin_y = map_msg.info.origin.position.y + (map->size_y / 2) * map->scale;
-  // Convert to player format
-  map->cells = (map_cell_t*)malloc(sizeof(map_cell_t)*map->size_x*map->size_y);
-  ROS_ASSERT(map->cells);
-  for(int y=0;y<map->size_y;y++)
+  std::vector<int> size_vec;
+  double scale = map_msg.info.resolution / map_scale_up_factor_;
+  size_vec.push_back(map_msg.info.width * map_scale_up_factor_);
+  size_vec.push_back(map_msg.info.height * map_scale_up_factor_);
+  map->setSize(size_vec);
+  map->setScale(scale);
+  std::vector<double> origin;
+  origin.push_back(map_msg.info.origin.position.x + (size_vec[0] / 2) * scale);
+  origin.push_back(map_msg.info.origin.position.y + (size_vec[1] / 2) * scale);
+  map->setOrigin(origin);
+  map->initCells(size_vec[0]*size_vec[1]);
+  ROS_ASSERT(map->getCells());
+  for(int y=0;y<size_vec[1];y++)
   {
-    int i=y*map->size_x;
+    int i=y*size_vec[0];
     const int msg_row=(y/map_scale_up_factor_)*(map_msg.info.width);
-    for(int x=0;x<map->size_x;x++,i++)
+    for(int x=0;x<size_vec[0];x++,i++)
     {
       const int msg_i=msg_row+x/map_scale_up_factor_;
 
       if(map_msg.data[msg_i] == 0)
-        map->cells[i].occ_state = -1;
+        map->setCellOccState(i, -1);
       else if(map_msg.data[msg_i] == 100)
-        map->cells[i].occ_state = +1;
+        map->setCellOccState(i, +1);
       else
-        map->cells[i].occ_state = 0;
+        map->setCellOccState(i, 0);
     }
   }
 
@@ -1398,13 +1376,15 @@ AmclNode::getOdomPose(tf::Stamped<tf::Pose>& odom_pose,
 pf_vector_t
 AmclNode::randomFreeSpacePose()
 {
-  map_t* map = this->map_;
+  Map* map = this->map_;
   pf_vector_t p;
 
   unsigned int rand_index = drand48() * free_space_indices.size();
   std::pair<int,int> free_point = free_space_indices[rand_index];
-  p.v[0] = MAP_WXGX(map, free_point.first);
-  p.v[1] = MAP_WYGY(map, free_point.second);
+  std::vector<double> p_vec;
+  p_vec = map_->convertMapToWorld({free_point.first, free_point.second});
+  p.v[0] = p_vec[0];
+  p.v[1] = p_vec[1];
   p.v[2] = drand48() * 2 * M_PI - M_PI;
 
   return p;
@@ -1487,26 +1467,6 @@ AmclNode::globalLocalizationCallback(std_srvs::Empty::Request& req,
                 (void *)this);
   ROS_INFO("Global initialisation done!");
   pf_init_ = false;
-  return true;
-}
-
-// force nomotion updates (amcl updating without requiring motion)
-bool
-AmclNode::nomotionUpdateCallback(std_srvs::Empty::Request& req,
-                                     std_srvs::Empty::Response& res)
-{
-	m_force_update = true;
-	//ROS_INFO("Requesting no-motion update");
-	return true;
-}
-
-bool
-AmclNode::setMapCallback(nav_msgs::SetMap::Request& req,
-                         nav_msgs::SetMap::Response& res)
-{
-  handleMapMessage(req.map);
-  handleInitialPoseMessage(req.initial_pose);
-  res.success = true;
   return true;
 }
 

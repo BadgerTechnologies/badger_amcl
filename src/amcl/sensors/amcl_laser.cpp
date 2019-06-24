@@ -32,6 +32,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <unistd.h>
+#include "ros/ros.h"
 
 #include "amcl_laser.h"
 
@@ -39,7 +40,7 @@ using namespace amcl;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Default constructor
-AMCLLaser::AMCLLaser(size_t max_beams, map_t* map) : AMCLSensor(), 
+AMCLLaser::AMCLLaser(size_t max_beams, OccupancyMap* map) : AMCLSensor(),
 						     max_samples(0), max_obs(0), 
 						     temp_obs(NULL)
 {
@@ -95,7 +96,7 @@ AMCLLaser::SetModelLikelihoodField(double z_hit,
   this->z_rand = z_rand;
   this->sigma_hit = sigma_hit;
 
-  map_update_cspace(this->map, max_occ_dist);
+  this->map->updateCSpace(max_occ_dist);
 }
 
 void 
@@ -116,7 +117,7 @@ AMCLLaser::SetModelLikelihoodFieldProb(double z_hit,
   this->beam_skip_distance = beam_skip_distance;
   this->beam_skip_threshold = beam_skip_threshold;
   this->beam_skip_error_threshold = beam_skip_error_threshold;
-  map_update_cspace(this->map, max_occ_dist);
+  this->map->updateCSpace(max_occ_dist);
 }
 
 void
@@ -131,6 +132,7 @@ AMCLLaser::SetModelLikelihoodFieldGompertz(double z_hit,
                                            double input_scale,
                                            double output_shift)
 {
+  ROS_INFO("initializing model likelihood field gompertz");
   this->model_type = LASER_MODEL_LIKELIHOOD_FIELD_GOMPERTZ;
   this->z_hit = z_hit;
   this->z_rand = z_rand;
@@ -142,8 +144,10 @@ AMCLLaser::SetModelLikelihoodFieldGompertz(double z_hit,
   this->input_shift = input_shift;
   this->input_scale = input_scale;
   this->output_shift = output_shift;
+  ROS_INFO("done model likelihood field gompertz, updating cspace");
 
-  map_update_cspace(this->map, max_occ_dist);
+  this->map->updateCSpace(max_occ_dist);
+  ROS_INFO("done updating cspace");
 }
 
 void AMCLLaser::SetMapFactors(double off_map_factor,
@@ -205,23 +209,25 @@ double AMCLLaser::ApplyModelToSampleSet(AMCLSensorData *data, pf_sample_set_t *s
       pose = sample->pose;
 
       // Convert to map grid coords.
-      mi = MAP_GXWX(self->map, pose.v[0]);
-      mj = MAP_GYWY(self->map, pose.v[1]);
+      std::vector<int> m_vec;
+      m_vec = self->map->convertWorldToMap({pose.v[0], pose.v[1]});
+      mi = m_vec[0];
+      mj = m_vec[1];
 
       // Apply off map factor
-      if(!MAP_VALID(self->map, mi, mj))
+      if(!self->map->isValid({mi, mj}))
       {
         sample->weight *= self->off_map_factor;
       }
       // Apply non free space factor
-      else if((self->map->cells[MAP_INDEX(self->map, mi, mj)].occ_state != -1))
+      else if((self->map->getCells()[self->map->computeCellIndex(mi, mj)].occ_state != -1))
       {
         sample->weight *= self->non_free_space_factor;
       }
       // Interpolate non free space factor based on radius
-      else if(map_occ_dist(self->map, mi, mj) < self->non_free_space_radius)
+      else if(self->map->occDist(mi, mj) < self->non_free_space_radius)
       {
-        double delta_d = map_occ_dist(self->map, mi, mj) / self->non_free_space_radius;
+        double delta_d = self->map->occDist(mi, mj) / self->non_free_space_radius;
         double f = self->non_free_space_factor;
         f += delta_d * (1.0 - self->non_free_space_factor);
         sample->weight *= f;
@@ -269,7 +275,7 @@ double AMCLLaser::BeamModel(AMCLLaserData *data, pf_sample_set_t* set)
       obs_bearing = data->ranges[i][1];
 
       // Compute the range according to the map
-      map_range = map_calc_range(self->map, pose.v[0], pose.v[1],
+      map_range = self->map->calcRange(pose.v[0], pose.v[1],
                                  pose.v[2] + obs_bearing, data->range_max);
       pz = 0.0;
 
@@ -363,16 +369,18 @@ double AMCLLaser::LikelihoodFieldModel(AMCLLaserData *data, pf_sample_set_t* set
       hit.v[1] = pose.v[1] + obs_range * sin(pose.v[2] + obs_bearing);
 
       // Convert to map grid coords.
+      std::vector<int> m_vec;
       int mi, mj;
-      mi = MAP_GXWX(self->map, hit.v[0]);
-      mj = MAP_GYWY(self->map, hit.v[1]);
-      
+      m_vec = self->map->convertWorldToMap({hit.v[0], hit.v[1]});
+      mi = m_vec[0];
+      mj = m_vec[1];
+
       // Part 1: Get distance from the hit to closest obstacle.
       // Off-map penalized as max distance
-      if(!MAP_VALID(self->map, mi, mj))
-        z = self->map->max_occ_dist;
+      if(!self->map->isValid({mi, mj}))
+        z = self->map->getMaxOccDist();
       else
-        z = map_occ_dist(self->map,mi,mj);
+        z = self->map->occDist(mi,mj);
       // Gaussian model
       // NOTE: this should have a normalization of 1/(sqrt(2pi)*sigma)
       pz += self->z_hit * exp(-(z * z) / z_hit_denom);
@@ -422,7 +430,7 @@ double AMCLLaser::LikelihoodFieldModelProb(AMCLLaserData *data, pf_sample_set_t*
   double z_hit_denom = 2 * self->sigma_hit * self->sigma_hit;
   double z_rand_mult = 1.0/data->range_max;
 
-  double max_dist_prob = exp(-(self->map->max_occ_dist * self->map->max_occ_dist) / z_hit_denom);
+  double max_dist_prob = exp(-(self->map->getMaxOccDist() * self->map->getMaxOccDist()) / z_hit_denom);
 
   //Beam skipping - ignores beams for which a majoirty of particles do not agree with the map
   //prevents correct particles from getting down weighted because of unexpected obstacles 
@@ -498,18 +506,20 @@ double AMCLLaser::LikelihoodFieldModelProb(AMCLLaserData *data, pf_sample_set_t*
       hit.v[1] = pose.v[1] + obs_range * sin(pose.v[2] + obs_bearing);
 
       // Convert to map grid coords.
+      std::vector<int> m_vec;
       int mi, mj;
-      mi = MAP_GXWX(self->map, hit.v[0]);
-      mj = MAP_GYWY(self->map, hit.v[1]);
-      
+      m_vec = self->map->convertWorldToMap({hit.v[0], hit.v[1]});
+      mi = m_vec[0];
+      mj = m_vec[1];
+
       // Part 1: Get distance from the hit to closest obstacle.
       // Off-map penalized as max distance
       
-      if(!MAP_VALID(self->map, mi, mj)){
+      if(!self->map->isValid({mi, mj})){
 	pz += self->z_hit * max_dist_prob;
       }
       else{
-	z = map_occ_dist(self->map,mi,mj);
+	z = self->map->occDist(mi,mj);
 	if(z < beam_skip_distance){
 	  obs_count[beam_ind] += 1;
 	}
@@ -656,16 +666,18 @@ double AMCLLaser::LikelihoodFieldModelGompertz(AMCLLaserData *data, pf_sample_se
       hit.v[1] = pose.v[1] + obs_range * sin(pose.v[2] + obs_bearing);
 
       // Convert to map grid coords.
+      std::vector<int> m_vec;
       int mi, mj;
-      mi = MAP_GXWX(self->map, hit.v[0]);
-      mj = MAP_GYWY(self->map, hit.v[1]);
+      m_vec = self->map->convertWorldToMap({hit.v[0], hit.v[1]});
+      mi = m_vec[0];
+      mj = m_vec[1];
 
       // Part 1: Get distance from the hit to closest obstacle.
       // Off-map penalized as max distance
-      if(!MAP_VALID(self->map, mi, mj))
-        z = self->map->max_occ_dist;
+      if(!self->map->isValid({mi, mj}))
+        z = self->map->getMaxOccDist();
       else
-        z = map_occ_dist(self->map,mi,mj);
+        z = self->map->occDist(mi,mj);
       // Gaussian model
       pz += self->z_hit * exp(-(z * z) / z_hit_denom);
       // Part 2: random measurements

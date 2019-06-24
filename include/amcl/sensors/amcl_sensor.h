@@ -63,20 +63,6 @@ class AMCLSensor
 
   // Action pose (action sensors only)
   public: pf_vector_t pose;
-
-  // AMCL Base
-  //protected: AdaptiveMCL & AMCL;
-
-#ifdef INCLUDE_RTKGUI
-  // Setup the GUI
-  public: virtual void SetupGUI(rtk_canvas_t *canvas, rtk_fig_t *robot_fig);
-
-  // Finalize the GUI
-  public: virtual void ShutdownGUI(rtk_canvas_t *canvas, rtk_fig_t *robot_fig);
-
-  // Draw sensor data
-  public: virtual void UpdateGUI(rtk_canvas_t *canvas, rtk_fig_t *robot_fig, AMCLSensorData *data);
-#endif
 };
 
 

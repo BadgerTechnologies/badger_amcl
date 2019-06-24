@@ -31,6 +31,7 @@
 
 #include "amcl_sensor.h"
 #include "../map/map.h"
+#include "../map/occupancy_map.h"
 
 namespace amcl
 {
@@ -60,7 +61,7 @@ class AMCLLaserData : public AMCLSensorData
 class AMCLLaser : public AMCLSensor
 {
   // Default constructor
-  public: AMCLLaser(size_t max_beams, map_t* map);
+  public: AMCLLaser(size_t max_beams, OccupancyMap* map);
 
   public: virtual ~AMCLLaser(); 
 
@@ -146,7 +147,7 @@ class AMCLLaser : public AMCLSensor
   private: double time;
 
   // The laser map
-  private: map_t *map;
+  private: OccupancyMap *map;
 
   // Laser offset relative to robot
   private: pf_vector_t laser_pose;
