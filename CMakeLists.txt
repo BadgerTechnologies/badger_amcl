@@ -43,8 +43,9 @@ add_library(amcl_pf
 
 add_library(amcl_map
                     src/amcl/map/map.cpp
-                    src/amcl/map/map_cspace.cpp
-                    src/amcl/map/map_range.cpp)
+                    src/amcl/map/occupancy_map.cpp
+                    src/amcl/map/occupancy_map_cspace.cpp
+                    src/amcl/map/occupancy_map_range.cpp)
 
 add_library(amcl_sensors
                     src/amcl/sensors/amcl_sensor.cpp

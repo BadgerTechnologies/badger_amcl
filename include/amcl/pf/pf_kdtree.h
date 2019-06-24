@@ -28,11 +28,6 @@
 #ifndef PF_KDTREE_H
 #define PF_KDTREE_H
 
-#ifdef INCLUDE_RTKGUI
-#include "rtk.h"
-#endif
-
-
 // Info for a node in the tree
 typedef struct pf_kdtree_node
 {
@@ -97,13 +92,5 @@ extern double pf_kdtree_get_prob(pf_kdtree_t *self, pf_vector_t pose);
 
 // Determine the cluster label for the given pose
 extern int pf_kdtree_get_cluster(pf_kdtree_t *self, pf_vector_t pose);
-
-
-#ifdef INCLUDE_RTKGUI
-
-// Draw the tree
-extern void pf_kdtree_draw(pf_kdtree_t *self, rtk_fig_t *fig);
-
-#endif
 
 #endif
