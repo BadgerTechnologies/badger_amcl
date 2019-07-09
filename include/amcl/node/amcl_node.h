@@ -102,6 +102,8 @@ class AmclNode
     void savePoseToFile();
 
   private:
+    void init2d();
+    void deleteAmclNode2D();
     const int INDEX_XX_ = 6*0+0;
     const int INDEX_YY_ = 6*1+1;
     const int INDEX_AA_ = 6*5+5;
@@ -126,6 +128,7 @@ class AmclNode
 
     // Score a single pose with the sensor model using the last sensor data
     double scorePose(const pf_vector_t &p);
+    double scorePose2d(const pf_vector_t &p);
     // Generate a random pose in a free space on the map
     pf_vector_t randomFreeSpacePose();
     // Pose-generating function used to uniformly distribute particles over
@@ -135,13 +138,16 @@ class AmclNode
     // Callbacks
     bool globalLocalizationCallback(std_srvs::Empty::Request& req,
                                     std_srvs::Empty::Response& res);
+    void globalLocalizationCallback2D();
     void laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan);
     void initialPoseReceived(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg);
     void handleInitialPoseMessage(const geometry_msgs::PoseWithCovarianceStamped& orig_msg);
     void mapReceived(const nav_msgs::OccupancyGridConstPtr& msg);
 
     void initFromNewMap();
+    void initFromNewMap2D();
     void freeMapDependentMemory();
+    void freeMapDependentMemory2D();
     OccupancyMap* convertMap( const nav_msgs::OccupancyGrid& map_msg );
     std::string makeFilepathFromName( const std::string filename );
     void loadPose();
@@ -263,7 +269,7 @@ class AmclNode
     bool global_localization_active_;
     double global_localization_alpha_slow_, global_localization_alpha_fast_;
     double z_hit_, z_short_, z_max_, z_rand_, sigma_hit_, lambda_short_;
-  //beam skip related params
+    //beam skip related params
     bool do_beamskip_;
     double beam_skip_distance_, beam_skip_threshold_, beam_skip_error_threshold_;
     double laser_likelihood_max_dist_;
@@ -289,6 +295,7 @@ class AmclNode
     std::string saved_pose_filepath_;
 
     void reconfigureCB(amcl::AMCLConfig &config, uint32_t level);
+    void reconfigure2D(amcl::AMCLConfig &config);
 
     AMCLLaserData *last_laser_data_;
     ros::Time last_laser_received_ts_;
