@@ -28,10 +28,10 @@ catkin_package(
         tf
         badger_file_lib
   INCLUDE_DIRS include
-  LIBRARIES amcl_sensors amcl_map amcl_pf
+  LIBRARIES amcl_sensors amcl_map amcl_pf amcl_node
 )
 
-include_directories(include/amcl include/amcl/map include/amcl/sensors include/amcl/pf)
+include_directories(include/amcl include/amcl/node include/amcl/map include/amcl/sensors include/amcl/pf)
 include_directories(${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
 
 add_library(amcl_pf
@@ -51,22 +51,23 @@ add_library(amcl_sensors
                     src/amcl/sensors/amcl_sensor.cpp
                     src/amcl/sensors/amcl_odom.cpp
                     src/amcl/sensors/amcl_laser.cpp)
-target_link_libraries(amcl_sensors amcl_map amcl_pf)
+add_library(amcl_node
+                    src/amcl/node/amcl_node.cpp)
+target_link_libraries(amcl_sensors amcl_node amcl_map amcl_pf)
 
 
-add_executable(amcl
-                       src/amcl_node.cpp)
+add_executable(amcl src/main.cpp src/amcl/node/amcl_node.cpp)
 add_dependencies(amcl amcl_gencfg)
 
 target_link_libraries(amcl
-    amcl_sensors amcl_map amcl_pf
+    amcl_sensors amcl_node amcl_map amcl_pf
     ${Boost_LIBRARIES}
     ${catkin_LIBRARIES}
     yaml-cpp
 )
 
 install( TARGETS
-    amcl amcl_sensors amcl_map amcl_pf
+    amcl amcl_sensors amcl_map amcl_pf amcl_node
     ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
     LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
     RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
