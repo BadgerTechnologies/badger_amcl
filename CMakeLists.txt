@@ -52,7 +52,8 @@ add_library(amcl_sensors
                     src/amcl/sensors/amcl_odom.cpp
                     src/amcl/sensors/amcl_laser.cpp)
 add_library(amcl_node
-                    src/amcl/node/amcl_node.cpp)
+                    src/amcl/node/amcl_node.cpp
+                    src/amcl/node/amcl_node_2d.cpp)
 target_link_libraries(amcl_sensors amcl_node amcl_map amcl_pf)
 
 
