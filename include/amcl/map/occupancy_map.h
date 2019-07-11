@@ -50,24 +50,23 @@ class OccupancyMap : public Map
   public:
     OccupancyMap();
     ~OccupancyMap();
-    void updateCSpace(double max_occ_dist_);
-    // Extract a single range reading from the map
-    double calcRange(double ox, double oy, double oa, double max_range);
-    // Find the distance to nearest occupied cell
-    float occDist(int i, int j);
     // Convert from map index to world coords
     std::vector<double> convertMapToWorld(std::vector<int> map_coords);
     // Convert from world coords to map coords
     std::vector<int> convertWorldToMap(std::vector<double> world_coords);
     // Test to see if the given map coords lie within the absolute map bounds.
     bool isValid(std::vector<int> coords);
-    // Compute the cell index for the given map coords.
-    unsigned int computeCellIndex(int i, int j);
-
     std::vector<double> getOrigin();
     void setOrigin(std::vector<double> _origin);
     std::vector<int> getSize();
     void setSize(std::vector<int> _size_x);
+    void updateCSpace(double max_occ_dist_);
+    // Extract a single range reading from the map
+    double calcRange(double ox, double oy, double oa, double max_range);
+    // Find the distance to nearest occupied cell
+    float occDist(int i, int j);
+    // Compute the cell index for the given map coords.
+    unsigned int computeCellIndex(int i, int j);
     double getMaxOccDist();
     map_cell_t* getCells();
     void initCells(int num);

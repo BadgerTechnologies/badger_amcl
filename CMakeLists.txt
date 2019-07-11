@@ -14,6 +14,7 @@ find_package(catkin REQUIRED
         )
 
 find_package(Boost REQUIRED)
+find_package(octomap REQUIRED)
 
 # dynamic reconfigure
 generate_dynamic_reconfigure_options(
@@ -32,7 +33,7 @@ catkin_package(
 )
 
 include_directories(include/amcl include/amcl/node include/amcl/map include/amcl/sensors include/amcl/pf)
-include_directories(${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
+include_directories(${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${OCTOMAP_INCLUDE_DIRS})
 
 add_library(amcl_pf
                     src/amcl/pf/pf.c
@@ -45,7 +46,8 @@ add_library(amcl_map
                     src/amcl/map/map.cpp
                     src/amcl/map/occupancy_map.cpp
                     src/amcl/map/occupancy_map_cspace.cpp
-                    src/amcl/map/occupancy_map_range.cpp)
+                    src/amcl/map/occupancy_map_range.cpp
+                    src/amcl/map/octomap.cpp)
 
 add_library(amcl_sensors
                     src/amcl/sensors/amcl_sensor.cpp
@@ -53,7 +55,8 @@ add_library(amcl_sensors
                     src/amcl/sensors/amcl_laser.cpp)
 add_library(amcl_node
                     src/amcl/node/amcl_node.cpp
-                    src/amcl/node/amcl_node_2d.cpp)
+                    src/amcl/node/amcl_node_2d.cpp
+                    src/amcl/node/amcl_node_3d.cpp)
 target_link_libraries(amcl_sensors amcl_node amcl_map amcl_pf)
 
 
@@ -64,6 +67,7 @@ target_link_libraries(amcl
     amcl_sensors amcl_node amcl_map amcl_pf
     ${Boost_LIBRARIES}
     ${catkin_LIBRARIES}
+    ${OCTOMAP_LIBRARIES}
     yaml-cpp
 )
 

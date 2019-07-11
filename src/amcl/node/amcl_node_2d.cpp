@@ -72,7 +72,7 @@
 using namespace amcl;
 
 void
-AmclNode::init2d()
+AmclNode::init2D()
 {
   laser_ = NULL;
   last_laser_data_ = NULL;
@@ -184,7 +184,7 @@ AmclNode::convertMap( const nav_msgs::OccupancyGrid& map_msg )
 
 // Helper function to score a pose for uniform pose generation
 double
-AmclNode::scorePose2d(const pf_vector_t &p)
+AmclNode::scorePose2D(const pf_vector_t &p)
 {
   if(this->last_laser_data_ == NULL)
   {
