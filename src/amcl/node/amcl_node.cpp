@@ -30,7 +30,6 @@
 #include <signal.h>
 
 #include "map.h"
-#include "occupancy_map.h"
 #include "pf.h"
 #include "amcl_odom.h"
 #include "amcl_node.h"
@@ -201,7 +200,11 @@ AmclNode::AmclNode() :
 
   if(map_type_ == 2)
   {
-    init2d();
+    init2D();
+  }
+  else if(map_type_ == 3)
+  {
+    init3D();
   }
 
   initial_pose_sub_ = nh_.subscribe("initialpose", 2, &AmclNode::initialPoseReceived, this);
@@ -332,6 +335,10 @@ AmclNode::reconfigureCB(AMCLConfig &config, uint32_t level)
   if(map_type_ == 2)
   {
     reconfigure2D(config);
+  }
+  else if(map_type_ == 3)
+  {
+    reconfigure3D(config);
   }
 
   save_pose_ = config.save_pose;
@@ -693,6 +700,10 @@ AmclNode::initFromNewMap()
   {
     initFromNewMap2D();
   }
+  else if(map_type_ == 3)
+  {
+    initFromNewMap3D();
+  }
 
   // In case the initial pose message arrived before the first map,
   // try to apply the initial pose now that the map has arrived.
@@ -715,6 +726,10 @@ AmclNode::freeMapDependentMemory()
   if(map_type_ == 2)
   {
     freeMapDependentMemory2D();
+  }
+  else if(map_type_ == 3)
+  {
+    freeMapDependentMemory3D();
   }
 }
 
@@ -844,7 +859,11 @@ AmclNode::scorePose(const pf_vector_t &p)
 {
   if(map_type_ == 2)
   {
-    return scorePose2d(p);
+    return scorePose2D(p);
+  }
+  else if(map_type_ == 3)
+  {
+    return scorePose3D(p);
   }
   else
   {
@@ -897,6 +916,10 @@ AmclNode::globalLocalizationCallback(std_srvs::Empty::Request& req,
   if(map_type_ == 2)
   {
     globalLocalizationCallback2D();
+  }
+  else if(map_type_ == 3)
+  {
+    globalLocalizationCallback3D();
   }
 
   ROS_INFO("Initializing with uniform distribution");

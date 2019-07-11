@@ -14,6 +14,7 @@
 
 #include "map.h"
 #include "occupancy_map.h"
+#include "octomap.h"
 #include "pf.h"
 #include "amcl_odom.h"
 #include "amcl_laser.h"
@@ -25,6 +26,7 @@
 
 // Messages that I need
 #include "sensor_msgs/LaserScan.h"
+#include "sensor_msgs/PointCloud.h"
 #include "geometry_msgs/PoseWithCovarianceStamped.h"
 #include "geometry_msgs/PoseArray.h"
 #include "geometry_msgs/Pose.h"
@@ -102,8 +104,10 @@ class AmclNode
     void savePoseToFile();
 
   private:
-    void init2d();
+    void init2D();
+    void init3D();
     void deleteAmclNode2D();
+    void deleteAmclNode3D();
     const int INDEX_XX_ = 6*0+0;
     const int INDEX_YY_ = 6*1+1;
     const int INDEX_AA_ = 6*5+5;
@@ -128,7 +132,8 @@ class AmclNode
 
     // Score a single pose with the sensor model using the last sensor data
     double scorePose(const pf_vector_t &p);
-    double scorePose2d(const pf_vector_t &p);
+    double scorePose2D(const pf_vector_t &p);
+    double scorePose3D(const pf_vector_t &p);
     // Generate a random pose in a free space on the map
     pf_vector_t randomFreeSpacePose();
     // Pose-generating function used to uniformly distribute particles over
@@ -139,6 +144,7 @@ class AmclNode
     bool globalLocalizationCallback(std_srvs::Empty::Request& req,
                                     std_srvs::Empty::Response& res);
     void globalLocalizationCallback2D();
+    void globalLocalizationCallback3D();
     void laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan);
     void initialPoseReceived(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg);
     void handleInitialPoseMessage(const geometry_msgs::PoseWithCovarianceStamped& orig_msg);
@@ -146,9 +152,12 @@ class AmclNode
 
     void initFromNewMap();
     void initFromNewMap2D();
+    void initFromNewMap3D();
     void freeMapDependentMemory();
     void freeMapDependentMemory2D();
+    void freeMapDependentMemory3D();
     OccupancyMap* convertMap( const nav_msgs::OccupancyGrid& map_msg );
+    OctoMap* convertMap( const sensor_msgs::PointCloud& map_msg );
     std::string makeFilepathFromName( const std::string filename );
     void loadPose();
     void publishInitPose();
@@ -296,6 +305,7 @@ class AmclNode
 
     void reconfigureCB(amcl::AMCLConfig &config, uint32_t level);
     void reconfigure2D(amcl::AMCLConfig &config);
+    void reconfigure3D(amcl::AMCLConfig &config);
 
     AMCLLaserData *last_laser_data_;
     ros::Time last_laser_received_ts_;
