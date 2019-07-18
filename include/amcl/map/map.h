@@ -45,14 +45,18 @@ class Map
     virtual std::vector<int> convertWorldToMap(std::vector<double> world_coords) = 0;
     // Test to see if the given map coords lie within the absolute map bounds.
     virtual bool isValid(std::vector<int> coords) = 0;
+    virtual std::vector<int> getSize() = 0;
     virtual std::vector<double> getOrigin() = 0;
     virtual void setOrigin(std::vector<double> _origin) = 0;
-    virtual std::vector<int> getSize() = 0;
-    virtual void setSize(std::vector<int> _size) = 0;
+    virtual void updateCSpace(double max_occ_dist_) = 0;
     double getScale();
     void setScale(double _scale);
   protected:
     double scale;
+    // Max distance at which we care about obstacles, for constructing
+    // likelihood field
+    double max_occ_dist;
+
 };
 
 }

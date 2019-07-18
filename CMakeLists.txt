@@ -11,10 +11,13 @@ find_package(catkin REQUIRED
             dynamic_reconfigure
             nav_msgs
             badger_file_lib
+            pcl_ros
+            eigen_conversions
+            octomap_msgs
         )
 
 find_package(Boost REQUIRED)
-find_package(octomap REQUIRED)
+find_package(OCTOMAP REQUIRED)
 
 # dynamic reconfigure
 generate_dynamic_reconfigure_options(
@@ -28,51 +31,61 @@ catkin_package(
         dynamic_reconfigure
         tf
         badger_file_lib
+        pcl_ros
+        eigen_conversions
+        octomap_msgs
   INCLUDE_DIRS include
   LIBRARIES amcl_sensors amcl_map amcl_pf amcl_node
+  DEPENDS
+        OCTOMAP
 )
 
 include_directories(include/amcl include/amcl/node include/amcl/map include/amcl/sensors include/amcl/pf)
-include_directories(${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${OCTOMAP_INCLUDE_DIRS})
+include_directories(
+    include
+    ${OCTOMAP_INCLUDE_DIRS}
+    ${Boost_INCLUDE_DIRS}
+    ${catkin_INCLUDE_DIRS}
+)
 
-add_library(amcl_pf
-                    src/amcl/pf/pf.cpp
-                    src/amcl/pf/pf_kdtree.cpp
-                    src/amcl/pf/pf_pdf.cpp
-                    src/amcl/pf/pf_vector.cpp
-                    src/amcl/pf/eig3.cpp)
-
-add_library(amcl_map
-                    src/amcl/map/map.cpp
-                    src/amcl/map/occupancy_map.cpp
-                    src/amcl/map/occupancy_map_cspace.cpp
-                    src/amcl/map/occupancy_map_range.cpp
-                    src/amcl/map/octomap.cpp)
-
-add_library(amcl_sensors
-                    src/amcl/sensors/amcl_sensor.cpp
-                    src/amcl/sensors/amcl_odom.cpp
-                    src/amcl/sensors/amcl_laser.cpp)
-add_library(amcl_node
-                    src/amcl/node/amcl_node.cpp
-                    src/amcl/node/amcl_node_2d.cpp
-                    src/amcl/node/amcl_node_3d.cpp)
-target_link_libraries(amcl_sensors amcl_node amcl_map amcl_pf)
-
-
-add_executable(amcl src/main.cpp src/amcl/node/amcl_node.cpp)
-add_dependencies(amcl amcl_gencfg)
-
-target_link_libraries(amcl
-    amcl_sensors amcl_node amcl_map amcl_pf
+add_library(amcl_core
+    src/amcl/pf/pf.cpp
+    src/amcl/pf/pf_kdtree.cpp
+    src/amcl/pf/pf_pdf.cpp
+    src/amcl/pf/pf_vector.cpp
+    src/amcl/pf/eig3.cpp
+    src/amcl/map/map.cpp
+    src/amcl/map/occupancy_map.cpp
+    src/amcl/map/occupancy_map_cspace.cpp
+    src/amcl/map/occupancy_map_range.cpp
+    src/amcl/map/octomap.cpp
+    src/amcl/map/octomap_cspace.cpp
+    src/amcl/sensors/amcl_sensor.cpp
+    src/amcl/sensors/amcl_odom.cpp
+    src/amcl/sensors/amcl_laser.cpp
+    src/amcl/sensors/amcl_lidar.cpp
+    src/amcl/node/amcl_node_2d.cpp
+    src/amcl/node/amcl_node_3d.cpp
+	src/amcl/node/amcl_node.cpp
+)
+target_link_libraries(amcl_core
+    ${OCTOMAP_LIBRARIES}
     ${Boost_LIBRARIES}
     ${catkin_LIBRARIES}
-    ${OCTOMAP_LIBRARIES}
     yaml-cpp
 )
 
+add_executable(amcl
+	src/main.cpp)
+add_dependencies(amcl amcl_gencfg)
+
+target_link_libraries(
+    amcl
+    amcl_core
+)
+
 install( TARGETS
-    amcl amcl_sensors amcl_map amcl_pf amcl_node
+    amcl amcl_core
     ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
     LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
     RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

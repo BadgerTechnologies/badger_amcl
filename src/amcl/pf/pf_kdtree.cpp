@@ -86,25 +86,6 @@ KDTree::insert_pose(PFVector pose, double value)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Determine the probability estimate for the given pose. TODO: this
-// should do a kernel density estimate rather than a simple histogram.
-double
-KDTree::get_prob(PFVector pose)
-{
-  int key[3];
-  pf_kdtree_node_t *node;
-
-  key[0] = floor(pose.v[0] / cell_size[0]);
-  key[1] = floor(pose.v[1] / cell_size[1]);
-  key[2] = floor(pose.v[2] / cell_size[2]);
-
-  node = find_node(root, key);
-  if (node == NULL)
-    return 0.0;
-  return node->value;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 // Determine the cluster label for the given pose
 int
 KDTree::get_cluster(PFVector pose)

@@ -2,10 +2,13 @@
 /* Eigen decomposition code for symmetric 3x3 matrices, copied from the public
    domain Java Matrix library JAMA. */
 
-#include "eig3.h"
 #include <math.h>
 #include <stdlib.h>
 #include <vector>
+
+#include "ros/ros.h"
+
+#include "eig3.h"
 
 using namespace amcl;
 
@@ -33,7 +36,6 @@ eig3::tred2(std::vector<std::vector<double>> V, std::vector<double> d, std::vect
   // Householder reduction to tridiagonal form.
 
   for (i = n-1; i > 0; i--) {
-
     // Scale to avoid under/overflow.
 
     double scale = 0.0;
@@ -49,7 +51,6 @@ eig3::tred2(std::vector<std::vector<double>> V, std::vector<double> d, std::vect
         V[j][i] = 0.0;
       }
     } else {
-
       // Generate Householder vector.
 
       for (k = 0; k < i; k++) {
@@ -132,7 +133,7 @@ eig3::tred2(std::vector<std::vector<double>> V, std::vector<double> d, std::vect
   }
   V[n-1][n-1] = 1.0;
   e[0] = 0.0;
-} 
+}
 
 // Symmetric tridiagonal QL algorithm.
 
@@ -235,7 +236,7 @@ eig3::tql2(std::vector<std::vector<double>> V, std::vector<double> d, std::vecto
     d[l] = d[l] + f;
     e[l] = 0.0;
   }
-  
+
   // Sort eigenvalues and corresponding vectors.
 
   for (i = 0; i < n-1; i++) {
@@ -262,7 +263,7 @@ eig3::tql2(std::vector<std::vector<double>> V, std::vector<double> d, std::vecto
 void
 eig3::eigen_decomposition(std::vector<std::vector<double>> A, std::vector<std::vector<double>> V, std::vector<double> d) {
   int i,j;
-  std::vector<double> e;
+  std::vector<double> e(n, 0.0);
   for (i = 0; i < n; i++) {
     for (j = 0; j < n; j++) {
       V[i][j] = A[i][j];

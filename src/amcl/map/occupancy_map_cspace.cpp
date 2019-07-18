@@ -27,22 +27,9 @@
 
 using namespace amcl;
 
-OccupancyMap::CachedDistanceMap*
-OccupancyMap::getDistanceMap(double scale, double max_dist)
-{
-  if(!cdm || (cdm->scale_ != scale) || (cdm->max_dist_ != max_dist))
-  {
-    if(cdm)
-      delete cdm;
-    cdm = new CachedDistanceMap(scale, max_dist);
-  }
-
-  return cdm;
-}
-
 bool
 OccupancyMap::enqueue(int i, int j, int src_i, int src_j,
-                      std::priority_queue<CellData>& Q, CachedDistanceMap* cdm)
+                      std::priority_queue<CellData>& Q)
 {
   int di = abs(i - src_i);
   int dj = abs(j - src_j);
@@ -78,7 +65,12 @@ OccupancyMap::updateCSpace(double _max_occ_dist)
 
   max_occ_dist = _max_occ_dist;
 
-  CachedDistanceMap* cdm = getDistanceMap(scale, max_occ_dist);
+  if(!cdm || (cdm->scale_ != scale) || (cdm->max_dist_ != max_occ_dist))
+  {
+    if(cdm)
+      delete cdm;
+    cdm = new CachedDistanceMap(scale, max_occ_dist);
+  }
 
   // Enqueue all the obstacle cells
   CellData cell = CellData(this);
@@ -87,7 +79,7 @@ OccupancyMap::updateCSpace(double _max_occ_dist)
     cell.src_i_ = cell.i_ = i;
     for(int j=0; j<size_y; j++)
     {
-      if(cells[computeCellIndex(i, j)].occ_state == +1)
+      if(getOccState(i, j) == +1)
       {
         setMapOccDist(i, j, 0.0);
 	    cell.src_j_ = cell.j_ = j;
@@ -109,28 +101,28 @@ OccupancyMap::updateCSpace(double _max_occ_dist)
       int i = current_cell.i_-1, j = current_cell.j_;
       unsigned int index = computeCellIndex(i, j);
       if(not marked[index])
-        marked[index] = enqueue(i, j, current_cell.src_i_, current_cell.src_j_, Q, cdm);
+        marked[index] = enqueue(i, j, current_cell.src_i_, current_cell.src_j_, Q);
     }
     if(current_cell.j_ > 0)
     {
       int i = current_cell.i_, j = current_cell.j_-1;
       unsigned int index = computeCellIndex(i, j);
       if(not marked[index])
-        marked[index] = enqueue(i, j, current_cell.src_i_, current_cell.src_j_, Q, cdm);
+        marked[index] = enqueue(i, j, current_cell.src_i_, current_cell.src_j_, Q);
     }
     if((int)current_cell.i_ < size_x - 1)
     {
       int i = current_cell.i_+1, j = current_cell.j_;
       unsigned int index = computeCellIndex(i, j);
       if(not marked[index])
-        marked[index] = enqueue(i, j, current_cell.src_i_, current_cell.src_j_, Q, cdm);
+        marked[index] = enqueue(i, j, current_cell.src_i_, current_cell.src_j_, Q);
     }
     if((int)current_cell.j_ < size_y - 1)
     {
       int i = current_cell.i_, j = current_cell.j_+1;
       unsigned int index = computeCellIndex(i, j);
       if(not marked[index])
-        marked[index] = enqueue(i, j, current_cell.src_i_, current_cell.src_j_, Q, cdm);
+        marked[index] = enqueue(i, j, current_cell.src_i_, current_cell.src_j_, Q);
     }
     Q.pop();
   }

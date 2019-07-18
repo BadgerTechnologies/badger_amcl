@@ -76,8 +76,8 @@ AmclNode::init2D()
 {
   laser_ = NULL;
   last_laser_data_ = NULL;
-  private_nh_.param("laser_min_range", laser_min_range_, -1.0);
-  private_nh_.param("laser_max_range", laser_max_range_, -1.0);
+  private_nh_.param("laser_min_range", sensor_min_range_, -1.0);
+  private_nh_.param("laser_max_range", sensor_max_range_, -1.0);
   private_nh_.param("laser_max_beams", max_beams_, 30);
   private_nh_.param("laser_z_hit", z_hit_, 0.95);
   private_nh_.param("laser_z_short", z_short_, 0.1);
@@ -85,18 +85,18 @@ AmclNode::init2D()
   private_nh_.param("laser_z_rand", z_rand_, 0.05);
   private_nh_.param("laser_sigma_hit", sigma_hit_, 0.2);
   private_nh_.param("laser_lambda_short", lambda_short_, 0.1);
-  private_nh_.param("laser_likelihood_max_dist", laser_likelihood_max_dist_, 2.0);
+  private_nh_.param("laser_likelihood_max_dist", sensor_likelihood_max_dist_, 2.0);
   private_nh_.param("laser_gompertz_a", laser_gompertz_a_, 1.0);
   private_nh_.param("laser_gompertz_b", laser_gompertz_b_, 1.0);
   private_nh_.param("laser_gompertz_c", laser_gompertz_c_, 1.0);
   private_nh_.param("laser_gompertz_input_shift", laser_gompertz_input_shift_, 0.0);
   private_nh_.param("laser_gompertz_input_scale", laser_gompertz_input_scale_, 1.0);
   private_nh_.param("laser_gompertz_output_shift", laser_gompertz_output_shift_, 0.0);
-  private_nh_.param("laser_off_map_factor", laser_off_map_factor_, 1.0);
-  private_nh_.param("laser_non_free_space_factor", laser_non_free_space_factor_, 1.0);
-  private_nh_.param("laser_non_free_space_radius", laser_non_free_space_radius_, 0.0);
-  private_nh_.param("global_localization_laser_off_map_factor", global_localization_laser_off_map_factor_, 1.0);
-  private_nh_.param("global_localization_laser_non_free_space_factor", global_localization_laser_non_free_space_factor_, 1.0);
+  private_nh_.param("laser_off_map_factor", off_map_factor_, 1.0);
+  private_nh_.param("laser_non_free_space_factor", non_free_space_factor_, 1.0);
+  private_nh_.param("laser_non_free_space_radius", non_free_space_radius_, 0.0);
+  private_nh_.param("global_localization_laser_off_map_factor", global_localization_off_map_factor_, 1.0);
+  private_nh_.param("global_localization_laser_non_free_space_factor", global_localization_non_free_space_factor_, 1.0);
   std::string tmp_model_type;
   private_nh_.param("laser_model_type", tmp_model_type, std::string("likelihood_field"));
   if(tmp_model_type == "beam")
@@ -113,6 +113,13 @@ AmclNode::init2D()
              tmp_model_type.c_str());
     laser_model_type_ = LASER_MODEL_LIKELIHOOD_FIELD;
   }
+  private_nh_.param("map_scale_up_factor", map_scale_up_factor_, 1);
+  // Prevent nonsense and crashes due to wacky values
+  if (map_scale_up_factor_ < 1)
+    map_scale_up_factor_ = 1;
+  if (map_scale_up_factor_ > 16)
+    map_scale_up_factor_ = 16;
+
 
   laser_scan_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, scan_topic_, 100);
   laser_scan_filter_ =
@@ -208,20 +215,20 @@ AmclNode::scorePose2D(const PFVector &p)
 void
 AmclNode::reconfigure2D(AMCLConfig &config)
 {
-  laser_min_range_ = config.laser_min_range;
-  laser_max_range_ = config.laser_max_range;
+  sensor_min_range_ = config.laser_min_range;
+  sensor_max_range_ = config.laser_max_range;
   z_hit_ = config.laser_z_hit;
   z_short_ = config.laser_z_short;
   z_max_ = config.laser_z_max;
   z_rand_ = config.laser_z_rand;
   sigma_hit_ = config.laser_sigma_hit;
   lambda_short_ = config.laser_lambda_short;
-  laser_likelihood_max_dist_ = config.laser_likelihood_max_dist;
-  laser_off_map_factor_ = config.laser_off_map_factor;
-  laser_non_free_space_factor_ = config.laser_non_free_space_factor;
-  laser_non_free_space_radius_ = config.laser_non_free_space_radius;
-  global_localization_laser_off_map_factor_ = config.global_localization_laser_off_map_factor;
-  global_localization_laser_non_free_space_factor_ = config.global_localization_laser_non_free_space_factor;
+  sensor_likelihood_max_dist_ = config.laser_likelihood_max_dist;
+  off_map_factor_ = config.laser_off_map_factor;
+  non_free_space_factor_ = config.laser_non_free_space_factor;
+  non_free_space_radius_ = config.laser_non_free_space_radius;
+  global_localization_off_map_factor_ = config.global_localization_laser_off_map_factor;
+  global_localization_non_free_space_factor_ = config.global_localization_laser_non_free_space_factor;
 
   laser_gompertz_a_ = config.laser_gompertz_a;
   laser_gompertz_b_ = config.laser_gompertz_b;
@@ -238,16 +245,6 @@ AmclNode::reconfigure2D(AMCLConfig &config)
     laser_model_type_ = LASER_MODEL_LIKELIHOOD_FIELD_PROB;
   else if(config.laser_model_type == "likelihood_field_gompertz")
     laser_model_type_ = LASER_MODEL_LIKELIHOOD_FIELD_GOMPERTZ;
-  if(config.odom_model_type == "diff")
-    odom_model_type_ = ODOM_MODEL_DIFF;
-  else if(config.odom_model_type == "omni")
-    odom_model_type_ = ODOM_MODEL_OMNI;
-  else if(config.odom_model_type == "diff-corrected")
-    odom_model_type_ = ODOM_MODEL_DIFF_CORRECTED;
-  else if(config.odom_model_type == "omni-corrected")
-    odom_model_type_ = ODOM_MODEL_OMNI_CORRECTED;
-  else if(config.odom_model_type == "gaussian");
-    odom_model_type_ = ODOM_MODEL_GAUSSIAN;
   delete laser_;
   laser_ = new AMCLLaser(max_beams_, (OccupancyMap*)map_);
   ROS_ASSERT(laser_);
@@ -257,7 +254,7 @@ AmclNode::reconfigure2D(AMCLConfig &config)
   else if(laser_model_type_ == LASER_MODEL_LIKELIHOOD_FIELD_PROB){
     ROS_INFO("Initializing likelihood field model; this can take some time on large maps...");
     laser_->SetModelLikelihoodFieldProb(z_hit_, z_rand_, sigma_hit_,
-					laser_likelihood_max_dist_,
+					sensor_likelihood_max_dist_,
 					do_beamskip_, beam_skip_distance_,
 					beam_skip_threshold_, beam_skip_error_threshold_);
     ROS_INFO("Done initializing likelihood field model with probabilities.");
@@ -265,13 +262,13 @@ AmclNode::reconfigure2D(AMCLConfig &config)
   else if(laser_model_type_ == LASER_MODEL_LIKELIHOOD_FIELD){
     ROS_INFO("Initializing likelihood field model; this can take some time on large maps...");
     laser_->SetModelLikelihoodField(z_hit_, z_rand_, sigma_hit_,
-                                    laser_likelihood_max_dist_);
+                                    sensor_likelihood_max_dist_);
     ROS_INFO("Done initializing likelihood field model.");
   }
   else if(laser_model_type_ == LASER_MODEL_LIKELIHOOD_FIELD_GOMPERTZ){
     ROS_INFO("Initializing likelihood field (gompertz) model; this can take some time on large maps...");
     laser_->SetModelLikelihoodFieldGompertz(z_hit_, z_rand_, sigma_hit_,
-                                            laser_likelihood_max_dist_,
+                                            sensor_likelihood_max_dist_,
                                             laser_gompertz_a_,
                                             laser_gompertz_b_,
                                             laser_gompertz_c_,
@@ -287,7 +284,7 @@ AmclNode::reconfigure2D(AMCLConfig &config)
         laser_->applyGompertz(z_rand_ + z_hit_));
     ROS_INFO("Done initializing likelihood (gompertz) field model.");
   }
-  laser_->SetMapFactors(laser_off_map_factor_, laser_non_free_space_factor_, laser_non_free_space_radius_);
+  laser_->SetMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
   delete laser_scan_filter_;
   laser_scan_filter_ =
           new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_scan_sub_,
@@ -299,7 +296,7 @@ AmclNode::reconfigure2D(AMCLConfig &config)
 }
 
 void
-AmclNode::mapReceived(const nav_msgs::OccupancyGridConstPtr& msg)
+AmclNode::occupancyMapReceived(const nav_msgs::OccupancyGridConstPtr& msg)
 {
   if( first_map_only_ && first_map_received_ ) {
     return;
@@ -329,7 +326,6 @@ AmclNode::mapReceived(const nav_msgs::OccupancyGridConstPtr& msg)
 void
 AmclNode::initFromNewMap2D()
 {
-  // Laser
   delete laser_;
   laser_ = new AMCLLaser(max_beams_, (OccupancyMap*)map_);
   ROS_ASSERT(laser_);
@@ -339,7 +335,7 @@ AmclNode::initFromNewMap2D()
   else if(laser_model_type_ == LASER_MODEL_LIKELIHOOD_FIELD_PROB){
     ROS_INFO("Initializing likelihood field model; this can take some time on large maps...");
     laser_->SetModelLikelihoodFieldProb(z_hit_, z_rand_, sigma_hit_,
-					laser_likelihood_max_dist_,
+					sensor_likelihood_max_dist_,
 					do_beamskip_, beam_skip_distance_,
 					beam_skip_threshold_, beam_skip_error_threshold_);
     ROS_INFO("Done initializing likelihood field model.");
@@ -347,7 +343,7 @@ AmclNode::initFromNewMap2D()
   else if(laser_model_type_ == LASER_MODEL_LIKELIHOOD_FIELD_GOMPERTZ){
     ROS_INFO("Initializing likelihood field (gompertz) model; this can take some time on large maps...");
     laser_->SetModelLikelihoodFieldGompertz(z_hit_, z_rand_, sigma_hit_,
-                                            laser_likelihood_max_dist_,
+                                            sensor_likelihood_max_dist_,
                                             laser_gompertz_a_,
                                             laser_gompertz_b_,
                                             laser_gompertz_c_,
@@ -367,10 +363,10 @@ AmclNode::initFromNewMap2D()
   {
     ROS_INFO("Initializing likelihood field model; this can take some time on large maps...");
     laser_->SetModelLikelihoodField(z_hit_, z_rand_, sigma_hit_,
-                                    laser_likelihood_max_dist_);
+                                    sensor_likelihood_max_dist_);
     ROS_INFO("Done initializing likelihood field model.");
   }
-  laser_->SetMapFactors(laser_off_map_factor_, laser_non_free_space_factor_, laser_non_free_space_radius_);
+  laser_->SetMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
 
   // Index of free space
   // Must be calculated after the occ_dist is setup by the laser model
@@ -378,8 +374,8 @@ AmclNode::initFromNewMap2D()
   std::vector<int> size_vec = map_->getSize();
   for(int i = 0; i < size_vec[0]; i++)
     for(int j = 0; j < size_vec[1]; j++)
-      if(((OccupancyMap*)map_)->getCells()[((OccupancyMap*)map_)->computeCellIndex(i,j)].occ_state == -1)
-        if(((OccupancyMap*)map_)->occDist(i,j) > laser_non_free_space_radius_)
+      if(((OccupancyMap*)map_)->getOccState(i,j) == -1)
+        if(((OccupancyMap*)map_)->getOccDist(i,j) > non_free_space_radius_)
           free_space_indices.push_back(std::make_pair(i,j));
 }
 
@@ -400,10 +396,10 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
   {
     pf_->alpha_slow = alpha_slow_;
     pf_->alpha_fast = alpha_fast_;
-    laser_->SetMapFactors(laser_off_map_factor_, laser_non_free_space_factor_, laser_non_free_space_radius_);
+    laser_->SetMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
     for (auto& l : lasers_)
     {
-      l->SetMapFactors(laser_off_map_factor_, laser_non_free_space_factor_, laser_non_free_space_radius_);
+      l->SetMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
     }
   }
 
@@ -421,6 +417,7 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
     tf::Stamped<tf::Pose> laser_pose;
     try
     {
+      ROS_INFO("2d base_frame_id: %s", base_frame_id_.c_str());
       this->tf_->transformPose(base_frame_id_, ident, laser_pose);
     }
     catch(tf::TransformException& e)
@@ -457,7 +454,6 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
     ROS_ERROR("Couldn't determine robot's pose associated with laser scan");
     return;
   }
-
 
   PFVector delta;
 
@@ -530,9 +526,6 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
     // Use the action data to update the filter
     odom_->UpdateAction(pf_, (AMCLSensorData*)&odata);
 
-    // Pose at last filter update
-    //this->pf_odom_pose = pose;
-
     resetOdomIntegrator();
   }
 
@@ -578,13 +571,13 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
     ROS_DEBUG("Laser %d angles in base frame: min: %.3f inc: %.3f", laser_index, angle_min, angle_increment);
 
     // Apply range min/max thresholds, if the user supplied them
-    if(laser_max_range_ > 0.0)
-      ldata.range_max = std::min(laser_scan->range_max, (float)laser_max_range_);
+    if(sensor_max_range_ > 0.0)
+      ldata.range_max = std::min(laser_scan->range_max, (float)sensor_max_range_);
     else
       ldata.range_max = laser_scan->range_max;
     double range_min;
-    if(laser_min_range_ > 0.0)
-      range_min = std::max(laser_scan->range_min, (float)laser_min_range_);
+    if(sensor_min_range_ > 0.0)
+      range_min = std::max(laser_scan->range_min, (float)sensor_min_range_);
     else
       range_min = laser_scan->range_min;
     // The AMCLLaserData destructor will free this memory
@@ -610,7 +603,7 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
     pf_odom_pose_ = pose;
 
     // Resample the particles
-    if(!(++resample_count_ % resample_interval_))
+    if(++resample_count_ % resample_interval_ == 0)
     {
       pf_->update_resample();
       resampled = true;
@@ -790,14 +783,14 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
 void
 AmclNode::globalLocalizationCallback2D()
 {
-  laser_->SetMapFactors(global_localization_laser_off_map_factor_,
-                        global_localization_laser_non_free_space_factor_,
-                        laser_non_free_space_radius_);
+  laser_->SetMapFactors(global_localization_off_map_factor_,
+                        global_localization_non_free_space_factor_,
+                        non_free_space_radius_);
   for (auto& l : lasers_)
   {
-    l->SetMapFactors(global_localization_laser_off_map_factor_,
-                     global_localization_laser_non_free_space_factor_,
-                     laser_non_free_space_radius_);
+    l->SetMapFactors(global_localization_off_map_factor_,
+                     global_localization_non_free_space_factor_,
+                     non_free_space_radius_);
   }
 }
 

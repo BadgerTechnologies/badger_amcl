@@ -220,14 +220,14 @@ double AMCLLaser::ApplyModelToSampleSet(AMCLSensorData *data, pf_sample_set_t *s
         sample->weight *= self->off_map_factor;
       }
       // Apply non free space factor
-      else if((self->map->getCells()[self->map->computeCellIndex(mi, mj)].occ_state != -1))
+      else if(self->map->getOccState(mi, mj) != -1)
       {
         sample->weight *= self->non_free_space_factor;
       }
       // Interpolate non free space factor based on radius
-      else if(self->map->occDist(mi, mj) < self->non_free_space_radius)
+      else if(self->map->getOccDist(mi, mj) < self->non_free_space_radius)
       {
-        double delta_d = self->map->occDist(mi, mj) / self->non_free_space_radius;
+        double delta_d = self->map->getOccDist(mi, mj) / self->non_free_space_radius;
         double f = self->non_free_space_factor;
         f += delta_d * (1.0 - self->non_free_space_factor);
         sample->weight *= f;
@@ -380,7 +380,7 @@ double AMCLLaser::LikelihoodFieldModel(AMCLLaserData *data, pf_sample_set_t* set
       if(!self->map->isValid({mi, mj}))
         z = self->map->getMaxOccDist();
       else
-        z = self->map->occDist(mi,mj);
+        z = self->map->getOccDist(mi,mj);
       // Gaussian model
       // NOTE: this should have a normalization of 1/(sqrt(2pi)*sigma)
       pz += self->z_hit * exp(-(z * z) / z_hit_denom);
@@ -420,8 +420,8 @@ double AMCLLaser::LikelihoodFieldModelProb(AMCLLaserData *data, pf_sample_set_t*
 
   total_weight = 0.0;
 
-  step = ceil((data->range_count) / static_cast<double>(self->max_beams)); 
-  
+  step = ceil((data->range_count) / static_cast<double>(self->max_beams));
+
   // Step size must be at least 1
   if(step < 1)
     step = 1;
@@ -433,28 +433,28 @@ double AMCLLaser::LikelihoodFieldModelProb(AMCLLaserData *data, pf_sample_set_t*
   double max_dist_prob = exp(-(self->map->getMaxOccDist() * self->map->getMaxOccDist()) / z_hit_denom);
 
   //Beam skipping - ignores beams for which a majoirty of particles do not agree with the map
-  //prevents correct particles from getting down weighted because of unexpected obstacles 
-  //such as humans 
+  //prevents correct particles from getting down weighted because of unexpected obstacles
+  //such as humans
 
   bool do_beamskip = self->do_beamskip;
   double beam_skip_distance = self->beam_skip_distance;
   double beam_skip_threshold = self->beam_skip_threshold;
-  
-  //we only do beam skipping if the filter has converged 
+
+  //we only do beam skipping if the filter has converged
   if(do_beamskip && !set->converged){
     do_beamskip = false;
   }
 
-  //we need a count the no of particles for which the beam agreed with the map 
+  //we need a count the no of particles for which the beam agreed with the map
   int *obs_count = new int[self->max_beams]();
 
-  //we also need a mask of which observations to integrate (to decide which beams to integrate to all particles) 
+  //we also need a mask of which observations to integrate (to decide which beams to integrate to all particles)
   bool *obs_mask = new bool[self->max_beams]();
-  
+
   int beam_ind = 0;
-  
-  //realloc indicates if we need to reallocate the temp data structure needed to do beamskipping 
-  bool realloc = false; 
+
+  //realloc indicates if we need to reallocate the temp data structure needed to do beamskipping
+  bool realloc = false;
 
   if(do_beamskip){
     if(self->max_obs < self->max_beams){
@@ -466,7 +466,7 @@ double AMCLLaser::LikelihoodFieldModelProb(AMCLLaserData *data, pf_sample_set_t*
     }
 
     if(realloc){
-      self->reallocTempData(set->sample_count, self->max_beams);     
+      self->reallocTempData(set->sample_count, self->max_beams);
       fprintf(stderr, "Reallocing temp weights %d - %d\n", self->max_samples, self->max_obs);
     }
   }
@@ -481,9 +481,9 @@ double AMCLLaser::LikelihoodFieldModelProb(AMCLLaserData *data, pf_sample_set_t*
     pose = PFVector::pf_vector_coord_add(self->laser_pose, pose);
 
     log_p = 0;
-    
+
     beam_ind = 0;
-    
+
     for (i = 0; i < data->range_count; i += step, beam_ind++)
     {
       obs_range = data->ranges[i][0];
@@ -514,21 +514,21 @@ double AMCLLaser::LikelihoodFieldModelProb(AMCLLaserData *data, pf_sample_set_t*
 
       // Part 1: Get distance from the hit to closest obstacle.
       // Off-map penalized as max distance
-      
+
       if(!self->map->isValid({mi, mj})){
 	pz += self->z_hit * max_dist_prob;
       }
       else{
-	z = self->map->occDist(mi,mj);
+	z = self->map->getOccDist(mi,mj);
 	if(z < beam_skip_distance){
 	  obs_count[beam_ind] += 1;
 	}
 	pz += self->z_hit * exp(-(z * z) / z_hit_denom);
       }
-       
+
       // Gaussian model
       // NOTE: this should have a normalization of 1/(sqrt(2pi)*sigma)
-      
+
       // Part 2: random measurements
       pz += self->z_rand * z_rand_mult;
 
@@ -536,12 +536,12 @@ double AMCLLaser::LikelihoodFieldModelProb(AMCLLaserData *data, pf_sample_set_t*
       assert(pz >= 0.0);
 
       // TODO: outlier rejection for short readings
-            
+
       if(!do_beamskip){
 	log_p += log(pz);
       }
       else{
-	self->temp_obs[j][beam_ind] = pz; 
+	self->temp_obs[j][beam_ind] = pz;
       }
     }
     if(!do_beamskip){
@@ -677,7 +677,7 @@ double AMCLLaser::LikelihoodFieldModelGompertz(AMCLLaserData *data, pf_sample_se
       if(!self->map->isValid({mi, mj}))
         z = self->map->getMaxOccDist();
       else
-        z = self->map->occDist(mi,mj);
+        z = self->map->getOccDist(mi,mj);
       // Gaussian model
       pz += self->z_hit * exp(-(z * z) / z_hit_denom);
       // Part 2: random measurements

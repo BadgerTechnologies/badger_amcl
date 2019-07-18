@@ -18,6 +18,7 @@
 #include "pf.h"
 #include "amcl_odom.h"
 #include "amcl_laser.h"
+#include "amcl_lidar.h"
 
 #include "ros/assert.h"
 
@@ -26,7 +27,7 @@
 
 // Messages that I need
 #include "sensor_msgs/LaserScan.h"
-#include "sensor_msgs/PointCloud.h"
+#include "sensor_msgs/PointCloud2.h"
 #include "geometry_msgs/PoseWithCovarianceStamped.h"
 #include "geometry_msgs/PoseArray.h"
 #include "geometry_msgs/Pose.h"
@@ -35,6 +36,7 @@
 #include "nav_msgs/GetMap.h"
 #include "nav_msgs/SetMap.h"
 #include "std_srvs/Empty.h"
+#include <octomap_msgs/Octomap.h>
 
 // For transform support
 #include "tf/transform_broadcaster.h"
@@ -91,8 +93,6 @@ angle_diff(double a, double b)
     return(d2);
 }
 
-static const std::string scan_topic_ = "scan";
-
 class AmclNode
 {
   public:
@@ -112,6 +112,8 @@ class AmclNode
     const int INDEX_YY_ = 6*1+1;
     const int INDEX_AA_ = 6*5+5;
 
+    std::string scan_topic_;
+
     tf::TransformBroadcaster* tfb_;
 
     // Use a child class to get access to tf2::Buffer class inside of tf_
@@ -130,6 +132,8 @@ class AmclNode
     tf::Transform latest_tf_;
     bool latest_tf_valid_;
 
+    tf::StampedTransform lidar_to_footprint_tf_;
+
     // Score a single pose with the sensor model using the last sensor data
     double scorePose(const PFVector &p);
     double scorePose2D(const PFVector &p);
@@ -146,10 +150,11 @@ class AmclNode
     void globalLocalizationCallback2D();
     void globalLocalizationCallback3D();
     void laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan);
+    void lidarReceived(const sensor_msgs::PointCloud2ConstPtr& lidar_scan);
     void initialPoseReceived(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg);
     void handleInitialPoseMessage(const geometry_msgs::PoseWithCovarianceStamped& orig_msg);
-    void mapReceived(const nav_msgs::OccupancyGridConstPtr& msg);
-
+    void occupancyMapReceived(const nav_msgs::OccupancyGridConstPtr& msg);
+    void octoMapReceived(const octomap_msgs::OctomapConstPtr& msg);
     void initFromNewMap();
     void initFromNewMap2D();
     void initFromNewMap3D();
@@ -157,7 +162,7 @@ class AmclNode
     void freeMapDependentMemory2D();
     void freeMapDependentMemory3D();
     OccupancyMap* convertMap( const nav_msgs::OccupancyGrid& map_msg );
-    OctoMap* convertMap( const sensor_msgs::PointCloud& map_msg );
+    OctoMap* convertMap( const octomap_msgs::Octomap& map_msg );
     std::string makeFilepathFromName( const std::string filename );
     void loadPose();
     void publishInitPose();
@@ -199,11 +204,16 @@ class AmclNode
     double resolution;
 
     message_filters::Subscriber<sensor_msgs::LaserScan>* laser_scan_sub_;
+    message_filters::Subscriber<sensor_msgs::PointCloud2>* lidar_scan_sub_;
     tf::MessageFilter<sensor_msgs::LaserScan>* laser_scan_filter_;
+    tf::MessageFilter<sensor_msgs::PointCloud2>* lidar_scan_filter_;
     ros::Subscriber initial_pose_sub_;
     std::vector< AMCLLaser* > lasers_;
+    std::vector< AMCLLidar* > lidars_;
     std::vector< bool > lasers_update_;
+    std::vector< bool > lidars_update_;
     std::map< std::string, int > frame_to_laser_;
+    std::map< std::string, int > frame_to_lidar_;
 
     // Particle filter
     ParticleFilter *pf_;
@@ -214,8 +224,8 @@ class AmclNode
     pf_resample_model_t resample_model_type_;
     int resample_interval_;
     int resample_count_;
-    double laser_min_range_;
-    double laser_max_range_;
+    double sensor_min_range_;
+    double sensor_max_range_;
 
     // Odometry integrator
     void integrateOdom(const nav_msgs::OdometryConstPtr& msg);
@@ -232,6 +242,7 @@ class AmclNode
 
     AMCLOdom* odom_;
     AMCLLaser* laser_;
+    AMCLLidar* lidar_;
 
     ros::Duration cloud_pub_interval;
     ros::Time last_cloud_pub_time;
@@ -268,6 +279,7 @@ class AmclNode
     dynamic_reconfigure::Server<amcl::AMCLConfig> *dsrv_;
     amcl::AMCLConfig default_config_;
     ros::Timer check_laser_timer_;
+    ros::Timer check_lidar_timer_;
     ros::Timer publish_transform_timer_;
 
     int max_beams_, min_particles_, max_particles_;
@@ -278,27 +290,31 @@ class AmclNode
     bool global_localization_active_;
     double global_localization_alpha_slow_, global_localization_alpha_fast_;
     double z_hit_, z_short_, z_max_, z_rand_, sigma_hit_, lambda_short_;
+    double lidar_height_;
     //beam skip related params
     bool do_beamskip_;
     double beam_skip_distance_, beam_skip_threshold_, beam_skip_error_threshold_;
-    double laser_likelihood_max_dist_;
+    double sensor_likelihood_max_dist_;
     double laser_gompertz_a_;
     double laser_gompertz_b_;
     double laser_gompertz_c_;
     double laser_gompertz_input_shift_;
     double laser_gompertz_input_scale_;
     double laser_gompertz_output_shift_;
-    double laser_off_map_factor_;
-    double laser_non_free_space_factor_;
-    double laser_non_free_space_radius_;
-    double global_localization_laser_off_map_factor_;
-    double global_localization_laser_non_free_space_factor_;
+    double off_map_factor_;
+    double non_free_space_factor_;
+    double non_free_space_radius_;
+    double global_localization_off_map_factor_;
+    double global_localization_non_free_space_factor_;
     odom_model_t odom_model_type_;
     double init_pose_[3];
     double init_cov_[3];
     laser_model_t laser_model_type_;
+    lidar_model_t lidar_model_type_;
     bool tf_broadcast_;
     bool tf_reverse_;
+
+    double off_object_penalty_factor_;
 
     bool save_pose_;
     std::string saved_pose_filepath_;
@@ -308,11 +324,12 @@ class AmclNode
     void reconfigure3D(amcl::AMCLConfig &config);
 
     AMCLLaserData *last_laser_data_;
-    ros::Time last_laser_received_ts_;
-    ros::Duration laser_check_interval_;
+    AMCLLidarData *last_lidar_data_;
+    ros::Time last_laser_received_ts_, last_lidar_received_ts_;
+    ros::Duration laser_check_interval_, lidar_check_interval_;
     void checkLaserReceived(const ros::TimerEvent& event);
+    void checkLidarReceived(const ros::TimerEvent& event);
 
-    ros::Duration publish_transform_interval_;
     void publishTransform(const ros::TimerEvent& event);
 };
 

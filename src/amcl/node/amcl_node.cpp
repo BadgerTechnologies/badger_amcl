@@ -85,16 +85,12 @@ AmclNode::AmclNode() :
 {
   boost::recursive_mutex::scoped_lock cfl(configuration_mutex_);
 
+  const std::string default_scan_topic = "/scan";
+  private_nh_.param("scan_topic", scan_topic_, default_scan_topic);
   // 2: 2d, 3: 3d, else: none
   private_nh_.param("map_type", map_type_, 0);
   // Grab params off the param server
   private_nh_.param("first_map_only", first_map_only_, false);
-  private_nh_.param("map_scale_up_factor", map_scale_up_factor_, 1);
-  // Prevent nonsense and crashes due to wacky values
-  if (map_scale_up_factor_ < 1)
-    map_scale_up_factor_ = 1;
-  if (map_scale_up_factor_ > 16)
-    map_scale_up_factor_ = 16;
 
   double tmp;
   private_nh_.param("gui_publish_rate", tmp, -1.0);
@@ -179,7 +175,7 @@ AmclNode::AmclNode() :
 
   transform_tolerance_.fromSec(tmp_tol);
 
-  initial_pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("/initialpose", 1);
+  initial_pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("initialpose", 1);
 
   cloud_pub_interval.fromSec(1.0);
   tfb_ = new tf::TransformBroadcaster();
@@ -215,8 +211,18 @@ AmclNode::AmclNode() :
     absolute_motion_pub_ = nh_.advertise<geometry_msgs::Pose2D>("amcl_absolute_motion", 20, false);
   }
 
-  map_sub_ = nh_.subscribe("map", 1, &AmclNode::mapReceived, this);
-  ROS_INFO("Subscribed to map topic.");
+  if(map_type_ == 2)
+  {
+    map_sub_ = nh_.subscribe("map", 1, &AmclNode::occupancyMapReceived, this);
+  }
+  else if(map_type_ == 3)
+  {
+    map_sub_ = nh_.subscribe("/octomap_binary", 1, &AmclNode::octoMapReceived, this);
+  }
+  else
+  {
+    ROS_WARN("Failed to subscribe to map topic, map type invalid");
+  }
 
   m_force_update = false;
 
@@ -224,8 +230,7 @@ AmclNode::AmclNode() :
   dynamic_reconfigure::Server<amcl::AMCLConfig>::CallbackType cb = boost::bind(&AmclNode::reconfigureCB, this, _1, _2);
   dsrv_->setCallback(cb);
 
-  publish_transform_interval_ = ros::Duration(transform_publish_period);
-  publish_transform_timer_ = nh_.createTimer(publish_transform_interval_,
+  publish_transform_timer_ = nh_.createTimer(transform_publish_period,
                                              boost::bind(&AmclNode::publishTransform, this, _1));
 }
 
@@ -248,6 +253,8 @@ AmclNode::reconfigureCB(AMCLConfig &config, uint32_t level)
     //avoid looping
     config.restore_defaults = false;
   }
+
+  scan_topic_ = config.scan_topic;
 
   // 2: 2d, 3: 3d, else: none
   map_type_ = config.map_type;
@@ -279,6 +286,17 @@ AmclNode::reconfigureCB(AMCLConfig &config, uint32_t level)
   alpha3_ = config.odom_alpha3;
   alpha4_ = config.odom_alpha4;
   alpha5_ = config.odom_alpha5;
+
+  if(config.odom_model_type == "diff")
+    odom_model_type_ = ODOM_MODEL_DIFF;
+  else if(config.odom_model_type == "omni")
+    odom_model_type_ = ODOM_MODEL_OMNI;
+  else if(config.odom_model_type == "diff-corrected")
+    odom_model_type_ = ODOM_MODEL_DIFF_CORRECTED;
+  else if(config.odom_model_type == "omni-corrected")
+    odom_model_type_ = ODOM_MODEL_OMNI_CORRECTED;
+  else if(config.odom_model_type == "gaussian");
+    odom_model_type_ = ODOM_MODEL_GAUSSIAN;
 
   if(config.min_particles > config.max_particles)
   {
@@ -345,6 +363,9 @@ AmclNode::reconfigureCB(AMCLConfig &config, uint32_t level)
   saved_pose_filepath_ = makeFilepathFromName(filename);
 
   initial_pose_sub_ = nh_.subscribe("initialpose", 2, &AmclNode::initialPoseReceived, this);
+
+  publish_transform_timer_ = nh_.createTimer(transform_publish_period,
+                                             boost::bind(&AmclNode::publishTransform, this, _1));
 }
 
 void
@@ -356,13 +377,11 @@ AmclNode::loadPose()
   }
   else if(loadPoseFromFile())
   {
-    ROS_INFO("Failed to load pose from server.");
-    ROS_DEBUG("Successfully loaded pose from file.");
+    ROS_DEBUG("Failed to load pose from server, but successfully loaded pose from file.");
   }
   else
   {
-    ROS_WARN("Failed to load pose from server or file.");
-    ROS_INFO("Setting pose to default values.");
+    ROS_WARN("Failed to load pose from server or file. Setting pose to default values.");
     init_pose_[0] = 0.0;
     init_pose_[1] = 0.0;
     init_pose_[2] = 0.0;
@@ -392,10 +411,9 @@ AmclNode::publishInitPose()
   initial_pose_pub_.publish(pose);
 }
 
-bool AmclNode::loadPoseFromServer()
+bool
+AmclNode::loadPoseFromServer()
 {
-  ROS_INFO("Loading pose from server");
-
   double tmp_pos;
   bool success;
 
@@ -464,14 +482,12 @@ bool AmclNode::loadPoseFromServer()
   {
     init_cov_[2] = tmp_pos;
   }
-  ROS_INFO("Successfully loaded all initial pose parameters from server.");
-  ROS_INFO("Pose loaded: %.3f, %.3f", init_pose_[0], init_pose_[1]);
   return true;
 }
 
-bool AmclNode::loadPoseFromFile()
+bool
+AmclNode::loadPoseFromFile()
 {
-  ROS_INFO("Loading pose from file");
   double x, y, z, w, roll, pitch, yaw, xx, yy, aa;
   try
   {
@@ -504,8 +520,8 @@ bool AmclNode::loadPoseFromFile()
   init_cov_[0] = xx;
   init_cov_[1] = yy;
   init_cov_[2] = aa;
-  ROS_INFO("Successfully loaded YAML pose from file.");
-  ROS_INFO("Pose loaded: %.3f, %.3f", init_pose_[0], init_pose_[1]);
+  ROS_DEBUG("Successfully loaded YAML pose from file.");
+  ROS_DEBUG("Pose loaded: %.3f, %.3f", init_pose_[0], init_pose_[1]);
   return true;
 }
 
@@ -563,10 +579,11 @@ AmclNode::loadYamlFromFile()
   }
 }
 
-void AmclNode::savePoseToServer()
+void
+AmclNode::savePoseToServer()
 {
   if(!save_pose_) {
-    ROS_DEBUG("As specified, not saving pose to file");
+    ROS_DEBUG("As specified, not saving pose to server");
     return;
   }
   // We need to apply the last transform to the latest odom pose to get
@@ -575,8 +592,6 @@ void AmclNode::savePoseToServer()
   tf::Pose map_pose = latest_tf_.inverse() * latest_odom_pose_;
   double yaw,pitch,roll;
   map_pose.getBasis().getEulerYPR(yaw, pitch, roll);
-
-  ROS_DEBUG("Saving pose to server. x: %.3f, y: %.3f", map_pose.getOrigin().x(), map_pose.getOrigin().y() );
 
   private_nh_.setParam("initial_pose_x", map_pose.getOrigin().x());
   private_nh_.setParam("initial_pose_y", map_pose.getOrigin().y());
@@ -598,12 +613,13 @@ void AmclNode::savePoseToServer()
   latest_amcl_pose_.header.frame_id = "map";
 }
 
-void AmclNode::savePoseToFile()
+void
+AmclNode::savePoseToFile()
 {
   if(!save_pose_) {
+    ROS_DEBUG("As specified, not saving pose to file");
     return;
   }
-  ROS_DEBUG("saving pose to file log warn");
   boost::recursive_mutex::scoped_lock lpl(latest_amcl_pose_mutex_);
 
   YAML::Node stamp_node;
@@ -667,10 +683,11 @@ AmclNode::makeFilepathFromName(const std::string filename)
 void
 AmclNode::initFromNewMap()
 {
-
   // Create the particle filter
+  ROS_INFO("initializing pf");
   pf_ = new ParticleFilter(min_particles_, max_particles_, alpha_slow_, alpha_fast_,
                            (pf_init_model_fn_t)AmclNode::uniformPoseGenerator, (void *)this);
+  ROS_INFO("done initializing pf");
   pf_->pop_err = pf_err_;
   pf_->pop_z = pf_z_;
   pf_->set_resample_model(resample_model_type_);
@@ -817,6 +834,7 @@ AmclNode::getOdomPose(tf::Stamped<tf::Pose>& odom_pose,
                                            tf::Vector3(0,0,0)), t, f);
   try
   {
+    this->tf_->waitForTransform(f, odom_frame_id_, ros::Time::now(), ros::Duration(0.5));
     this->tf_->transformPose(odom_frame_id_, ident, odom_pose);
   }
   catch(tf::TransformException e)
@@ -832,21 +850,18 @@ AmclNode::getOdomPose(tf::Stamped<tf::Pose>& odom_pose,
   return true;
 }
 
+#include <stdlib.h>
 // Helper function to generate a random free-space pose
 PFVector
 AmclNode::randomFreeSpacePose()
 {
-  Map* map = this->map_;
-  PFVector p;
-
   unsigned int rand_index = drand48() * free_space_indices.size();
   std::pair<int,int> free_point = free_space_indices[rand_index];
-  std::vector<double> p_vec;
-  p_vec = map_->convertMapToWorld({free_point.first, free_point.second});
+  std::vector<double> p_vec = map_->convertMapToWorld({free_point.first, free_point.second});
+  PFVector p;
   p.v[0] = p_vec[0];
   p.v[1] = p_vec[1];
   p.v[2] = drand48() * 2 * M_PI - M_PI;
-
   return p;
 }
 
@@ -878,9 +893,6 @@ AmclNode::uniformPoseGenerator(void* arg)
   PFVector p;
 
   p = self->randomFreeSpacePose();
-
-  if(self->map_type_ == 2 and self->last_laser_data_ == NULL)
-      return p;
 
   // Check and see how "good" this pose is.
   // Begin with the configured starting weight threshold,
@@ -919,9 +931,9 @@ AmclNode::globalLocalizationCallback(std_srvs::Empty::Request& req,
     globalLocalizationCallback3D();
   }
 
-  ROS_INFO("Initializing with uniform distribution");
+  ROS_INFO("reinitializing pf");
   pf_->init_model((pf_init_model_fn_t)AmclNode::uniformPoseGenerator, (void *)this);
-  ROS_INFO("Global initialisation done!");
+  ROS_INFO("pf reinitialized");
   pf_init_ = false;
   return true;
 }
@@ -930,14 +942,14 @@ void
 AmclNode::publishTransform(const ros::TimerEvent& event)
 {
   boost::recursive_mutex::scoped_lock tfl(tf_mutex_);
-  if (tf_broadcast_ == true && latest_tf_valid_)
+  if (tf_broadcast_ && latest_tf_valid_)
   {
     // We want to send a transform that is good up until a
     // tolerance time so that odom can be used
     ros::Time transform_expiration = (ros::Time::now() + transform_tolerance_);
     tf::StampedTransform tmp_tf_stamped;
     tf::Transform tf_transform;
-    if (tf_reverse_ == true)
+    if (tf_reverse_)
     {
       tmp_tf_stamped = tf::StampedTransform(latest_tf_, transform_expiration,
                                             odom_frame_id_, global_frame_id_);
@@ -983,7 +995,7 @@ AmclNode::initialPoseReceived(const geometry_msgs::PoseWithCovarianceStampedCons
 void
 AmclNode::handleInitialPoseMessage(const geometry_msgs::PoseWithCovarianceStamped& orig_msg)
 {
-  ROS_INFO("initial pose received");
+  ROS_DEBUG("initial pose received");
   boost::recursive_mutex::scoped_lock cfl(configuration_mutex_);
   geometry_msgs::PoseWithCovarianceStamped msg(orig_msg);
   // Rewrite to our global frame if received in the alt frame.
@@ -1068,7 +1080,7 @@ AmclNode::handleInitialPoseMessage(const geometry_msgs::PoseWithCovarianceStampe
 
   // Transform into the global frame
 
-  ROS_INFO("Setting pose (%.6f): %.3f %.3f %.3f",
+  ROS_DEBUG("Setting pose (%.6f): %.3f %.3f %.3f",
            ros::Time::now().toSec(),
            pose_new.getOrigin().x(),
            pose_new.getOrigin().y(),

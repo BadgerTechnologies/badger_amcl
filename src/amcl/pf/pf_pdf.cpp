@@ -30,6 +30,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ros/ros.h"
+
 #include "pf_pdf.h"
 
 // Random number generator seed value
@@ -63,7 +65,7 @@ PDFGaussian::sample()
 {
   int i, j;
   PFVector r;
-  PFVector x;
+  PFVector v;
 
   // Generate a random vector
   for (i = 0; i < 3; i++)
@@ -73,12 +75,12 @@ PDFGaussian::sample()
 
   for (i = 0; i < 3; i++)
   {
-    x.v[i] = x.v[i];
+    v.v[i] = x.v[i];
     for (j = 0; j < 3; j++)
-      x.v[i] += cr.m[i][j] * r.v[j];
-  } 
-  
-  return x;
+      v.v[i] += cr.m[i][j] * r.v[j];
+  }
+
+  return v;
 }
 
 // Draw randomly from a zero-mean Gaussian distribution, with standard

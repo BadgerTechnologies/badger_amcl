@@ -28,6 +28,8 @@
 #include <math.h>
 #include <vector>
 
+#include "ros/ros.h"
+
 #include "pf_vector.h"
 #include "eig3.h"
 
@@ -46,7 +48,6 @@ bool
 PFVector::is_finite()
 {
   int i;
-  
   for (i = 0; i < 3; i++)
     if (!finite(v[i]))
       return 0;
@@ -58,11 +59,9 @@ PFVector
 PFVector::pf_vector_add(PFVector a, PFVector b)
 {
   PFVector c;
-
   c.v[0] = a.v[0] + b.v[0];
   c.v[1] = a.v[1] + b.v[1];
   c.v[2] = a.v[2] + b.v[2];
-  
   return c;
 }
 
@@ -72,11 +71,9 @@ PFVector
 PFVector::pf_vector_sub(PFVector a, PFVector b)
 {
   PFVector c;
-
   c.v[0] = a.v[0] - b.v[0];
   c.v[1] = a.v[1] - b.v[1];
   c.v[2] = a.v[2] - b.v[2];
-  
   return c;
 }
 
@@ -86,12 +83,10 @@ PFVector
 PFVector::pf_vector_coord_add(PFVector a, PFVector b)
 {
   PFVector c;
-
   c.v[0] = b.v[0] + a.v[0] * cos(b.v[2]) - a.v[1] * sin(b.v[2]);
   c.v[1] = b.v[1] + a.v[0] * sin(b.v[2]) + a.v[1] * cos(b.v[2]);
   c.v[2] = b.v[2] + a.v[2];
   c.v[2] = atan2(sin(c.v[2]), cos(c.v[2]));
-  
   return c;
 }
 
@@ -101,12 +96,10 @@ PFVector
 PFVector::pf_vector_coord_sub(PFVector a, PFVector b)
 {
   PFVector c;
-
   c.v[0] = +(a.v[0] - b.v[0]) * cos(b.v[2]) + (a.v[1] - b.v[1]) * sin(b.v[2]);
   c.v[1] = -(a.v[0] - b.v[0]) * sin(b.v[2]) + (a.v[1] - b.v[1]) * cos(b.v[2]);
   c.v[2] = a.v[2] - b.v[2];
   c.v[2] = atan2(sin(c.v[2]), cos(c.v[2]));
-  
   return c;
 }
 
@@ -126,11 +119,11 @@ bool
 PFMatrix::is_finite()
 {
   int i, j;
-  
+
   for (i = 0; i < 3; i++)
     for (j = 0; j < 3; j++)
       if (!finite(m[i][j]))
-        return false; 
+        return false;
   return true;
 }
 
