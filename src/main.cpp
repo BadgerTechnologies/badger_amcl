@@ -54,10 +54,8 @@ main(int argc, char** argv)
   // Make our node available to sigintHandler
   amcl_node_ptr.reset(new AmclNode());
 
-  while(ros::ok() and not sigFlag)
-  {
-    ros::spin();
-  }
+  ros::MultiThreadedSpinner spinner(4);
+  spinner.spin();
 
   amcl_node_ptr->savePoseToFile();
 

@@ -75,9 +75,6 @@ class KDTree
     // Cluster the leaves in the tree
     void cluster();
 
-    // Determine the probability estimate for the given pose
-    double get_prob(PFVector pose);
-
     // Determine the cluster label for the given pose
     int get_cluster(PFVector pose);
 

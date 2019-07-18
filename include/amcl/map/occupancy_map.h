@@ -60,27 +60,28 @@ class OccupancyMap : public Map
     void setOrigin(std::vector<double> _origin);
     std::vector<int> getSize();
     void setSize(std::vector<int> _size_x);
+    // Update the cspace distance values
     void updateCSpace(double max_occ_dist_);
     // Extract a single range reading from the map
     double calcRange(double ox, double oy, double oa, double max_range);
     // Find the distance to nearest occupied cell
-    float occDist(int i, int j);
+    float getOccDist(int i, int j);
     // Compute the cell index for the given map coords.
     unsigned int computeCellIndex(int i, int j);
+    int8_t getOccState(int i, int j);
     double getMaxOccDist();
     map_cell_t* getCells();
     void initCells(int num);
     void setCellOccState(int index, int8_t state);
 
+  private:
     struct CellData {
       OccupancyMap* occMap;
       CellData(OccupancyMap* _occMap) : occMap(_occMap){}
       int i_, j_;
       int src_i_, src_j_;
-
     };
 
-  private:
     class CachedDistanceMap
     {
       public:
@@ -127,18 +128,11 @@ class OccupancyMap : public Map
     // The map distance data, stored as a grid
     float *distances;
 
-    // Max distance at which we care about obstacles, for constructing
-    // likelihood field
-    double max_occ_dist;
-
     CachedDistanceMap* cdm;
 
     void setMapOccDist(int i, int j, float d);
-    CachedDistanceMap* getDistanceMap(double scale,
-                                      double max_dist);
     bool enqueue(int i, int j, int src_i, int src_j,
-	             std::priority_queue<CellData>& Q,
-	             CachedDistanceMap* cdm);
+	             std::priority_queue<CellData>& Q);
 
     friend bool operator<(const OccupancyMap::CellData& a,
                           const OccupancyMap::CellData& b);
@@ -147,7 +141,7 @@ class OccupancyMap : public Map
 inline bool operator<(const OccupancyMap::CellData& a,
                const OccupancyMap::CellData& b)
 {
-  return a.occMap->occDist(a.i_, a.j_) > b.occMap->occDist(b.i_, b.j_);
+  return a.occMap->getOccDist(a.i_, a.j_) > b.occMap->getOccDist(b.i_, b.j_);
 }
 
 }

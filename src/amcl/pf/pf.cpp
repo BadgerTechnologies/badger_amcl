@@ -32,9 +32,12 @@
 #include <cstdlib>
 #include <float.h>
 
+#include "ros/ros.h"
+
 #include "pf.h"
 #include "pf_pdf.h"
 #include "pf_kdtree.h"
+
 
 using namespace amcl;
 
@@ -45,7 +48,7 @@ ParticleFilter::ParticleFilter(int min_samples, int max_samples, double alpha_sl
   int i, j;
   pf_sample_set_t *set;
   pf_sample_t *sample;
-  
+
   srand48(time(NULL));
 
   this->resample_model = PF_RESAMPLE_MULTINOMIAL;
@@ -60,15 +63,15 @@ ParticleFilter::ParticleFilter(int min_samples, int max_samples, double alpha_sl
   // distribution.  [z] is the upper standard normal quantile for (1 -
   // p), where p is the probability that the error on the estimated
   // distrubition will be less than [err].
-  this->pop_err = 0.01;
-  this->pop_z = 3;
-  this->dist_threshold = 0.5; 
-  
-  this->current_set = 0;
+  pop_err = 0.01;
+  pop_z = 3;
+  dist_threshold = 0.5;
+
+  current_set = 0;
   for (j = 0; j < 2; j++)
   {
     set = sets + j;
-      
+
     set->sample_count = max_samples;
     set->samples = (pf_sample_t*)std::calloc(max_samples, sizeof(pf_sample_t));
 
@@ -106,7 +109,7 @@ ParticleFilter::ParticleFilter(int min_samples, int max_samples, double alpha_sl
 ParticleFilter::~ParticleFilter()
 {
   int i;
-  
+
   for (i = 0; i < 2; i++)
   {
     free(sets[i].clusters);
@@ -128,16 +131,16 @@ ParticleFilter::init(PFVector mean, PFMatrix cov)
   int i;
   pf_sample_set_t *set;
   pf_sample_t *sample;
-  
+
   set = sets + current_set;
-  
+
   // Create the kd tree for adaptive sampling
   set->kdtree->clear_kdtree();
 
   set->sample_count = max_samples;
 
   PDFGaussian pdf(mean, cov);
-    
+
   // Compute the new sample poses
   for (i = 0; i < set->sample_count; i++)
   {
@@ -150,9 +153,9 @@ ParticleFilter::init(PFVector mean, PFMatrix cov)
   }
 
   w_slow = w_fast = 0.0;
-    
+
   // Re-compute cluster statistics
-  cluster_stats(set); 
+  cluster_stats(set);
 
   //set converged to 0
   init_converged();
@@ -188,7 +191,7 @@ ParticleFilter::init_model(pf_init_model_fn_t init_fn, void *init_data)
 
   // Re-compute cluster statistics
   cluster_stats(set);
-  
+
   //set converged to 0
   init_converged();
 }
@@ -197,8 +200,8 @@ void
 ParticleFilter::init_converged(){
   pf_sample_set_t *set;
   set = sets + current_set;
-  set->converged = 0; 
-  converged = 0; 
+  set->converged = 0;
+  converged = 0;
 }
 
 bool
@@ -220,19 +223,19 @@ ParticleFilter::update_converged()
   }
   mean_x /= set->sample_count;
   mean_y /= set->sample_count;
-  
+
   for (i = 0; i < set->sample_count; i++){
     sample = set->samples + i;
-    if(fabs(sample->pose.v[0] - mean_x) > dist_threshold || 
+    if(fabs(sample->pose.v[0] - mean_x) > dist_threshold ||
        fabs(sample->pose.v[1] - mean_y) > dist_threshold){
-      set->converged = 0; 
-      converged = 0; 
-      return false;
+      set->converged = 0;
+      converged = 0;
+      return 0;
     }
   }
   set->converged = 1;
   converged = 1;
-  return true;
+  return 1;
 }
 
 // Update the filter with some new action
@@ -244,6 +247,8 @@ ParticleFilter::update_action(pf_action_model_fn_t action_fn, void *action_data)
   set = sets + current_set;
 
   (*action_fn) (action_data, set);
+
+  return;
 }
 
 // Update the filter with some new sensor observation
@@ -259,7 +264,7 @@ ParticleFilter::update_sensor(pf_sensor_model_fn_t sensor_fn, void *sensor_data)
 
   // Compute the sample weights
   total = (*sensor_fn) (sensor_data, set);
-  
+
   if (total > 0.0)
   {
     // Normalize weights
@@ -308,8 +313,15 @@ ParticleFilter::resample_systematic(double w_diff)
   // Build up cumulative probability table for resampling.
   c = (double*)malloc(sizeof(double)*(set_a->sample_count+1));
   c[0] = 0.0;
+  double max_prob = 0.0, min_prob = 1.0;
   for(i=0;i<set_a->sample_count;i++)
+  {
     c[i+1] = c[i]+set_a->samples[i].weight;
+    max_prob = std::max(max_prob, set_a->samples[i].weight);
+    min_prob = std::min(min_prob, set_a->samples[i].weight);
+  }
+
+  ROS_INFO("max: %f, min: %f", max_prob, min_prob);
 
   // Draw samples from set a to create set b.
   total = 0;
@@ -331,8 +343,8 @@ ParticleFilter::resample_systematic(double w_diff)
   int n_rand = w_diff * set_b->sample_count;
   int n_systematic_sampled = set_b->sample_count - n_rand;
 
-  double systematic_sample_start = drand48();
   // Find the starting point for systematic sampling.
+  double systematic_sample_start = drand48();
   double systematic_sample_delta = 1.0 / n_systematic_sampled;
   int c_i;
   for(c_i=0;c_i<set_a->sample_count;c_i++)
@@ -346,7 +358,6 @@ ParticleFilter::resample_systematic(double w_diff)
     sample_b->pose = (random_pose_fn)(random_pose_data);
     sample_b->weight = 1.0;
     total += sample_b->weight;
-
     // Add sample to histogram
     set_b->kdtree->insert_pose(sample_b->pose, sample_b->weight);
   }
@@ -490,12 +501,12 @@ ParticleFilter::update_resample()
     sample_b = set_b->samples + i;
     sample_b->weight /= total;
   }
-  
+
   // Re-compute cluster statistics
   cluster_stats(set_b);
 
   // Use the newly created sample set
-  current_set = (current_set + 1) % 2; 
+  current_set = (current_set + 1) % 2;
 
   update_converged();
 }
@@ -523,6 +534,11 @@ ParticleFilter::resample_limit(int k)
   if (n > max_samples)
     return max_samples;
 
+  if (n < min_samples)
+    return min_samples;
+  if (n > max_samples)
+    return max_samples;
+
   return n;
 }
 
@@ -533,7 +549,7 @@ ParticleFilter::cluster_stats(pf_sample_set_t *set)
   int i, j, k, cidx;
   pf_sample_t *sample;
   pf_cluster_t *cluster;
-  
+
   // Workspace
   double m[4], c[2][2];
   size_t count;
@@ -541,7 +557,7 @@ ParticleFilter::cluster_stats(pf_sample_set_t *set)
 
   // Cluster the samples
   set->kdtree->cluster();
-  
+
   // Initialize cluster stats
   set->cluster_count = 0;
 
@@ -570,7 +586,7 @@ ParticleFilter::cluster_stats(pf_sample_set_t *set)
   for (j = 0; j < 2; j++)
     for (k = 0; k < 2; k++)
       c[j][k] = 0.0;
-  
+
   // Compute cluster stats
   for (i = 0; i < set->sample_count; i++)
   {
@@ -585,7 +601,7 @@ ParticleFilter::cluster_stats(pf_sample_set_t *set)
       continue;
     if (cidx + 1 > set->cluster_count)
       set->cluster_count = cidx + 1;
-    
+
     cluster = set->clusters + cidx;
 
     cluster->count += 1;
@@ -618,7 +634,7 @@ ParticleFilter::cluster_stats(pf_sample_set_t *set)
   for (i = 0; i < set->cluster_count; i++)
   {
     cluster = set->clusters + i;
-        
+
     cluster->mean.v[0] = cluster->m[0] / cluster->weight;
     cluster->mean.v[1] = cluster->m[1] / cluster->weight;
     cluster->mean.v[2] = atan2(cluster->m[3], cluster->m[2]);
@@ -660,14 +676,14 @@ ParticleFilter::get_cep_stats(PFVector *mean, double *var)
   double mn, mx, my, mrr;
   pf_sample_set_t *set;
   pf_sample_t *sample;
-  
+
   set = sets + current_set;
 
   mn = 0.0;
   mx = 0.0;
   my = 0.0;
   mrr = 0.0;
-  
+
   for (i = 0; i < set->sample_count; i++)
   {
     sample = set->samples + i;

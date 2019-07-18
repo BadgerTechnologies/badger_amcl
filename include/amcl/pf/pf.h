@@ -148,8 +148,7 @@ class ParticleFilter
 
     // Compute the statistics for a particular cluster.  Returns false if
     // there is no such cluster.
-    bool get_cluster_stats(int cluster, double *weight,
-                           PFVector *mean, PFMatrix *cov);
+    bool get_cluster_stats(int cluster, double *weight, PFVector *mean, PFMatrix *cov);
 
     //calculate if the particle filter has converged - 
     //and sets the converged flag in the current set and the pf 
@@ -191,7 +190,6 @@ class ParticleFilter
 
     // Re-compute the cluster statistics for a sample set
     void cluster_stats(pf_sample_set_t *sample_set);
-
 };
 
 }

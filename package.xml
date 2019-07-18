@@ -33,6 +33,10 @@
     <build_depend>badger_file_lib</build_depend>
     <build_depend>yaml-cpp</build_depend>
     <build_depend>octomap</build_depend>
+    <build_depend>octomap_ros</build_depend>
+    <build_depend>octomap_msgs</build_depend>
+    <build_depend>pcl_ros</build_depend>
+    <build_depend>eigen_conversions</build_depend>
 
     <run_depend>rosbag</run_depend>
     <run_depend>roscpp</run_depend>
@@ -42,6 +46,10 @@
     <run_depend>badger_file_lib</run_depend>
     <run_depend>yaml-cpp</run_depend>
     <run_depend>octomap</run_depend>
+    <run_depend>octomap_ros</run_depend>
+    <run_depend>octomap_msgs</run_depend>
+    <run_depend>pcl_ros</run_depend>
+    <run_depend>eigen_conversions</run_depend>
 
     <test_depend>map_server</test_depend>
 </package>

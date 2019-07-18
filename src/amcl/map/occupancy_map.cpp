@@ -112,14 +112,13 @@ OccupancyMap::setCellOccState(int index, int8_t state)
 }
 
 float
-OccupancyMap::occDist(int i, int j)
+OccupancyMap::getOccDist(int i, int j)
 {
   if(isValid({i, j}))
   {
     return distances[computeCellIndex(i, j)];
   }
   return max_occ_dist;
-
 }
 
 std::vector<double>
@@ -156,4 +155,10 @@ unsigned int
 OccupancyMap::computeCellIndex(int i, int j)
 {
   return i + j * unsigned(size_x);
+}
+
+int8_t
+OccupancyMap::getOccState(int i, int j)
+{
+  return cells[computeCellIndex(i, j)].occ_state;
 }
