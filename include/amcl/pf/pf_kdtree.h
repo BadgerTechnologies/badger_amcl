@@ -28,6 +28,9 @@
 #ifndef PF_KDTREE_H
 #define PF_KDTREE_H
 
+namespace amcl
+{
+
 // Info for a node in the tree
 typedef struct pf_kdtree_node
 {
@@ -54,43 +57,57 @@ typedef struct pf_kdtree_node
 
 
 // A kd tree
-typedef struct
+class KDTree
 {
-  // Cell size
-  double size[3];
+  public:
+    // Create a tree
+    KDTree(int max_size);
 
-  // The root node of the tree
-  pf_kdtree_node_t *root;
+    // Destroy a tree
+    ~KDTree();
 
-  // The number of nodes in the tree
-  int node_count, node_max_count;
-  pf_kdtree_node_t *nodes;
+    // Clear all entries from the tree
+    void clear_kdtree();
 
-  // The number of leaf nodes in the tree
-  int leaf_count;
+    // Insert a pose into the tree
+    void insert_pose(PFVector pose, double value);
 
-} pf_kdtree_t;
+    // Cluster the leaves in the tree
+    void cluster();
 
+    // Determine the probability estimate for the given pose
+    double get_prob(PFVector pose);
 
-// Create a tree
-extern pf_kdtree_t *pf_kdtree_alloc(int max_size);
+    // Determine the cluster label for the given pose
+    int get_cluster(PFVector pose);
 
-// Destroy a tree
-extern void pf_kdtree_free(pf_kdtree_t *self);
+    // Cell size
+    double cell_size[3];
 
-// Clear all entries from the tree
-extern void pf_kdtree_clear(pf_kdtree_t *self);
+    // The root node of the tree
+    pf_kdtree_node_t *root;
 
-// Insert a pose into the tree
-extern void pf_kdtree_insert(pf_kdtree_t *self, pf_vector_t pose, double value);
+    // The number of nodes in the tree
+    int node_count, node_max_count;
+    pf_kdtree_node_t *nodes;
 
-// Cluster the leaves in the tree
-extern void pf_kdtree_cluster(pf_kdtree_t *self);
+    // The number of leaf nodes in the tree
+    int leaf_count;
 
-// Determine the probability estimate for the given pose
-extern double pf_kdtree_get_prob(pf_kdtree_t *self, pf_vector_t pose);
+    // Compare keys to see if they are equal
+    bool equals(int key_a[], int key_b[]);
 
-// Determine the cluster label for the given pose
-extern int pf_kdtree_get_cluster(pf_kdtree_t *self, pf_vector_t pose);
+    // Insert a node into the tree
+    pf_kdtree_node_t* insert_node(pf_kdtree_node_t *parent, pf_kdtree_node_t *node,
+                                  int key[], double value);
+
+    // Recursive node search
+    pf_kdtree_node_t* find_node(pf_kdtree_node_t *node, int key[]);
+
+    // Recursively label nodes in this cluster
+    void cluster_node(pf_kdtree_node_t *node, int depth);
+};
+
+}
 
 #endif

@@ -29,181 +29,113 @@
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <vector>
 
 #include "pf_vector.h"
 #include "pf_kdtree.h"
 
+using namespace amcl;
 
-// Compare keys to see if they are equal
-static int pf_kdtree_equal(pf_kdtree_t *self, int key_a[], int key_b[]);
-
-// Insert a node into the tree
-static pf_kdtree_node_t *pf_kdtree_insert_node(pf_kdtree_t *self, pf_kdtree_node_t *parent,
-                                               pf_kdtree_node_t *node, int key[], double value);
-
-// Recursive node search
-static pf_kdtree_node_t *pf_kdtree_find_node(pf_kdtree_t *self, pf_kdtree_node_t *node, int key[]);
-
-// Recursively label nodes in this cluster
-static void pf_kdtree_cluster_node(pf_kdtree_t *self, pf_kdtree_node_t *node, int depth);
-
-// Recursive node printing
-//static void pf_kdtree_print_node(pf_kdtree_t *self, pf_kdtree_node_t *node);
 
 ///////////////////////////////////////////////////////////////////////////////
 // Create a tree
-pf_kdtree_t *pf_kdtree_alloc(int max_size)
+KDTree::KDTree(int max_size)
 {
-  pf_kdtree_t *self;
+  cell_size[0] = 0.50;
+  cell_size[1] = 0.50;
+  cell_size[2] = (10 * M_PI / 180);
 
-  self = calloc(1, sizeof(pf_kdtree_t));
+  root = NULL;
 
-  self->size[0] = 0.50;
-  self->size[1] = 0.50;
-  self->size[2] = (10 * M_PI / 180);
+  node_count = 0;
+  node_max_count = max_size;
+  nodes = (pf_kdtree_node_t*)calloc(node_max_count, sizeof(pf_kdtree_node_t));
 
-  self->root = NULL;
-
-  self->node_count = 0;
-  self->node_max_count = max_size;
-  self->nodes = calloc(self->node_max_count, sizeof(pf_kdtree_node_t));
-
-  self->leaf_count = 0;
-
-  return self;
+  leaf_count = 0;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 // Destroy a tree
-void pf_kdtree_free(pf_kdtree_t *self)
+KDTree::~KDTree()
 {
-  free(self->nodes);
-  free(self);
-  return;
+  free(nodes);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 // Clear all entries from the tree
-void pf_kdtree_clear(pf_kdtree_t *self)
+void
+KDTree::clear_kdtree()
 {
-  self->root = NULL;
-  self->leaf_count = 0;
-  self->node_count = 0;
-
-  return;
+  root = NULL;
+  leaf_count = 0;
+  node_count = 0;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 // Insert a pose into the tree.
-void pf_kdtree_insert(pf_kdtree_t *self, pf_vector_t pose, double value)
+void
+KDTree::insert_pose(PFVector pose, double value)
 {
   int key[3];
 
-  key[0] = floor(pose.v[0] / self->size[0]);
-  key[1] = floor(pose.v[1] / self->size[1]);
-  key[2] = floor(pose.v[2] / self->size[2]);
+  key[0] = floor(pose.v[0] / cell_size[0]);
+  key[1] = floor(pose.v[1] / cell_size[1]);
+  key[2] = floor(pose.v[2] / cell_size[2]);
 
-  self->root = pf_kdtree_insert_node(self, NULL, self->root, key, value);
-
-  // Test code
-  /*
-  printf("find %d %d %d\n", key[0], key[1], key[2]);
-  assert(pf_kdtree_find_node(self, self->root, key) != NULL);
-
-  pf_kdtree_print_node(self, self->root);
-
-  printf("\n");
-
-  for (i = 0; i < self->node_count; i++)
-  {
-    node = self->nodes + i;
-    if (node->leaf)
-    {
-      printf("find %d %d %d\n", node->key[0], node->key[1], node->key[2]);
-      assert(pf_kdtree_find_node(self, self->root, node->key) == node);
-    }
-  }
-  printf("\n\n");
-  */
-
-  return;
+  root = insert_node(NULL, root, key, value);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 // Determine the probability estimate for the given pose. TODO: this
 // should do a kernel density estimate rather than a simple histogram.
-double pf_kdtree_get_prob(pf_kdtree_t *self, pf_vector_t pose)
+double
+KDTree::get_prob(PFVector pose)
 {
   int key[3];
   pf_kdtree_node_t *node;
 
-  key[0] = floor(pose.v[0] / self->size[0]);
-  key[1] = floor(pose.v[1] / self->size[1]);
-  key[2] = floor(pose.v[2] / self->size[2]);
+  key[0] = floor(pose.v[0] / cell_size[0]);
+  key[1] = floor(pose.v[1] / cell_size[1]);
+  key[2] = floor(pose.v[2] / cell_size[2]);
 
-  node = pf_kdtree_find_node(self, self->root, key);
+  node = find_node(root, key);
   if (node == NULL)
     return 0.0;
   return node->value;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // Determine the cluster label for the given pose
-int pf_kdtree_get_cluster(pf_kdtree_t *self, pf_vector_t pose)
+int
+KDTree::get_cluster(PFVector pose)
 {
   int key[3];
   pf_kdtree_node_t *node;
 
-  key[0] = floor(pose.v[0] / self->size[0]);
-  key[1] = floor(pose.v[1] / self->size[1]);
-  key[2] = floor(pose.v[2] / self->size[2]);
+  key[0] = floor(pose.v[0] / cell_size[0]);
+  key[1] = floor(pose.v[1] / cell_size[1]);
+  key[2] = floor(pose.v[2] / cell_size[2]);
 
-  node = pf_kdtree_find_node(self, self->root, key);
+  node = find_node(root, key);
   if (node == NULL)
     return -1;
   return node->cluster;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // Compare keys to see if they are equal
-int pf_kdtree_equal(pf_kdtree_t *self, int key_a[], int key_b[])
+bool
+KDTree::equals(int key_a[], int key_b[])
 {
-  //double a, b;
-
-  if (key_a[0] != key_b[0])
-    return 0;
-  if (key_a[1] != key_b[1])
-    return 0;
-
-  if (key_a[2] != key_b[2])
-    return 0;
-
-  /* TODO: make this work (pivot selection needs fixing, too)
-  // Normalize angles
-  a = key_a[2] * self->size[2];
-  a = atan2(sin(a), cos(a)) / self->size[2];
-  b = key_b[2] * self->size[2];
-  b = atan2(sin(b), cos(b)) / self->size[2];
-
- if ((int) a != (int) b)
-    return 0;
-  */
-
-  return 1;
+  return (key_a[0] == key_b[0]) and (key_a[1] == key_b[1]) and (key_a[2] == key_b[2]);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 // Insert a node into the tree
-pf_kdtree_node_t *pf_kdtree_insert_node(pf_kdtree_t *self, pf_kdtree_node_t *parent,
-                                        pf_kdtree_node_t *node, int key[], double value)
+pf_kdtree_node_t*
+KDTree::insert_node(pf_kdtree_node_t *parent,
+                       pf_kdtree_node_t *node,
+                       int key[], double value)
 {
   int i;
   int split, max_split;
@@ -211,8 +143,8 @@ pf_kdtree_node_t *pf_kdtree_insert_node(pf_kdtree_t *self, pf_kdtree_node_t *par
   // If the node doesnt exist yet...
   if (node == NULL)
   {
-    assert(self->node_count < self->node_max_count);
-    node = self->nodes + self->node_count++;
+    assert(node_count < node_max_count);
+    node = nodes + node_count++;
     memset(node, 0, sizeof(pf_kdtree_node_t));
 
     node->leaf = 1;
@@ -226,14 +158,14 @@ pf_kdtree_node_t *pf_kdtree_insert_node(pf_kdtree_t *self, pf_kdtree_node_t *par
       node->key[i] = key[i];
 
     node->value = value;
-    self->leaf_count += 1;
+    leaf_count += 1;
   }
 
   // If the node exists, and it is a leaf node...
   else if (node->leaf)
   {
     // If the keys are equal, increment the value
-    if (pf_kdtree_equal(self, key, node->key))
+    if (equals(key, node->key))
     {
       node->value += value;
     }
@@ -260,17 +192,17 @@ pf_kdtree_node_t *pf_kdtree_insert_node(pf_kdtree_t *self, pf_kdtree_node_t *par
 
       if (key[node->pivot_dim] < node->pivot_value)
       {
-        node->children[0] = pf_kdtree_insert_node(self, node, NULL, key, value);
-        node->children[1] = pf_kdtree_insert_node(self, node, NULL, node->key, node->value);
+        node->children[0] = insert_node(node, NULL, key, value);
+        node->children[1] = insert_node(node, NULL, node->key, node->value);
       }
       else
       {
-        node->children[0] = pf_kdtree_insert_node(self, node, NULL, node->key, node->value);
-        node->children[1] = pf_kdtree_insert_node(self, node, NULL, key, value);
+        node->children[0] = insert_node(node, NULL, node->key, node->value);
+        node->children[1] = insert_node(node, NULL, key, value);
       }
 
       node->leaf = 0;
-      self->leaf_count -= 1;
+      leaf_count -= 1;
     }
   }
 
@@ -281,91 +213,67 @@ pf_kdtree_node_t *pf_kdtree_insert_node(pf_kdtree_t *self, pf_kdtree_node_t *par
     assert(node->children[1] != NULL);
 
     if (key[node->pivot_dim] < node->pivot_value)
-      pf_kdtree_insert_node(self, node, node->children[0], key, value);
+      insert_node(node, node->children[0], key, value);
     else
-      pf_kdtree_insert_node(self, node, node->children[1], key, value);
+      insert_node(node, node->children[1], key, value);
   }
 
   return node;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // Recursive node search
-pf_kdtree_node_t *pf_kdtree_find_node(pf_kdtree_t *self, pf_kdtree_node_t *node, int key[])
+pf_kdtree_node_t*
+KDTree::find_node(pf_kdtree_node_t *node, int key[])
 {
   if (node->leaf)
   {
     //printf("find  : leaf %p %d %d %d\n", node, node->key[0], node->key[1], node->key[2]);
 
     // If the keys are the same...
-    if (pf_kdtree_equal(self, key, node->key))
+    if (equals(key, node->key))
       return node;
     else
       return NULL;
   }
   else
   {
-    //printf("find  : brch %p %d %f\n", node, node->pivot_dim, node->pivot_value);
-
     assert(node->children[0] != NULL);
     assert(node->children[1] != NULL);
 
     // If the keys are different...
     if (key[node->pivot_dim] < node->pivot_value)
-      return pf_kdtree_find_node(self, node->children[0], key);
+      return find_node(node->children[0], key);
     else
-      return pf_kdtree_find_node(self, node->children[1], key);
+      return find_node(node->children[1], key);
   }
-
-  return NULL;
 }
-
-
-////////////////////////////////////////////////////////////////////////////////
-// Recursive node printing
-/*
-void pf_kdtree_print_node(pf_kdtree_t *self, pf_kdtree_node_t *node)
-{
-  if (node->leaf)
-  {
-    printf("(%+02d %+02d %+02d)\n", node->key[0], node->key[1], node->key[2]);
-    printf("%*s", node->depth * 11, "");
-  }
-  else
-  {
-    printf("(%+02d %+02d %+02d) ", node->key[0], node->key[1], node->key[2]);
-    pf_kdtree_print_node(self, node->children[0]);
-    pf_kdtree_print_node(self, node->children[1]);
-  }
-  return;
-}
-*/
-
 
 ////////////////////////////////////////////////////////////////////////////////
 // Cluster the leaves in the tree
-void pf_kdtree_cluster(pf_kdtree_t *self)
+void
+KDTree::cluster()
 {
   int i;
   int queue_count, cluster_count;
-  pf_kdtree_node_t **queue, *node;
+  std::vector<pf_kdtree_node_t*> queue;
+  pf_kdtree_node_t *node;
 
   queue_count = 0;
-  queue = calloc(self->node_count, sizeof(queue[0]));
 
   // Put all the leaves in a queue
-  for (i = 0; i < self->node_count; i++)
+  for (i = 0; i < node_count; i++)
   {
-    node = self->nodes + i;
+    node = nodes + i;
     if (node->leaf)
     {
       node->cluster = -1;
-      assert(queue_count < self->node_count);
-      queue[queue_count++] = node;
+      assert(queue_count < node_count);
+      queue.push_back(node);
+      queue_count++;
 
       // TESTING; remove
-      assert(node == pf_kdtree_find_node(self, self->root, node->key));
+      assert(node == find_node(root, node->key));
     }
   }
 
@@ -384,17 +292,14 @@ void pf_kdtree_cluster(pf_kdtree_t *self)
     node->cluster = cluster_count++;
 
     // Recursively label nodes in this cluster
-    pf_kdtree_cluster_node(self, node, 0);
+    cluster_node(node, 0);
   }
-
-  free(queue);
-  return;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 // Recursively label nodes in this cluster
-void pf_kdtree_cluster_node(pf_kdtree_t *self, pf_kdtree_node_t *node, int depth)
+void
+KDTree::cluster_node(pf_kdtree_node_t *node, int depth)
 {
   int i;
   int nkey[3];
@@ -406,7 +311,7 @@ void pf_kdtree_cluster_node(pf_kdtree_t *self, pf_kdtree_node_t *node, int depth
     nkey[1] = node->key[1] + ((i % 9) / 3) - 1;
     nkey[2] = node->key[2] + ((i % 9) % 3) - 1;
 
-    nnode = pf_kdtree_find_node(self, self->root, nkey);
+    nnode = find_node(root, nkey);
     if (nnode == NULL)
       continue;
 
@@ -423,7 +328,6 @@ void pf_kdtree_cluster_node(pf_kdtree_t *self, pf_kdtree_node_t *node, int depth
     // Label this node and recurse
     nnode->cluster = node->cluster;
 
-    pf_kdtree_cluster_node(self, nnode, depth + 1);
+    cluster_node(nnode, depth + 1);
   }
-  return;
 }

@@ -48,13 +48,13 @@ typedef enum
 class AMCLOdomData : public AMCLSensorData
 {
   // Odometric pose
-  public: pf_vector_t pose;
+  public: PFVector pose;
 
   // Change in odometric pose
-  public: pf_vector_t delta;
+  public: PFVector delta;
 
   // Total absolute motion (relative to base)
-  public: pf_vector_t absolute_motion;
+  public: PFVector absolute_motion;
 };
 
 
@@ -90,7 +90,7 @@ class AMCLOdom : public AMCLSensor
 
   // Update the filter based on the action model.  Returns true if the filter
   // has been updated.
-  public: virtual bool UpdateAction(pf_t *pf, AMCLSensorData *data);
+  public: virtual bool UpdateAction(ParticleFilter *pf, AMCLSensorData *data);
 
   // Current data timestamp
   private: double time;

@@ -110,14 +110,14 @@ class AMCLLaser : public AMCLSensor
 
   // Update the filter based on the sensor model.  Returns true if the
   // filter has been updated.
-  public: virtual bool UpdateSensor(pf_t *pf, AMCLSensorData *data);
+  public: virtual bool UpdateSensor(ParticleFilter *pf, AMCLSensorData *data);
 
   // Update a sample set based on the sensor model.
   // Returns total weights of particles, or 0.0 on failure.
   public: static double ApplyModelToSampleSet(AMCLSensorData *data, pf_sample_set_t *set);
 
   // Set the laser's pose after construction
-  public: void SetLaserPose(pf_vector_t& laser_pose) 
+  public: void SetLaserPose(PFVector& laser_pose) 
           {this->laser_pose = laser_pose;}
 
   // Determine the probability for the given pose
@@ -150,7 +150,7 @@ class AMCLLaser : public AMCLSensor
   private: OccupancyMap *map;
 
   // Laser offset relative to robot
-  private: pf_vector_t laser_pose;
+  private: PFVector laser_pose;
   
   // Max beams to consider
   private: int max_beams;

@@ -29,57 +29,48 @@
 #include <math.h>
 #include <stdlib.h>
 #include <time.h>
+#include <cstdlib>
+#include <float.h>
 
 #include "pf.h"
 #include "pf_pdf.h"
 #include "pf_kdtree.h"
 
-
-// Compute the required number of samples, given that there are k bins
-// with samples in them.
-static int pf_resample_limit(pf_t *pf, int k);
-
-// Re-compute the cluster statistics for a sample set
-static void pf_cluster_stats(pf_t *pf, pf_sample_set_t *set);
-
+using namespace amcl;
 
 // Create a new filter
-pf_t *pf_alloc(int min_samples, int max_samples,
-               double alpha_slow, double alpha_fast,
-               pf_init_model_fn_t random_pose_fn, void *random_pose_data)
+ParticleFilter::ParticleFilter(int min_samples, int max_samples, double alpha_slow, double alpha_fast,
+                               pf_init_model_fn_t random_pose_fn, void *random_pose_data)
 {
   int i, j;
-  pf_t *pf;
   pf_sample_set_t *set;
   pf_sample_t *sample;
   
   srand48(time(NULL));
 
-  pf = calloc(1, sizeof(pf_t));
+  this->resample_model = PF_RESAMPLE_MULTINOMIAL;
+  this->random_pose_fn = random_pose_fn;
+  this->random_pose_data = random_pose_data;
 
-  pf->resample_model = PF_RESAMPLE_MULTINOMIAL;
-  pf->random_pose_fn = random_pose_fn;
-  pf->random_pose_data = random_pose_data;
-
-  pf->min_samples = min_samples;
-  pf->max_samples = max_samples;
+  this->min_samples = min_samples;
+  this->max_samples = max_samples;
 
   // Control parameters for the population size calculation.  [err] is
   // the max error between the true distribution and the estimated
   // distribution.  [z] is the upper standard normal quantile for (1 -
   // p), where p is the probability that the error on the estimated
   // distrubition will be less than [err].
-  pf->pop_err = 0.01;
-  pf->pop_z = 3;
-  pf->dist_threshold = 0.5; 
+  this->pop_err = 0.01;
+  this->pop_z = 3;
+  this->dist_threshold = 0.5; 
   
-  pf->current_set = 0;
+  this->current_set = 0;
   for (j = 0; j < 2; j++)
   {
-    set = pf->sets + j;
+    set = sets + j;
       
     set->sample_count = max_samples;
-    set->samples = calloc(max_samples, sizeof(pf_sample_t));
+    set->samples = (pf_sample_t*)std::calloc(max_samples, sizeof(pf_sample_t));
 
     for (i = 0; i < set->sample_count; i++)
     {
@@ -91,142 +82,134 @@ pf_t *pf_alloc(int min_samples, int max_samples,
     }
 
     // HACK: is 3 times max_samples enough?
-    set->kdtree = pf_kdtree_alloc(3 * max_samples);
+    set->kdtree = new KDTree(3 * max_samples);
 
     set->cluster_count = 0;
     set->cluster_max_count = max_samples;
-    set->clusters = calloc(set->cluster_max_count, sizeof(pf_cluster_t));
+    set->clusters = (pf_cluster_t*)std::calloc(set->cluster_max_count, sizeof(pf_cluster_t));
 
-    set->mean = pf_vector_zero();
-    set->cov = pf_matrix_zero();
+    set->mean = PFVector();
+    set->cov = PFMatrix();
   }
 
-  pf->w_slow = 0.0;
-  pf->w_fast = 0.0;
+  this->w_slow = 0.0;
+  this->w_fast = 0.0;
 
-  pf->alpha_slow = alpha_slow;
-  pf->alpha_fast = alpha_fast;
+  this->alpha_slow = alpha_slow;
+  this->alpha_fast = alpha_fast;
 
   //set converged to 0
-  pf_init_converged(pf);
-
-  return pf;
-}
-
-void pf_set_resample_model(pf_t *pf, pf_resample_model_t resample_model)
-{
-  pf->resample_model = resample_model;
+  init_converged();
 }
 
 // Free an existing filter
-void pf_free(pf_t *pf)
+ParticleFilter::~ParticleFilter()
 {
   int i;
   
   for (i = 0; i < 2; i++)
   {
-    free(pf->sets[i].clusters);
-    pf_kdtree_free(pf->sets[i].kdtree);
-    free(pf->sets[i].samples);
+    free(sets[i].clusters);
+    sets[i].kdtree->~KDTree();
+    free(sets[i].samples);
   }
-  free(pf);
-  
-  return;
+}
+
+void
+ParticleFilter::set_resample_model(pf_resample_model_t resample_model)
+{
+  this->resample_model = resample_model;
 }
 
 // Initialize the filter using a guassian
-void pf_init(pf_t *pf, pf_vector_t mean, pf_matrix_t cov)
+void
+ParticleFilter::init(PFVector mean, PFMatrix cov)
 {
   int i;
   pf_sample_set_t *set;
   pf_sample_t *sample;
-  pf_pdf_gaussian_t *pdf;
   
-  set = pf->sets + pf->current_set;
+  set = sets + current_set;
   
   // Create the kd tree for adaptive sampling
-  pf_kdtree_clear(set->kdtree);
+  set->kdtree->clear_kdtree();
 
-  set->sample_count = pf->max_samples;
+  set->sample_count = max_samples;
 
-  pdf = pf_pdf_gaussian_alloc(mean, cov);
+  PDFGaussian pdf(mean, cov);
     
   // Compute the new sample poses
   for (i = 0; i < set->sample_count; i++)
   {
     sample = set->samples + i;
-    sample->weight = 1.0 / pf->max_samples;
-    sample->pose = pf_pdf_gaussian_sample(pdf);
+    sample->weight = 1.0 / max_samples;
+    sample->pose = pdf.sample();
 
     // Add sample to histogram
-    pf_kdtree_insert(set->kdtree, sample->pose, sample->weight);
+    set->kdtree->insert_pose(sample->pose, sample->weight);
   }
 
-  pf->w_slow = pf->w_fast = 0.0;
-
-  pf_pdf_gaussian_free(pdf);
+  w_slow = w_fast = 0.0;
     
   // Re-compute cluster statistics
-  pf_cluster_stats(pf, set); 
+  cluster_stats(set); 
 
   //set converged to 0
-  pf_init_converged(pf);
-
-  return;
+  init_converged();
 }
 
-
 // Initialize the filter using some model
-void pf_init_model(pf_t *pf, pf_init_model_fn_t init_fn, void *init_data)
+void
+ParticleFilter::init_model(pf_init_model_fn_t init_fn, void *init_data)
 {
   int i;
   pf_sample_set_t *set;
   pf_sample_t *sample;
 
-  set = pf->sets + pf->current_set;
+  set = sets + current_set;
 
   // Create the kd tree for adaptive sampling
-  pf_kdtree_clear(set->kdtree);
+  set->kdtree->clear_kdtree();
 
-  set->sample_count = pf->max_samples;
+  set->sample_count = max_samples;
 
   // Compute the new sample poses
   for (i = 0; i < set->sample_count; i++)
   {
     sample = set->samples + i;
-    sample->weight = 1.0 / pf->max_samples;
+    sample->weight = 1.0 / max_samples;
     sample->pose = (*init_fn) (init_data);
 
     // Add sample to histogram
-    pf_kdtree_insert(set->kdtree, sample->pose, sample->weight);
+    set->kdtree->insert_pose(sample->pose, sample->weight);
   }
 
-  pf->w_slow = pf->w_fast = 0.0;
+  w_slow = w_fast = 0.0;
 
   // Re-compute cluster statistics
-  pf_cluster_stats(pf, set);
+  cluster_stats(set);
   
   //set converged to 0
-  pf_init_converged(pf);
-
-  return;
+  init_converged();
 }
 
-void pf_init_converged(pf_t *pf){
+void
+ParticleFilter::init_converged(){
   pf_sample_set_t *set;
-  set = pf->sets + pf->current_set;
+  set = sets + current_set;
   set->converged = 0; 
-  pf->converged = 0; 
+  converged = 0; 
 }
 
-int pf_update_converged(pf_t *pf)
+bool
+ParticleFilter::update_converged()
 {
   int i;
   pf_sample_set_t *set;
   pf_sample_t *sample;
   double total;
 
-  set = pf->sets + pf->current_set;
+  set = sets + current_set;
   double mean_x = 0, mean_y = 0;
 
   for (i = 0; i < set->sample_count; i++){
@@ -240,41 +223,39 @@ int pf_update_converged(pf_t *pf)
   
   for (i = 0; i < set->sample_count; i++){
     sample = set->samples + i;
-    if(fabs(sample->pose.v[0] - mean_x) > pf->dist_threshold || 
-       fabs(sample->pose.v[1] - mean_y) > pf->dist_threshold){
+    if(fabs(sample->pose.v[0] - mean_x) > dist_threshold || 
+       fabs(sample->pose.v[1] - mean_y) > dist_threshold){
       set->converged = 0; 
-      pf->converged = 0; 
-      return 0;
+      converged = 0; 
+      return false;
     }
   }
-  set->converged = 1; 
-  pf->converged = 1; 
-  return 1; 
+  set->converged = 1;
+  converged = 1;
+  return true;
 }
 
 // Update the filter with some new action
-void pf_update_action(pf_t *pf, pf_action_model_fn_t action_fn, void *action_data)
+void
+ParticleFilter::update_action(pf_action_model_fn_t action_fn, void *action_data)
 {
   pf_sample_set_t *set;
 
-  set = pf->sets + pf->current_set;
+  set = sets + current_set;
 
   (*action_fn) (action_data, set);
-  
-  return;
 }
 
-
-#include <float.h>
 // Update the filter with some new sensor observation
-void pf_update_sensor(pf_t *pf, pf_sensor_model_fn_t sensor_fn, void *sensor_data)
+void
+ParticleFilter::update_sensor(pf_sensor_model_fn_t sensor_fn, void *sensor_data)
 {
   int i;
   pf_sample_set_t *set;
   pf_sample_t *sample;
   double total;
 
-  set = pf->sets + pf->current_set;
+  set = sets + current_set;
 
   // Compute the sample weights
   total = (*sensor_fn) (sensor_data, set);
@@ -291,16 +272,14 @@ void pf_update_sensor(pf_t *pf, pf_sensor_model_fn_t sensor_fn, void *sensor_dat
     }
     // Update running averages of likelihood of samples (Prob Rob p258)
     w_avg /= set->sample_count;
-    if(pf->w_slow == 0.0)
-      pf->w_slow = w_avg;
+    if(w_slow == 0.0)
+      w_slow = w_avg;
     else
-      pf->w_slow += pf->alpha_slow * (w_avg - pf->w_slow);
-    if(pf->w_fast == 0.0)
-      pf->w_fast = w_avg;
+      w_slow += alpha_slow * (w_avg - w_slow);
+    if(w_fast == 0.0)
+      w_fast = w_avg;
     else
-      pf->w_fast += pf->alpha_fast * (w_avg - pf->w_fast);
-    //printf("w_avg: %e slow: %e fast: %e\n", 
-           //w_avg, pf->w_slow, pf->w_fast);
+      w_fast += alpha_fast * (w_avg - w_fast);
   }
   else
   {
@@ -311,12 +290,10 @@ void pf_update_sensor(pf_t *pf, pf_sensor_model_fn_t sensor_fn, void *sensor_dat
       sample->weight = 1.0 / set->sample_count;
     }
   }
-
-  return;
 }
 
-
-static double pf_resample_systematic(pf_t *pf, double w_diff)
+double
+ParticleFilter::resample_systematic(double w_diff)
 {
   int i;
   double total;
@@ -325,8 +302,8 @@ static double pf_resample_systematic(pf_t *pf, double w_diff)
 
   double* c;
 
-  set_a = pf->sets + pf->current_set;
-  set_b = pf->sets + (pf->current_set + 1) % 2;
+  set_a = sets + current_set;
+  set_b = sets + (current_set + 1) % 2;
 
   // Build up cumulative probability table for resampling.
   c = (double*)malloc(sizeof(double)*(set_a->sample_count+1));
@@ -339,15 +316,15 @@ static double pf_resample_systematic(pf_t *pf, double w_diff)
   set_b->sample_count = 0;
 
   // Approximate set_b's leaf_count from set_a's
-  int new_count = pf_resample_limit(pf, set_a->kdtree->leaf_count);
+  int new_count = resample_limit(set_a->kdtree->leaf_count);
   // Try to add particles for randomness.
   // No need to throw away our (possibly good) particles when we have free space in the filter for random ones.
   if(w_diff > 0.0)
   {
     new_count *= (1.0 + w_diff);
-    if (new_count > pf->max_samples)
+    if (new_count > max_samples)
     {
-      new_count = pf->max_samples;
+      new_count = max_samples;
     }
   }
   set_b->sample_count = new_count;
@@ -366,12 +343,12 @@ static double pf_resample_systematic(pf_t *pf, double w_diff)
   for(i=0; i<n_rand; ++i)
   {
     sample_b = set_b->samples + i;
-    sample_b->pose = (pf->random_pose_fn)(pf->random_pose_data);
+    sample_b->pose = (random_pose_fn)(random_pose_data);
     sample_b->weight = 1.0;
     total += sample_b->weight;
 
     // Add sample to histogram
-    pf_kdtree_insert(set_b->kdtree, sample_b->pose, sample_b->weight);
+    set_b->kdtree->insert_pose(sample_b->pose, sample_b->weight);
   }
   double target = systematic_sample_start;
   for(; i<set_b->sample_count; ++i)
@@ -397,28 +374,26 @@ static double pf_resample_systematic(pf_t *pf, double w_diff)
     total += sample_b->weight;
 
     // Add sample to histogram
-    pf_kdtree_insert(set_b->kdtree, sample_b->pose, sample_b->weight);
+    set_b->kdtree->insert_pose(sample_b->pose, sample_b->weight);
   }
 
   free(c);
   return total;
 }
 
-
-static double pf_resample_multinomial(pf_t *pf, double w_diff)
+double
+ParticleFilter::resample_multinomial(double w_diff)
 {
   int i;
   double total;
   pf_sample_set_t *set_a, *set_b;
   pf_sample_t *sample_a, *sample_b;
 
-  //double r,c,U;
-  //int m;
   //double count_inv;
   double* c;
 
-  set_a = pf->sets + pf->current_set;
-  set_b = pf->sets + (pf->current_set + 1) % 2;
+  set_a = sets + current_set;
+  set_b = sets + (current_set + 1) % 2;
 
   // Build up cumulative probability table for resampling.
   // TODO: Replace this with a more efficient procedure
@@ -432,48 +407,14 @@ static double pf_resample_multinomial(pf_t *pf, double w_diff)
   total = 0;
   set_b->sample_count = 0;
 
-  // Can't (easily) combine low-variance sampler with KLD adaptive
-  // sampling, so we'll take the more traditional route.
-  /*
-  // Low-variance resampler, taken from Probabilistic Robotics, p110
-  count_inv = 1.0/set_a->sample_count;
-  r = drand48() * count_inv;
-  c = set_a->samples[0].weight;
-  i = 0;
-  m = 0;
-  */
-  while(set_b->sample_count < pf->max_samples)
+  while(set_b->sample_count < max_samples)
   {
     sample_b = set_b->samples + set_b->sample_count++;
 
     if(drand48() < w_diff)
-      sample_b->pose = (pf->random_pose_fn)(pf->random_pose_data);
+      sample_b->pose = (random_pose_fn)(random_pose_data);
     else
     {
-      // Can't (easily) combine low-variance sampler with KLD adaptive
-      // sampling, so we'll take the more traditional route.
-      /*
-      // Low-variance resampler, taken from Probabilistic Robotics, p110
-      U = r + m * count_inv;
-      while(U>c)
-      {
-        i++;
-        // Handle wrap-around by resetting counters and picking a new random
-        // number
-        if(i >= set_a->sample_count)
-        {
-          r = drand48() * count_inv;
-          c = set_a->samples[0].weight;
-          i = 0;
-          m = 0;
-          U = r + m * count_inv;
-          continue;
-        }
-        c += set_a->samples[i].weight;
-      }
-      m++;
-      */
-
       // Naive discrete event sampler
       double r;
       r = drand48();
@@ -496,10 +437,10 @@ static double pf_resample_multinomial(pf_t *pf, double w_diff)
     total += sample_b->weight;
 
     // Add sample to histogram
-    pf_kdtree_insert(set_b->kdtree, sample_b->pose, sample_b->weight);
+    set_b->kdtree->insert_pose(sample_b->pose, sample_b->weight);
 
     // See if we have enough samples yet
-    if (set_b->sample_count > pf_resample_limit(pf, set_b->kdtree->leaf_count))
+    if (set_b->sample_count > resample_limit(set_b->kdtree->leaf_count))
       break;
   }
 
@@ -507,9 +448,9 @@ static double pf_resample_multinomial(pf_t *pf, double w_diff)
   return total;
 }
 
-
 // Resample the distribution
-void pf_update_resample(pf_t *pf)
+void
+ParticleFilter::update_resample()
 {
   int i;
   double total;
@@ -518,30 +459,30 @@ void pf_update_resample(pf_t *pf)
 
   double w_diff;
 
-  set_a = pf->sets + pf->current_set;
-  set_b = pf->sets + (pf->current_set + 1) % 2;
+  set_a = sets + current_set;
+  set_b = sets + (current_set + 1) % 2;
 
   // Create the kd tree for adaptive sampling
-  pf_kdtree_clear(set_b->kdtree);
+  set_b->kdtree->clear_kdtree();
 
-  w_diff = 1.0 - pf->w_fast / pf->w_slow;
+  w_diff = 1.0 - w_fast / w_slow;
   if(w_diff < 0.0)
     w_diff = 0.0;
 
-  switch(pf->resample_model)
+  switch(resample_model)
   {
     case PF_RESAMPLE_MULTINOMIAL:
     default:
-      total = pf_resample_multinomial(pf, w_diff);
+      total = resample_multinomial(w_diff);
       break;
     case PF_RESAMPLE_SYSTEMATIC:
-      total = pf_resample_systematic(pf, w_diff);
+      total = resample_systematic(w_diff);
       break;
   }
 
   // Reset averages, to avoid spiraling off into complete randomness.
   if(w_diff > 0.0)
-    pf->w_slow = pf->w_fast = 0.0;
+    w_slow = w_fast = 0.0;
 
   // Normalize weights
   for (i = 0; i < set_b->sample_count; i++)
@@ -551,45 +492,43 @@ void pf_update_resample(pf_t *pf)
   }
   
   // Re-compute cluster statistics
-  pf_cluster_stats(pf, set_b);
+  cluster_stats(set_b);
 
   // Use the newly created sample set
-  pf->current_set = (pf->current_set + 1) % 2; 
+  current_set = (current_set + 1) % 2; 
 
-  pf_update_converged(pf);
-
-  return;
+  update_converged();
 }
-
 
 // Compute the required number of samples, given that there are k bins
 // with samples in them.  This is taken directly from Fox et al.
-int pf_resample_limit(pf_t *pf, int k)
+int
+ParticleFilter::resample_limit(int k)
 {
   double a, b, c, x;
   int n;
 
   if (k <= 1)
-    return pf->max_samples;
+    return max_samples;
 
   a = 1;
   b = 2 / (9 * ((double) k - 1));
-  c = sqrt(2 / (9 * ((double) k - 1))) * pf->pop_z;
+  c = sqrt(2 / (9 * ((double) k - 1))) * pop_z;
   x = a - b + c;
 
-  n = (int) ceil((k - 1) / (2 * pf->pop_err) * x * x * x);
+  n = (int) ceil((k - 1) / (2 * pop_err) * x * x * x);
 
-  if (n < pf->min_samples)
-    return pf->min_samples;
-  if (n > pf->max_samples)
-    return pf->max_samples;
-  
+  if (n < min_samples)
+    return min_samples;
+  if (n > max_samples)
+    return max_samples;
+
   return n;
 }
 
-
 // Re-compute the cluster statistics for a sample set
-void pf_cluster_stats(pf_t *pf, pf_sample_set_t *set)
+void
+ParticleFilter::cluster_stats(pf_sample_set_t *set)
 {
   int i, j, k, cidx;
   pf_sample_t *sample;
@@ -601,7 +540,7 @@ void pf_cluster_stats(pf_t *pf, pf_sample_set_t *set)
   double weight;
 
   // Cluster the samples
-  pf_kdtree_cluster(set->kdtree);
+  set->kdtree->cluster();
   
   // Initialize cluster stats
   set->cluster_count = 0;
@@ -611,8 +550,8 @@ void pf_cluster_stats(pf_t *pf, pf_sample_set_t *set)
     cluster = set->clusters + i;
     cluster->count = 0;
     cluster->weight = 0;
-    cluster->mean = pf_vector_zero();
-    cluster->cov = pf_matrix_zero();
+    cluster->mean = PFVector();
+    cluster->cov = PFMatrix();
 
     for (j = 0; j < 4; j++)
       cluster->m[j] = 0.0;
@@ -624,8 +563,8 @@ void pf_cluster_stats(pf_t *pf, pf_sample_set_t *set)
   // Initialize overall filter stats
   count = 0;
   weight = 0.0;
-  set->mean = pf_vector_zero();
-  set->cov = pf_matrix_zero();
+  set->mean = PFVector();
+  set->cov = PFMatrix();
   for (j = 0; j < 4; j++)
     m[j] = 0.0;
   for (j = 0; j < 2; j++)
@@ -640,7 +579,7 @@ void pf_cluster_stats(pf_t *pf, pf_sample_set_t *set)
     //printf("%d %f %f %f\n", i, sample->pose.v[0], sample->pose.v[1], sample->pose.v[2]);
 
     // Get the cluster label for this sample
-    cidx = pf_kdtree_get_cluster(set->kdtree, sample->pose);
+    cidx = set->kdtree->get_cluster(sample->pose);
     assert(cidx >= 0);
     if (cidx >= set->cluster_max_count)
       continue;
@@ -684,7 +623,7 @@ void pf_cluster_stats(pf_t *pf, pf_sample_set_t *set)
     cluster->mean.v[1] = cluster->m[1] / cluster->weight;
     cluster->mean.v[2] = atan2(cluster->m[3], cluster->m[2]);
 
-    cluster->cov = pf_matrix_zero();
+    cluster->cov = PFMatrix();
 
     // Covariance in linear components
     for (j = 0; j < 2; j++)
@@ -696,10 +635,6 @@ void pf_cluster_stats(pf_t *pf, pf_sample_set_t *set)
     // formula for circular statistics.
     cluster->cov.m[2][2] = -2 * log(sqrt(cluster->m[2] * cluster->m[2] +
                                          cluster->m[3] * cluster->m[3]));
-
-    //printf("cluster %d %d %f (%f %f %f)\n", i, cluster->count, cluster->weight,
-           //cluster->mean.v[0], cluster->mean.v[1], cluster->mean.v[2]);
-    //pf_matrix_fprintf(cluster->cov, stdout, "%e");
   }
 
   // Compute overall filter stats
@@ -715,20 +650,18 @@ void pf_cluster_stats(pf_t *pf, pf_sample_set_t *set)
   // Covariance in angular components; I think this is the correct
   // formula for circular statistics.
   set->cov.m[2][2] = -2 * log(sqrt(m[2] * m[2] + m[3] * m[3]));
-
-  return;
 }
 
-
 // Compute the CEP statistics (mean and variance).
-void pf_get_cep_stats(pf_t *pf, pf_vector_t *mean, double *var)
+void
+ParticleFilter::get_cep_stats(PFVector *mean, double *var)
 {
   int i;
   double mn, mx, my, mrr;
   pf_sample_set_t *set;
   pf_sample_t *sample;
   
-  set = pf->sets + pf->current_set;
+  set = sets + current_set;
 
   mn = 0.0;
   mx = 0.0;
@@ -751,29 +684,24 @@ void pf_get_cep_stats(pf_t *pf, pf_vector_t *mean, double *var)
   mean->v[2] = 0.0;
 
   *var = mrr / mn - (mx * mx / (mn * mn) + my * my / (mn * mn));
-
-  return;
 }
 
-
 // Get the statistics for a particular cluster.
-int pf_get_cluster_stats(pf_t *pf, int clabel, double *weight,
-                         pf_vector_t *mean, pf_matrix_t *cov)
+bool
+ParticleFilter::get_cluster_stats(int clabel, double *weight, PFVector *mean, PFMatrix *cov)
 {
   pf_sample_set_t *set;
   pf_cluster_t *cluster;
 
-  set = pf->sets + pf->current_set;
+  set = sets + current_set;
 
   if (clabel >= set->cluster_count)
-    return 0;
+    return false;
   cluster = set->clusters + clabel;
 
   *weight = cluster->weight;
   *mean = cluster->mean;
   *cov = cluster->cov;
 
-  return 1;
+  return true;
 }
-
-

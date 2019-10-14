@@ -36,11 +36,11 @@ include_directories(include/amcl include/amcl/node include/amcl/map include/amcl
 include_directories(${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${OCTOMAP_INCLUDE_DIRS})
 
 add_library(amcl_pf
-                    src/amcl/pf/pf.c
-                    src/amcl/pf/pf_kdtree.c
-                    src/amcl/pf/pf_pdf.c
-                    src/amcl/pf/pf_vector.c
-                    src/amcl/pf/eig3.c)
+                    src/amcl/pf/pf.cpp
+                    src/amcl/pf/pf_kdtree.cpp
+                    src/amcl/pf/pf_pdf.cpp
+                    src/amcl/pf/pf_vector.cpp
+                    src/amcl/pf/eig3.cpp)
 
 add_library(amcl_map
                     src/amcl/map/map.cpp

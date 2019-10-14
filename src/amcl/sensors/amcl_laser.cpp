@@ -161,13 +161,13 @@ void AMCLLaser::SetMapFactors(double off_map_factor,
 
 ////////////////////////////////////////////////////////////////////////////////
 // Apply the laser sensor model
-bool AMCLLaser::UpdateSensor(pf_t *pf, AMCLSensorData *data)
+bool AMCLLaser::UpdateSensor(ParticleFilter *pf, AMCLSensorData *data)
 {
   if (this->max_beams < 2)
     return false;
 
   // Apply the laser sensor model
-  pf_update_sensor(pf, (pf_sensor_model_fn_t) ApplyModelToSampleSet, data);
+  pf->update_sensor((pf_sensor_model_fn_t) ApplyModelToSampleSet, data);
 
   return true;
 }
@@ -180,7 +180,7 @@ double AMCLLaser::ApplyModelToSampleSet(AMCLSensorData *data, pf_sample_set_t *s
   double rv = 0.0;
   int j;
   pf_sample_t *sample;
-  pf_vector_t pose;
+  PFVector pose;
   int mi, mj;
 
   self = (AMCLLaser*) data->sensor;
@@ -251,7 +251,7 @@ double AMCLLaser::BeamModel(AMCLLaserData *data, pf_sample_set_t* set)
   double obs_range, obs_bearing;
   double total_weight;
   pf_sample_t *sample;
-  pf_vector_t pose;
+  PFVector pose;
 
   self = (AMCLLaser*) data->sensor;
 
@@ -264,7 +264,7 @@ double AMCLLaser::BeamModel(AMCLLaserData *data, pf_sample_set_t* set)
     pose = sample->pose;
 
     // Take account of the laser pose relative to the robot
-    pose = pf_vector_coord_add(self->laser_pose, pose);
+    pose = PFVector::pf_vector_coord_add(self->laser_pose, pose);
 
     p = 1.0;
 
@@ -321,8 +321,8 @@ double AMCLLaser::LikelihoodFieldModel(AMCLLaserData *data, pf_sample_set_t* set
   double obs_range, obs_bearing;
   double total_weight;
   pf_sample_t *sample;
-  pf_vector_t pose;
-  pf_vector_t hit;
+  PFVector pose;
+  PFVector hit;
 
   self = (AMCLLaser*) data->sensor;
 
@@ -335,7 +335,7 @@ double AMCLLaser::LikelihoodFieldModel(AMCLLaserData *data, pf_sample_set_t* set
     pose = sample->pose;
 
     // Take account of the laser pose relative to the robot
-    pose = pf_vector_coord_add(self->laser_pose, pose);
+    pose = PFVector::pf_vector_coord_add(self->laser_pose, pose);
 
     p = 1.0;
 
@@ -413,8 +413,8 @@ double AMCLLaser::LikelihoodFieldModelProb(AMCLLaserData *data, pf_sample_set_t*
   double obs_range, obs_bearing;
   double total_weight;
   pf_sample_t *sample;
-  pf_vector_t pose;
-  pf_vector_t hit;
+  PFVector pose;
+  PFVector hit;
 
   self = (AMCLLaser*) data->sensor;
 
@@ -478,7 +478,7 @@ double AMCLLaser::LikelihoodFieldModelProb(AMCLLaserData *data, pf_sample_set_t*
     pose = sample->pose;
 
     // Take account of the laser pose relative to the robot
-    pose = pf_vector_coord_add(self->laser_pose, pose);
+    pose = PFVector::pf_vector_coord_add(self->laser_pose, pose);
 
     log_p = 0;
     
@@ -618,8 +618,8 @@ double AMCLLaser::LikelihoodFieldModelGompertz(AMCLLaserData *data, pf_sample_se
   double obs_range, obs_bearing;
   double total_weight;
   pf_sample_t *sample;
-  pf_vector_t pose;
-  pf_vector_t hit;
+  PFVector pose;
+  PFVector hit;
 
   self = (AMCLLaser*) data->sensor;
 
@@ -632,7 +632,7 @@ double AMCLLaser::LikelihoodFieldModelGompertz(AMCLLaserData *data, pf_sample_se
     pose = sample->pose;
 
     // Take account of the laser pose relative to the robot
-    pose = pf_vector_coord_add(self->laser_pose, pose);
+    pose = PFVector::pf_vector_coord_add(self->laser_pose, pose);
 
     // Pre-compute a couple of things
     double z_hit_denom = 2 * self->sigma_hit * self->sigma_hit;
