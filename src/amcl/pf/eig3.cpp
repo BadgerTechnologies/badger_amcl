@@ -2,22 +2,22 @@
 /* Eigen decomposition code for symmetric 3x3 matrices, copied from the public
    domain Java Matrix library JAMA. */
 
+#include "eig3.h"
 #include <math.h>
+#include <stdlib.h>
+#include <vector>
 
-#ifndef MAX
-#define MAX(a, b) ((a)>(b)?(a):(b))
-#endif
+using namespace amcl;
 
-//#define n 3
-static int n = 3;
-
-static double hypot2(double x, double y) {
+double
+eig3::hypot2(double x, double y) {
   return sqrt(x*x+y*y);
 }
 
 // Symmetric Householder reduction to tridiagonal form.
 
-static void tred2(double V[n][n], double d[n], double e[n]) {
+void
+eig3::tred2(std::vector<std::vector<double>> V, std::vector<double> d, std::vector<double> e) {
 
 //  This is derived from the Algol procedures tred2 by
 //  Bowdler, Martin, Reinsch, and Wilkinson, Handbook for
@@ -136,7 +136,8 @@ static void tred2(double V[n][n], double d[n], double e[n]) {
 
 // Symmetric tridiagonal QL algorithm.
 
-static void tql2(double V[n][n], double d[n], double e[n]) {
+void
+eig3::tql2(std::vector<std::vector<double>> V, std::vector<double> d, std::vector<double> e) {
 
 //  This is derived from the Algol procedures tql2, by
 //  Bowdler, Martin, Reinsch, and Wilkinson, Handbook for
@@ -159,7 +160,7 @@ static void tql2(double V[n][n], double d[n], double e[n]) {
 
     // Find small subdiagonal element
 
-    tst1 = MAX(tst1,fabs(d[l]) + fabs(e[l]));
+    tst1 = std::max(fabs(d[l]) + fabs(e[l]), tst1);
     m = l;
     while (m < n) {
       if (fabs(e[m]) <= eps*tst1) {
@@ -258,14 +259,15 @@ static void tql2(double V[n][n], double d[n], double e[n]) {
   }
 }
 
-void eigen_decomposition(double A[n][n], double V[n][n], double d[n]) {
+void
+eig3::eigen_decomposition(std::vector<std::vector<double>> A, std::vector<std::vector<double>> V, std::vector<double> d) {
   int i,j;
-  double e[n];
+  std::vector<double> e;
   for (i = 0; i < n; i++) {
     for (j = 0; j < n; j++) {
       V[i][j] = A[i][j];
     }
   }
-  tred2(V, d, e);
-  tql2(V, d, e);
+  eig3::tred2(V, d, e);
+  eig3::tql2(V, d, e);
 }

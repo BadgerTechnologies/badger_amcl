@@ -125,7 +125,7 @@ AMCLOdom::SetModel( odom_model_t type,
 
 ////////////////////////////////////////////////////////////////////////////////
 // Apply the action model
-bool AMCLOdom::UpdateAction(pf_t *pf, AMCLSensorData *data)
+bool AMCLOdom::UpdateAction(ParticleFilter *pf, AMCLSensorData *data)
 {
   AMCLOdomData *ndata;
   ndata = (AMCLOdomData*) data;
@@ -134,7 +134,7 @@ bool AMCLOdom::UpdateAction(pf_t *pf, AMCLSensorData *data)
   pf_sample_set_t *set;
 
   set = pf->sets + pf->current_set;
-  pf_vector_t old_pose = pf_vector_sub(ndata->pose, ndata->delta);
+  PFVector old_pose = PFVector::pf_vector_sub(ndata->pose, ndata->delta);
 
   switch( this->model_type )
   {
@@ -165,9 +165,9 @@ bool AMCLOdom::UpdateAction(pf_t *pf, AMCLSensorData *data)
       double sn_bearing = sin(delta_bearing);
 
       // Sample pose differences
-      delta_trans_hat = delta_trans + pf_ran_gaussian(trans_hat_stddev);
-      delta_rot_hat = delta_rot + pf_ran_gaussian(rot_hat_stddev);
-      delta_strafe_hat = 0 + pf_ran_gaussian(strafe_hat_stddev);
+      delta_trans_hat = delta_trans + PDFGaussian::draw(trans_hat_stddev);
+      delta_rot_hat = delta_rot + PDFGaussian::draw(rot_hat_stddev);
+      delta_strafe_hat = 0 + PDFGaussian::draw(strafe_hat_stddev);
       // Apply sampled update to particle pose
       sample->pose.v[0] += (delta_trans_hat * cs_bearing + 
                             delta_strafe_hat * sn_bearing);
@@ -210,14 +210,14 @@ bool AMCLOdom::UpdateAction(pf_t *pf, AMCLSensorData *data)
 
       // Sample pose differences
       delta_rot1_hat = angle_diff(delta_rot1,
-                                  pf_ran_gaussian(this->alpha1*delta_rot1_noise*delta_rot1_noise +
+                                  PDFGaussian::draw(this->alpha1*delta_rot1_noise*delta_rot1_noise +
                                                   this->alpha2*delta_trans*delta_trans));
       delta_trans_hat = delta_trans - 
-              pf_ran_gaussian(this->alpha3*delta_trans*delta_trans +
+              PDFGaussian::draw(this->alpha3*delta_trans*delta_trans +
                               this->alpha4*delta_rot1_noise*delta_rot1_noise +
                               this->alpha4*delta_rot2_noise*delta_rot2_noise);
       delta_rot2_hat = angle_diff(delta_rot2,
-                                  pf_ran_gaussian(this->alpha1*delta_rot2_noise*delta_rot2_noise +
+                                  PDFGaussian::draw(this->alpha1*delta_rot2_noise*delta_rot2_noise +
                                                   this->alpha2*delta_trans*delta_trans));
 
       // Apply sampled update to particle pose
@@ -256,9 +256,9 @@ bool AMCLOdom::UpdateAction(pf_t *pf, AMCLSensorData *data)
       double sn_bearing = sin(delta_bearing);
 
       // Sample pose differences
-      delta_trans_hat = delta_trans + pf_ran_gaussian(trans_hat_stddev);
-      delta_rot_hat = delta_rot + pf_ran_gaussian(rot_hat_stddev);
-      delta_strafe_hat = 0 + pf_ran_gaussian(strafe_hat_stddev);
+      delta_trans_hat = delta_trans + PDFGaussian::draw(trans_hat_stddev);
+      delta_rot_hat = delta_rot + PDFGaussian::draw(rot_hat_stddev);
+      delta_strafe_hat = 0 + PDFGaussian::draw(strafe_hat_stddev);
       // Apply sampled update to particle pose
       sample->pose.v[0] += (delta_trans_hat * cs_bearing + 
                             delta_strafe_hat * sn_bearing);
@@ -301,14 +301,14 @@ bool AMCLOdom::UpdateAction(pf_t *pf, AMCLSensorData *data)
 
       // Sample pose differences
       delta_rot1_hat = angle_diff(delta_rot1,
-                                  pf_ran_gaussian(sqrt(this->alpha1*delta_rot1_noise*delta_rot1_noise +
+                                  PDFGaussian::draw(sqrt(this->alpha1*delta_rot1_noise*delta_rot1_noise +
                                                        this->alpha2*delta_trans*delta_trans)));
       delta_trans_hat = delta_trans - 
-              pf_ran_gaussian(sqrt(this->alpha3*delta_trans*delta_trans +
+              PDFGaussian::draw(sqrt(this->alpha3*delta_trans*delta_trans +
                                    this->alpha4*delta_rot1_noise*delta_rot1_noise +
                                    this->alpha4*delta_rot2_noise*delta_rot2_noise));
       delta_rot2_hat = angle_diff(delta_rot2,
-                                  pf_ran_gaussian(sqrt(this->alpha1*delta_rot2_noise*delta_rot2_noise +
+                                  PDFGaussian::draw(sqrt(this->alpha1*delta_rot2_noise*delta_rot2_noise +
                                                        this->alpha2*delta_trans*delta_trans)));
 
       // Apply sampled update to particle pose
@@ -359,9 +359,9 @@ bool AMCLOdom::UpdateAction(pf_t *pf, AMCLSensorData *data)
       double sn_bearing = sin(delta_bearing);
 
       // Sample pose differences
-      delta_trans_hat = pf_ran_gaussian(trans_hat_stddev);
-      delta_strafe_hat = pf_ran_gaussian(strafe_hat_stddev);
-      delta_rot_hat = pf_ran_gaussian(rot_hat_stddev);
+      delta_trans_hat = PDFGaussian::draw(trans_hat_stddev);
+      delta_strafe_hat = PDFGaussian::draw(strafe_hat_stddev);
+      delta_rot_hat = PDFGaussian::draw(rot_hat_stddev);
       // Apply sampled update to particle pose
       sample->pose.v[0] += (delta_trans * cs_bearing);
       sample->pose.v[1] += (delta_trans * sn_bearing);

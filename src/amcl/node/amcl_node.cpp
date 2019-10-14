@@ -31,6 +31,7 @@
 
 #include "map.h"
 #include "pf.h"
+#include "pf_vector.h"
 #include "amcl_odom.h"
 #include "amcl_node.h"
 
@@ -300,26 +301,24 @@ AmclNode::reconfigureCB(AMCLConfig &config, uint32_t level)
   beam_skip_distance_ = config.beam_skip_distance;
   beam_skip_threshold_ = config.beam_skip_threshold;
 
-  pf_ = pf_alloc(min_particles_, max_particles_,
-                 alpha_slow_, alpha_fast_,
-                 (pf_init_model_fn_t)AmclNode::uniformPoseGenerator,
-                 (void *)this);
+  pf_ = new ParticleFilter(min_particles_, max_particles_, alpha_slow_, alpha_fast_,
+                           (pf_init_model_fn_t)AmclNode::uniformPoseGenerator, (void *)this);
   pf_err_ = config.kld_err;
   pf_z_ = config.kld_z;
   pf_->pop_err = pf_err_;
   pf_->pop_z = pf_z_;
-  pf_set_resample_model(pf_, resample_model_type_);
+  pf_->set_resample_model(resample_model_type_);
 
   // Initialize the filter
-  pf_vector_t pf_init_pose_mean = pf_vector_zero();
+  PFVector pf_init_pose_mean;
   pf_init_pose_mean.v[0] = last_published_pose.pose.pose.position.x;
   pf_init_pose_mean.v[1] = last_published_pose.pose.pose.position.y;
   pf_init_pose_mean.v[2] = tf::getYaw(last_published_pose.pose.pose.orientation);
-  pf_matrix_t pf_init_pose_cov = pf_matrix_zero();
+  PFMatrix pf_init_pose_cov;
   pf_init_pose_cov.m[0][0] = last_published_pose.pose.covariance[6*0+0];
   pf_init_pose_cov.m[1][1] = last_published_pose.pose.covariance[6*1+1];
   pf_init_pose_cov.m[2][2] = last_published_pose.pose.covariance[6*5+5];
-  pf_init(pf_, pf_init_pose_mean, pf_init_pose_cov);
+  pf_->init(pf_init_pose_mean, pf_init_pose_cov);
   pf_init_ = false;
 
   // Instantiate the sensor objects
@@ -670,23 +669,21 @@ AmclNode::initFromNewMap()
 {
 
   // Create the particle filter
-  pf_ = pf_alloc(min_particles_, max_particles_,
-                 alpha_slow_, alpha_fast_,
-                 (pf_init_model_fn_t)AmclNode::uniformPoseGenerator,
-                 (void *)this);
+  pf_ = new ParticleFilter(min_particles_, max_particles_, alpha_slow_, alpha_fast_,
+                           (pf_init_model_fn_t)AmclNode::uniformPoseGenerator, (void *)this);
   pf_->pop_err = pf_err_;
   pf_->pop_z = pf_z_;
-  pf_set_resample_model(pf_, resample_model_type_);
+  pf_->set_resample_model(resample_model_type_);
 
-  pf_vector_t pf_init_pose_mean = pf_vector_zero();
+  PFVector pf_init_pose_mean;
   pf_init_pose_mean.v[0] = init_pose_[0];
   pf_init_pose_mean.v[1] = init_pose_[1];
   pf_init_pose_mean.v[2] = init_pose_[2];
-  pf_matrix_t pf_init_pose_cov = pf_matrix_zero();
+  PFMatrix pf_init_pose_cov;
   pf_init_pose_cov.m[0][0] = init_cov_[0];
   pf_init_pose_cov.m[1][1] = init_cov_[1];
   pf_init_pose_cov.m[2][2] = init_cov_[2];
-  pf_init(pf_, pf_init_pose_mean, pf_init_pose_cov);
+  pf_->init(pf_init_pose_mean, pf_init_pose_cov);
   pf_init_ = false;
 
   // Instantiate the sensor objects
@@ -718,7 +715,7 @@ AmclNode::freeMapDependentMemory()
     map_ = NULL;
   }
   if( pf_ != NULL ) {
-    pf_free( pf_ );
+    pf_->~ParticleFilter();
     pf_ = NULL;
   }
   delete odom_;
@@ -752,7 +749,7 @@ AmclNode::initOdomIntegrator()
 void
 AmclNode::resetOdomIntegrator()
 {
-  odom_integrator_absolute_motion_ = pf_vector_zero();
+  odom_integrator_absolute_motion_ = PFVector();
 }
 
 void
@@ -763,7 +760,7 @@ AmclNode::integrateOdom(const nav_msgs::OdometryConstPtr& msg)
   // NOTE: assume this odom topic is from our odom frame to our base frame.
   tf::Pose tf_pose;
   poseMsgToTF(msg->pose.pose, tf_pose);
-  pf_vector_t pose;
+  PFVector pose;
   pose.v[0] = tf_pose.getOrigin().x();
   pose.v[1] = tf_pose.getOrigin().y();
   double yaw,pitch,roll;
@@ -774,7 +771,7 @@ AmclNode::integrateOdom(const nav_msgs::OdometryConstPtr& msg)
     resetOdomIntegrator();
     odom_integrator_ready_ = true;
   } else {
-    pf_vector_t delta;
+    PFVector delta;
 
     delta.v[0] = pose.v[0] - odom_integrator_last_pose_.v[0];
     delta.v[1] = pose.v[1] - odom_integrator_last_pose_.v[1];
@@ -836,11 +833,11 @@ AmclNode::getOdomPose(tf::Stamped<tf::Pose>& odom_pose,
 }
 
 // Helper function to generate a random free-space pose
-pf_vector_t
+PFVector
 AmclNode::randomFreeSpacePose()
 {
   Map* map = this->map_;
-  pf_vector_t p;
+  PFVector p;
 
   unsigned int rand_index = drand48() * free_space_indices.size();
   std::pair<int,int> free_point = free_space_indices[rand_index];
@@ -855,7 +852,7 @@ AmclNode::randomFreeSpacePose()
 
 // Helper function to score a pose for uniform pose generation
 double
-AmclNode::scorePose(const pf_vector_t &p)
+AmclNode::scorePose(const PFVector &p)
 {
   if(map_type_ == 2)
   {
@@ -872,13 +869,13 @@ AmclNode::scorePose(const pf_vector_t &p)
   }
 }
 
-pf_vector_t
+PFVector
 AmclNode::uniformPoseGenerator(void* arg)
 {
   AmclNode *self = (AmclNode*)arg;
   double good_weight = self->uniform_pose_starting_weight_threshold_;
   const double deweight_multiplier = self->uniform_pose_deweight_multiplier_;
-  pf_vector_t p;
+  PFVector p;
 
   p = self->randomFreeSpacePose();
 
@@ -923,8 +920,7 @@ AmclNode::globalLocalizationCallback(std_srvs::Empty::Request& req,
   }
 
   ROS_INFO("Initializing with uniform distribution");
-  pf_init_model(pf_, (pf_init_model_fn_t)AmclNode::uniformPoseGenerator,
-                (void *)this);
+  pf_->init_model((pf_init_model_fn_t)AmclNode::uniformPoseGenerator, (void *)this);
   ROS_INFO("Global initialisation done!");
   pf_init_ = false;
   return true;
@@ -1078,11 +1074,11 @@ AmclNode::handleInitialPoseMessage(const geometry_msgs::PoseWithCovarianceStampe
            pose_new.getOrigin().y(),
            getYaw(pose_new));
   // Re-initialize the filter
-  pf_vector_t pf_init_pose_mean = pf_vector_zero();
+  PFVector pf_init_pose_mean;
   pf_init_pose_mean.v[0] = pose_new.getOrigin().x();
   pf_init_pose_mean.v[1] = pose_new.getOrigin().y();
   pf_init_pose_mean.v[2] = getYaw(pose_new);
-  pf_matrix_t pf_init_pose_cov = pf_matrix_zero();
+  PFMatrix pf_init_pose_cov;
   // Copy in the covariance, converting from 6-D to 3-D
   for(int i=0; i<2; i++)
   {
@@ -1113,7 +1109,7 @@ AmclNode::applyInitialPose()
 {
   boost::recursive_mutex::scoped_lock cfl(configuration_mutex_);
   if( initial_pose_hyp_ != NULL && map_ != NULL ) {
-    pf_init(pf_, initial_pose_hyp_->pf_pose_mean, initial_pose_hyp_->pf_pose_cov);
+    pf_->init(initial_pose_hyp_->pf_pose_mean, initial_pose_hyp_->pf_pose_cov);
     pf_init_ = false;
 
     delete initial_pose_hyp_;

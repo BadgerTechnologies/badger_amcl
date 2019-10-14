@@ -63,10 +63,10 @@ typedef struct
   double weight;
 
   // Mean of pose esimate
-  pf_vector_t pf_pose_mean;
+  PFVector pf_pose_mean;
 
   // Covariance of pose estimate
-  pf_matrix_t pf_pose_cov;
+  PFMatrix pf_pose_cov;
 
 } amcl_hyp_t;
 
@@ -131,14 +131,14 @@ class AmclNode
     bool latest_tf_valid_;
 
     // Score a single pose with the sensor model using the last sensor data
-    double scorePose(const pf_vector_t &p);
-    double scorePose2D(const pf_vector_t &p);
-    double scorePose3D(const pf_vector_t &p);
+    double scorePose(const PFVector &p);
+    double scorePose2D(const PFVector &p);
+    double scorePose3D(const PFVector &p);
     // Generate a random pose in a free space on the map
-    pf_vector_t randomFreeSpacePose();
+    PFVector randomFreeSpacePose();
     // Pose-generating function used to uniformly distribute particles over
     // the map
-    static pf_vector_t uniformPoseGenerator(void* arg);
+    static PFVector uniformPoseGenerator(void* arg);
     static std::vector<std::pair<int,int> > free_space_indices;
     // Callbacks
     bool globalLocalizationCallback(std_srvs::Empty::Request& req,
@@ -206,10 +206,10 @@ class AmclNode
     std::map< std::string, int > frame_to_laser_;
 
     // Particle filter
-    pf_t *pf_;
+    ParticleFilter *pf_;
     double pf_err_, pf_z_;
     bool pf_init_;
-    pf_vector_t pf_odom_pose_;
+    PFVector pf_odom_pose_;
     double d_thresh_, a_thresh_;
     pf_resample_model_t resample_model_type_;
     int resample_interval_;
@@ -224,8 +224,8 @@ class AmclNode
     ros::Subscriber odom_integrator_sub_;
     std::string odom_integrator_topic_;
     bool odom_integrator_ready_;
-    pf_vector_t odom_integrator_last_pose_;
-    pf_vector_t odom_integrator_absolute_motion_;
+    PFVector odom_integrator_last_pose_;
+    PFVector odom_integrator_absolute_motion_;
 
     //Nomotion update control
     bool m_force_update;  // used to temporarily let amcl update samples even when no motion occurs...

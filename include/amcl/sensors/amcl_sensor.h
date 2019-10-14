@@ -48,24 +48,22 @@ class AMCLSensor
 
   // Update the filter based on the action model.  Returns true if the filter
   // has been updated.
-  public: virtual bool UpdateAction(pf_t *pf, AMCLSensorData *data);
+  public: virtual bool UpdateAction(ParticleFilter *pf, AMCLSensorData *data);
 
   // Initialize the filter based on the sensor model.  Returns true if the
   // filter has been initialized.
-  public: virtual bool InitSensor(pf_t *pf, AMCLSensorData *data);
+  public: virtual bool InitSensor(ParticleFilter *pf, AMCLSensorData *data);
 
   // Update the filter based on the sensor model.  Returns true if the
   // filter has been updated.
-  public: virtual bool UpdateSensor(pf_t *pf, AMCLSensorData *data);
+  public: virtual bool UpdateSensor(ParticleFilter *pf, AMCLSensorData *data);
 
   // Flag is true if this is the action sensor
   public: bool is_action;
 
   // Action pose (action sensors only)
-  public: pf_vector_t pose;
+  public: PFVector pose;
 };
-
-
 
 // Base class for all AMCL sensor measurements
 class AMCLSensorData

@@ -6,6 +6,26 @@
 
 /* Symmetric matrix A => eigenvectors in columns of V, corresponding
    eigenvalues in d. */
-void eigen_decomposition(double A[3][3], double V[3][3], double d[3]);
+
+#include <vector>
+
+namespace amcl
+{
+
+class eig3
+{
+
+public:
+  static void eigen_decomposition(std::vector<std::vector<double>> A,
+                                  std::vector<std::vector<double>> V,
+                                  std::vector<double> d);
+private:
+  static const int n = 3;
+  static double hypot2(double x, double y);
+  static void tred2(std::vector<std::vector<double>> V, std::vector<double> d, std::vector<double> e);
+  static void tql2(std::vector<std::vector<double>> V, std::vector<double> d, std::vector<double> e);
+};
+
+}
 
 #endif

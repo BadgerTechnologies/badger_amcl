@@ -184,7 +184,7 @@ AmclNode::convertMap( const nav_msgs::OccupancyGrid& map_msg )
 
 // Helper function to score a pose for uniform pose generation
 double
-AmclNode::scorePose2D(const pf_vector_t &p)
+AmclNode::scorePose2D(const PFVector &p)
 {
   if(this->last_laser_data_ == NULL)
   {
@@ -432,7 +432,7 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
       return;
     }
 
-    pf_vector_t laser_pose_v;
+    PFVector laser_pose_v;
     laser_pose_v.v[0] = laser_pose.getOrigin().x();
     laser_pose_v.v[1] = laser_pose.getOrigin().y();
     // laser mounting angle gets computed later -> set to 0 here!
@@ -450,7 +450,7 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
   }
 
   // Where was the robot when this scan was taken?
-  pf_vector_t pose;
+  PFVector pose;
   if(!getOdomPose(latest_odom_pose_, pose.v[0], pose.v[1], pose.v[2],
                   laser_scan->header.stamp, base_frame_id_))
   {
@@ -459,12 +459,11 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
   }
 
 
-  pf_vector_t delta = pf_vector_zero();
+  PFVector delta;
 
   if(pf_init_)
   {
     // Compute change in pose
-    //delta = pf_vector_coord_sub(pose, pf_odom_pose_);
     delta.v[0] = pose.v[0] - pf_odom_pose_.v[0];
     delta.v[1] = pose.v[1] - pf_odom_pose_.v[1];
     delta.v[2] = angle_diff(pose.v[2], pf_odom_pose_.v[2]);
@@ -512,9 +511,6 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
   // If the robot has moved, update the filter
   else if(pf_init_ && lasers_update_[laser_index])
   {
-    //printf("pose\n");
-    //pf_vector_fprintf(pose, stdout, "%.3f");
-
     AMCLOdomData odata;
     odata.pose = pose;
     // HACK
@@ -616,7 +612,7 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
     // Resample the particles
     if(!(++resample_count_ % resample_interval_))
     {
-      pf_update_resample(pf_);
+      pf_->update_resample();
       resampled = true;
       if(pf_->converged && global_localization_active_)
       {
@@ -663,9 +659,9 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
         hyp_count < pf_->sets[pf_->current_set].cluster_count; hyp_count++)
     {
       double weight;
-      pf_vector_t pose_mean;
-      pf_matrix_t pose_cov;
-      if (!pf_get_cluster_stats(pf_, hyp_count, &weight, &pose_mean, &pose_cov))
+      PFVector pose_mean;
+      PFMatrix pose_cov;
+      if (!pf_->get_cluster_stats(hyp_count, &weight, &pose_mean, &pose_cov))
       {
         ROS_ERROR("Couldn't get stats on cluster %d", hyp_count);
         break;
@@ -688,12 +684,6 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
                 hyps[max_weight_hyp].pf_pose_mean.v[0],
                 hyps[max_weight_hyp].pf_pose_mean.v[1],
                 hyps[max_weight_hyp].pf_pose_mean.v[2]);
-
-      /*
-         puts("");
-         pf_matrix_fprintf(hyps[max_weight_hyp].pf_pose_cov, stdout, "%6.3f");
-         puts("");
-       */
 
       geometry_msgs::PoseWithCovarianceStamped p;
       // Fill in the header

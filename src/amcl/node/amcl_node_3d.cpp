@@ -57,7 +57,7 @@ AmclNode::convertMap(const sensor_msgs::PointCloud& map_msg)
 }
 
 double
-AmclNode::scorePose3D(const pf_vector_t &p)
+AmclNode::scorePose3D(const PFVector &p)
 {
   return 0.0;
 }
