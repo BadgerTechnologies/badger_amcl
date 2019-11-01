@@ -1,13 +1,30 @@
 /*
+ *  This library is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU Lesser General Public
+ *  License as published by the Free Software Foundation; either
+ *  version 2.1 of the License, or (at your option) any later version.
  *
- *       AMCL Octomap Class
- *        by Tyler Buchman
- *        2019
+ *  This library is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  Lesser General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Lesser General Public
+ *  License along with this library; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
+///////////////////////////////////////////////////////////////////////////
+//
+// Desc: OctoMap for 3D AMCL
+// Author: Tyler Buchman (tyler_buchman@jabil.com)
+//
+///////////////////////////////////////////////////////////////////////////
 
-#ifndef OCTOMAP_H
-#define OCTOMAP_H
+
+
+#ifndef AMCL_OCTOMAP_H
+#define AMCL_OCTOMAP_H
 
 #include <vector>
 #include <octomap/octomap.h>
@@ -34,12 +51,11 @@ class OctoMap : public Map
     bool isValid(std::vector<int> coords);
     std::vector<int> getSize();
     std::vector<double> getOrigin();
-    void setOrigin(std::vector<double> _origin);
+    void setOrigin(std::vector<double> origin);
     // Update the cspace distance values
     void updateCSpace();
-    void updateCSpace(double max_occ_dist_);
+    void updateCSpace(double max_occ_dist);
     void initFromOctree(octomap::OcTree* octree, double lidar_height);
-    double getOccDist(int i, int j, int k, bool pub);
     double getOccDist(int i, int j, int k);
     double getOccDist(int i, int j);
     double getMaxOccDist();
@@ -96,17 +112,6 @@ class OctoMap : public Map
         }
     };
 
-    octomap::OcTree* octree;
-    octomap::OcTreeDistance* distances;
-    // Map origin; the map is a viewport onto a conceptual larger map.
-    double origin_x, origin_y, origin_z;
-    // Map dimensions (number of cells)
-    int cells_x, cells_y, cells_z, min_cells_x, min_cells_y, min_cells_z, max_cells_x, max_cells_y, max_cells_z;
-    octomap::point3d map_min, map_max;
-    double lidar_height;
-
-    CachedDistanceMap* cdm;
-
     void setOccDist(int i, int j, int k, double d);
     bool enqueue(int i, int j, int k, int src_i, int src_j, int src_k,
 	             std::priority_queue<CellData>& Q);
@@ -114,6 +119,15 @@ class OctoMap : public Map
 
     friend bool operator<(const OctoMap::CellData& a, const OctoMap::CellData& b);
 
+    octomap::OcTree* octree_;
+    octomap::OcTreeDistance* distances_;
+    // Map origin; the map is a viewport onto a conceptual larger map.
+    std::vector<double> origin_;
+    // Map dimensions (number of cells)
+    std::vector<int> cropped_min_cells_, cropped_max_cells_, full_cells_;
+    double lidar_height_;
+
+    CachedDistanceMap* cdm_;
 };
 
 inline bool operator<(const OctoMap::CellData& a, const OctoMap::CellData& b)

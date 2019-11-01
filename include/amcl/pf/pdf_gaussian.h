@@ -21,12 +21,11 @@
 /**************************************************************************
  * Desc: Useful pdf functions
  * Author: Andrew Howard
- * Date: 10 Dec 2002
- * CVS: $Id: pf_pdf.h 6345 2008-04-17 01:36:39Z gerkey $
+ * Maintainter: Tyler Buchman (tyler_buchman@jabil.com)
  *************************************************************************/
 
-#ifndef PF_PDF_H
-#define PF_PDF_H
+#ifndef AMCL_PDF_GAUSSIAN_H
+#define AMCL_PDF_GAUSSIAN_H
 
 #include "pf_vector.h"
 
@@ -55,14 +54,12 @@ class PDFGaussian
 
   private:
     // Mean, covariance and inverse covariance
-    PFVector x;
-    PFMatrix cx;
-    PFMatrix cxi;
-    double cxdet;
+    PFVector x_;
+    PFMatrix cx_;
 
     // Decomposed covariance matrix (rotation * diagonal)
-    PFMatrix cr;
-    PFVector cd;
+    PFMatrix cr_;
+    PFVector cd_;
 };
 
 }

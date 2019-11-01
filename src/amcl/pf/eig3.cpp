@@ -1,3 +1,7 @@
+/**************************************************************************
+ * Desc: Eigen-decomposition functions
+ * Maintainter: Tyler Buchman (tyler_buchman@jabil.com)
+ *************************************************************************/
 
 /* Eigen decomposition code for symmetric 3x3 matrices, copied from the public
    domain Java Matrix library JAMA. */
@@ -13,14 +17,14 @@
 using namespace amcl;
 
 double
-eig3::hypot2(double x, double y) {
+EIG3::hypot2(double x, double y) {
   return sqrt(x*x+y*y);
 }
 
 // Symmetric Householder reduction to tridiagonal form.
 
 void
-eig3::tred2(std::vector<std::vector<double>> V, std::vector<double> d, std::vector<double> e) {
+EIG3::tred2(std::vector<std::vector<double>> V, std::vector<double> d, std::vector<double> e) {
 
 //  This is derived from the Algol procedures tred2 by
 //  Bowdler, Martin, Reinsch, and Wilkinson, Handbook for
@@ -29,13 +33,13 @@ eig3::tred2(std::vector<std::vector<double>> V, std::vector<double> d, std::vect
 
   int i,j,k;
   double f,g,h,hh;
-  for (j = 0; j < n; j++) {
-    d[j] = V[n-1][j];
+  for (j = 0; j < N; j++) {
+    d[j] = V[N-1][j];
   }
 
   // Householder reduction to tridiagonal form.
 
-  for (i = n-1; i > 0; i--) {
+  for (i = N-1; i > 0; i--) {
     // Scale to avoid under/overflow.
 
     double scale = 0.0;
@@ -105,8 +109,8 @@ eig3::tred2(std::vector<std::vector<double>> V, std::vector<double> d, std::vect
 
   // Accumulate transformations.
 
-  for (i = 0; i < n-1; i++) {
-    V[n-1][i] = V[i][i];
+  for (i = 0; i < N-1; i++) {
+    V[N-1][i] = V[i][i];
     V[i][i] = 1.0;
     h = d[i+1];
     if (h != 0.0) {
@@ -127,18 +131,18 @@ eig3::tred2(std::vector<std::vector<double>> V, std::vector<double> d, std::vect
       V[k][i+1] = 0.0;
     }
   }
-  for (j = 0; j < n; j++) {
-    d[j] = V[n-1][j];
-    V[n-1][j] = 0.0;
+  for (j = 0; j < N; j++) {
+    d[j] = V[N-1][j];
+    V[N-1][j] = 0.0;
   }
-  V[n-1][n-1] = 1.0;
+  V[N-1][N-1] = 1.0;
   e[0] = 0.0;
 }
 
 // Symmetric tridiagonal QL algorithm.
 
 void
-eig3::tql2(std::vector<std::vector<double>> V, std::vector<double> d, std::vector<double> e) {
+EIG3::tql2(std::vector<std::vector<double>> V, std::vector<double> d, std::vector<double> e) {
 
 //  This is derived from the Algol procedures tql2, by
 //  Bowdler, Martin, Reinsch, and Wilkinson, Handbook for
@@ -149,21 +153,21 @@ eig3::tql2(std::vector<std::vector<double>> V, std::vector<double> d, std::vecto
   double g,p,r,dl1,h,f,tst1,eps;
   double c,c2,c3,el1,s,s2;
 
-  for (i = 1; i < n; i++) {
+  for (i = 1; i < N; i++) {
     e[i-1] = e[i];
   }
-  e[n-1] = 0.0;
+  e[N-1] = 0.0;
 
   f = 0.0;
   tst1 = 0.0;
   eps = pow(2.0,-52.0);
-  for (l = 0; l < n; l++) {
+  for (l = 0; l < N; l++) {
 
     // Find small subdiagonal element
 
     tst1 = std::max(fabs(d[l]) + fabs(e[l]), tst1);
     m = l;
-    while (m < n) {
+    while (m < N) {
       if (fabs(e[m]) <= eps*tst1) {
         break;
       }
@@ -190,7 +194,7 @@ eig3::tql2(std::vector<std::vector<double>> V, std::vector<double> d, std::vecto
         d[l+1] = e[l] * (p + r);
         dl1 = d[l+1];
         h = g - d[l];
-        for (i = l+2; i < n; i++) {
+        for (i = l+2; i < N; i++) {
           d[i] -= h;
         }
         f = f + h;
@@ -219,7 +223,7 @@ eig3::tql2(std::vector<std::vector<double>> V, std::vector<double> d, std::vecto
 
           // Accumulate transformation.
 
-          for (k = 0; k < n; k++) {
+          for (k = 0; k < N; k++) {
             h = V[k][i+1];
             V[k][i+1] = s * V[k][i] + c * h;
             V[k][i] = c * V[k][i] - s * h;
@@ -239,10 +243,10 @@ eig3::tql2(std::vector<std::vector<double>> V, std::vector<double> d, std::vecto
 
   // Sort eigenvalues and corresponding vectors.
 
-  for (i = 0; i < n-1; i++) {
+  for (i = 0; i < N-1; i++) {
     k = i;
     p = d[i];
-    for (j = i+1; j < n; j++) {
+    for (j = i+1; j < N; j++) {
       if (d[j] < p) {
         k = j;
         p = d[j];
@@ -251,7 +255,7 @@ eig3::tql2(std::vector<std::vector<double>> V, std::vector<double> d, std::vecto
     if (k != i) {
       d[k] = d[i];
       d[i] = p;
-      for (j = 0; j < n; j++) {
+      for (j = 0; j < N; j++) {
         p = V[j][i];
         V[j][i] = V[j][k];
         V[j][k] = p;
@@ -261,14 +265,14 @@ eig3::tql2(std::vector<std::vector<double>> V, std::vector<double> d, std::vecto
 }
 
 void
-eig3::eigen_decomposition(std::vector<std::vector<double>> A, std::vector<std::vector<double>> V, std::vector<double> d) {
+EIG3::eigenDecomposition(std::vector<std::vector<double>> A, std::vector<std::vector<double>> V, std::vector<double> d) {
   int i,j;
-  std::vector<double> e(n, 0.0);
-  for (i = 0; i < n; i++) {
-    for (j = 0; j < n; j++) {
+  std::vector<double> e(N, 0.0);
+  for (i = 0; i < N; i++) {
+    for (j = 0; j < N; j++) {
       V[i][j] = A[i][j];
     }
   }
-  eig3::tred2(V, d, e);
-  eig3::tql2(V, d, e);
+  EIG3::tred2(V, d, e);
+  EIG3::tql2(V, d, e);
 }

@@ -20,60 +20,50 @@
 //
 // Desc: Adaptive Monte-Carlo localization
 // Author: Andrew Howard
-// Date: 6 Feb 2003
-// CVS: $Id: amcl_sensor.h 6443 2008-05-15 19:46:11Z gerkey $
 //
 ///////////////////////////////////////////////////////////////////////////
 
 #ifndef AMCL_SENSOR_H
 #define AMCL_SENSOR_H
 
-#include "../pf/pf.h"
+#include "../pf/particle_filter.h"
 
 namespace amcl
 {
 
 // Forward declarations
-class AMCLSensorData;
-
+class SensorData;
 
 // Base class for all AMCL sensors
-class AMCLSensor
+class Sensor
 {
-  // Default constructor
-  public: AMCLSensor();
+  public:
+    // Default constructor
+    Sensor();
          
-  // Default destructor
-  public: virtual ~AMCLSensor();
+    // Default destructor
+    virtual ~Sensor();
 
-  // Update the filter based on the action model.  Returns true if the filter
-  // has been updated.
-  public: virtual bool UpdateAction(ParticleFilter *pf, AMCLSensorData *data);
+    // Update the filter based on the action model.  Returns true if the filter
+    // has been updated.
+    virtual bool updateAction(ParticleFilter *pf, SensorData *data);
 
-  // Initialize the filter based on the sensor model.  Returns true if the
-  // filter has been initialized.
-  public: virtual bool InitSensor(ParticleFilter *pf, AMCLSensorData *data);
+    // Initialize the filter based on the sensor model.  Returns true if the
+    // filter has been initialized.
+    virtual bool initSensor(ParticleFilter *pf, SensorData *data);
 
-  // Update the filter based on the sensor model.  Returns true if the
-  // filter has been updated.
-  public: virtual bool UpdateSensor(ParticleFilter *pf, AMCLSensorData *data);
-
-  // Flag is true if this is the action sensor
-  public: bool is_action;
-
-  // Action pose (action sensors only)
-  public: PFVector pose;
+    // Update the filter based on the sensor model.  Returns true if the
+    // filter has been updated.
+    virtual bool updateSensor(ParticleFilter *pf, SensorData *data);
 };
 
 // Base class for all AMCL sensor measurements
-class AMCLSensorData
+class SensorData
 {
   // Pointer to sensor that generated the data
-  public: AMCLSensor *sensor;
-          virtual ~AMCLSensorData() {}
-
-  // Data timestamp
-  public: double time;
+  public:
+    virtual ~SensorData() {}
+    Sensor *sensor_;
 };
 
 }

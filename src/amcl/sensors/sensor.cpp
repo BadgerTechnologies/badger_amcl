@@ -22,30 +22,28 @@
 //
 // Desc: AMCL sensor
 // Author: Andrew Howard
-// Date: 6 Feb 2003
-// CVS: $Id: amcl_sensor.cc 7057 2008-10-02 00:44:06Z gbiggs $
+// Maintainer: Tyler Buchman (tyler_buchman@jabil.com)
 //
 ///////////////////////////////////////////////////////////////////////////
 
-
-#include "amcl_sensor.h"
+#include "sensor.h"
 
 using namespace amcl;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Default constructor
-AMCLSensor::AMCLSensor()
+Sensor::Sensor()
 {
   return;
 }
 
-AMCLSensor::~AMCLSensor()
+Sensor::~Sensor()
 {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Apply the action model
-bool AMCLSensor::UpdateAction(ParticleFilter *pf, AMCLSensorData *data)
+bool Sensor::updateAction(ParticleFilter *pf, SensorData *data)
 {
   return false;
 }
@@ -53,15 +51,14 @@ bool AMCLSensor::UpdateAction(ParticleFilter *pf, AMCLSensorData *data)
 
 ////////////////////////////////////////////////////////////////////////////////
 // Initialize the filter
-bool AMCLSensor::InitSensor(ParticleFilter *pf, AMCLSensorData *data)
+bool Sensor::initSensor(ParticleFilter *pf, SensorData *data)
 {
   return false;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // Apply the sensor model
-bool AMCLSensor::UpdateSensor(ParticleFilter *pf, AMCLSensorData *data)
+bool Sensor::updateSensor(ParticleFilter *pf, SensorData *data)
 {
   return false;
 }

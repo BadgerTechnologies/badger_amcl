@@ -1,3 +1,28 @@
+/*
+ *  This library is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU Lesser General Public
+ *  License as published by the Free Software Foundation; either
+ *  version 2.1 of the License, or (at your option) any later version.
+ *
+ *  This library is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  Lesser General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Lesser General Public
+ *  License along with this library; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ */
+///////////////////////////////////////////////////////////////////////////
+//
+// Desc: AMCL Node for 3D AMCL
+// Author: Tyler Buchman (tyler_buchman@jabil.com)
+//
+///////////////////////////////////////////////////////////////////////////
+
+
+
 #ifndef AMCL_NODE_H
 #define AMCL_NODE_H
 
@@ -15,10 +40,10 @@
 #include "map.h"
 #include "occupancy_map.h"
 #include "octomap.h"
-#include "pf.h"
-#include "amcl_odom.h"
-#include "amcl_laser.h"
-#include "amcl_lidar.h"
+#include "particle_filter.h"
+#include "odom.h"
+#include "planar_scanner.h"
+#include "point_cloud_scanner.h"
 
 #include "ros/assert.h"
 
@@ -70,69 +95,33 @@ typedef struct
   // Covariance of pose estimate
   PFMatrix pf_pose_cov;
 
-} amcl_hyp_t;
+} AMCLHyp;
 
-static double
-normalize(double z)
-{
-  return atan2(sin(z),cos(z));
-}
-static double
-angle_diff(double a, double b)
-{
-  double d1, d2;
-  a = normalize(a);
-  b = normalize(b);
-  d1 = a-b;
-  d2 = 2*M_PI - fabs(d1);
-  if(d1 > 0)
-    d2 *= -1.0;
-  if(fabs(d1) < fabs(d2))
-    return(d1);
-  else
-    return(d2);
-}
-
-class AmclNode
+class Node
 {
   public:
-    AmclNode();
-    ~AmclNode();
+    Node();
+    ~Node();
 
     int process();
     void savePoseToServer();
     void savePoseToFile();
 
   private:
-    void init2D();
-    void init3D();
-    void deleteAmclNode2D();
-    void deleteAmclNode3D();
-    const int INDEX_XX_ = 6*0+0;
-    const int INDEX_YY_ = 6*1+1;
-    const int INDEX_AA_ = 6*5+5;
-
-    std::string scan_topic_;
-
-    tf::TransformBroadcaster* tfb_;
-
     // Use a child class to get access to tf2::Buffer class inside of tf_
     struct TransformListenerWrapper : public tf::TransformListener
     {
       inline tf2_ros::Buffer &getBuffer() {return tf2_buffer_;}
     };
 
-    TransformListenerWrapper* tf_;
+    const int INDEX_XX_ = 6*0+0;
+    const int INDEX_YY_ = 6*1+1;
+    const int INDEX_AA_ = 6*5+5;
 
-    // 2: 2d, 3: 3d, else: none
-    int map_type_;
-
-    bool sent_first_transform_;
-
-    tf::Transform latest_tf_;
-    bool latest_tf_valid_;
-
-    tf::StampedTransform lidar_to_footprint_tf_;
+    void init2D();
+    void init3D();
+    void deleteNode2D();
+    void deleteNode3D();
 
     // Score a single pose with the sensor model using the last sensor data
     double scorePose(const PFVector &p);
@@ -149,18 +138,18 @@ class AmclNode
                                     std_srvs::Empty::Response& res);
     void globalLocalizationCallback2D();
     void globalLocalizationCallback3D();
-    void laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan);
-    void lidarReceived(const sensor_msgs::PointCloud2ConstPtr& lidar_scan);
+    void planarScanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan);
+    void pointCloudReceived(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan);
     void initialPoseReceived(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg);
     void handleInitialPoseMessage(const geometry_msgs::PoseWithCovarianceStamped& orig_msg);
     void occupancyMapReceived(const nav_msgs::OccupancyGridConstPtr& msg);
     void octoMapReceived(const octomap_msgs::OctomapConstPtr& msg);
     void initFromNewMap();
-    void initFromNewMap2D();
-    void initFromNewMap3D();
+    void initFromNewOccupancyMap();
+    void initFromNewOctoMap();
     void freeMapDependentMemory();
-    void freeMapDependentMemory2D();
-    void freeMapDependentMemory3D();
+    void freeOccupancyMapDependentMemory();
+    void freeOctoMapDependentMemory();
     OccupancyMap* convertMap( const nav_msgs::OccupancyGrid& map_msg );
     OctoMap* convertMap( const octomap_msgs::Octomap& map_msg );
     std::string makeFilepathFromName( const std::string filename );
@@ -173,6 +162,44 @@ class AmclNode
     void applyInitialPose();
 
     double getYaw(tf::Pose& t);
+
+    // Odometry integrator
+    void integrateOdom(const nav_msgs::OdometryConstPtr& msg);
+    void initOdomIntegrator();
+    void resetOdomIntegrator();
+
+    // Helper to get odometric pose from transform system
+    bool getOdomPose(tf::Stamped<tf::Pose>& pose,
+                     double& x, double& y, double& yaw,
+                     const ros::Time& t, const std::string& f);
+
+    void reconfigureCB(amcl::AMCLConfig &config, uint32_t level);
+    void reconfigure2D(amcl::AMCLConfig &config);
+    void reconfigure3D(amcl::AMCLConfig &config);
+
+    void checkPlanarScanReceived(const ros::TimerEvent& event);
+    void checkPointCloudScanReceived(const ros::TimerEvent& event);
+
+    void publishTransform(const ros::TimerEvent& event);
+
+    double normalize(double z);
+    double angleDiff(double a, double b);
+
+    std::string scan_topic_;
+
+    tf::TransformBroadcaster* tfb_;
+
+    TransformListenerWrapper* tf_;
+
+    // 2: 2d, 3: 3d, else: none
+    int map_type_;
+
+    bool sent_first_transform_;
+
+    tf::Transform latest_tf_;
+    bool latest_tf_valid_;
+
+    tf::StampedTransform point_cloud_scanner_to_footprint_tf_;
 
     //parameter for what odom to use
     std::string odom_frame_id_;
@@ -189,31 +216,27 @@ class AmclNode
     bool first_map_only_;
     int map_scale_up_factor_;
 
-    ros::Duration gui_publish_period;
-    ros::Duration transform_publish_period;
-    ros::Time save_pose_to_server_last_time;
-    ros::Time save_pose_to_file_last_time;
-    ros::Duration save_pose_to_server_period;
-    ros::Duration save_pose_to_file_period;
+    ros::Duration transform_publish_period_;
+    ros::Time save_pose_to_server_last_time_;
+    ros::Time save_pose_to_file_last_time_;
+    ros::Duration save_pose_to_server_period_;
+    ros::Duration save_pose_to_file_period_;
 
-    geometry_msgs::PoseWithCovarianceStamped last_published_pose;
+    geometry_msgs::PoseWithCovarianceStamped last_published_pose_;
 
     Map* map_;
-    char* mapdata;
-    int sx, sy;
-    double resolution;
 
-    message_filters::Subscriber<sensor_msgs::LaserScan>* laser_scan_sub_;
-    message_filters::Subscriber<sensor_msgs::PointCloud2>* lidar_scan_sub_;
-    tf::MessageFilter<sensor_msgs::LaserScan>* laser_scan_filter_;
-    tf::MessageFilter<sensor_msgs::PointCloud2>* lidar_scan_filter_;
+    message_filters::Subscriber<sensor_msgs::LaserScan>* planar_scan_sub_;
+    message_filters::Subscriber<sensor_msgs::PointCloud2>* point_cloud_scan_sub_;
+    tf::MessageFilter<sensor_msgs::LaserScan>* planar_scan_filter_;
+    tf::MessageFilter<sensor_msgs::PointCloud2>* point_cloud_scan_filter_;
     ros::Subscriber initial_pose_sub_;
-    std::vector< AMCLLaser* > lasers_;
-    std::vector< AMCLLidar* > lidars_;
-    std::vector< bool > lasers_update_;
-    std::vector< bool > lidars_update_;
-    std::map< std::string, int > frame_to_laser_;
-    std::map< std::string, int > frame_to_lidar_;
+    std::vector< PlanarScanner* > planar_scanners_;
+    std::vector< PointCloudScanner* > point_cloud_scanners_;
+    std::vector< bool > planar_scanners_update_;
+    std::vector< bool > point_cloud_scanners_update_;
+    std::map< std::string, int > frame_to_planar_scanner_;
+    std::map< std::string, int > frame_to_point_cloud_scanner_;
 
     // Particle filter
     ParticleFilter *pf_;
@@ -221,16 +244,12 @@ class AmclNode
     bool pf_init_;
     PFVector pf_odom_pose_;
     double d_thresh_, a_thresh_;
-    pf_resample_model_t resample_model_type_;
+    PFResampleModelType resample_model_type_;
     int resample_interval_;
     int resample_count_;
     double sensor_min_range_;
     double sensor_max_range_;
 
-    // Odometry integrator
-    void integrateOdom(const nav_msgs::OdometryConstPtr& msg);
-    void initOdomIntegrator();
-    void resetOdomIntegrator();
     ros::Subscriber odom_integrator_sub_;
     std::string odom_integrator_topic_;
     bool odom_integrator_ready_;
@@ -240,17 +259,9 @@ class AmclNode
     //Nomotion update control
     bool m_force_update;  // used to temporarily let amcl update samples even when no motion occurs...
 
-    AMCLOdom* odom_;
-    AMCLLaser* laser_;
-    AMCLLidar* lidar_;
-
-    ros::Duration cloud_pub_interval;
-    ros::Time last_cloud_pub_time;
-
-    // Helper to get odometric pose from transform system
-    bool getOdomPose(tf::Stamped<tf::Pose>& pose,
-                     double& x, double& y, double& yaw,
-                     const ros::Time& t, const std::string& f);
+    Odom* odom_;
+    PlanarScanner* planar_scanner_;
+    PointCloudScanner* point_cloud_scanner_;
 
     //time for tolerance on the published transform,
     //basically defines how long a map->odom transform is good for
@@ -269,7 +280,7 @@ class AmclNode
     ros::Subscriber initial_pose_sub_old_;
     ros::Subscriber map_sub_;
 
-    amcl_hyp_t* initial_pose_hyp_;
+    AMCLHyp* initial_pose_hyp_;
     bool first_map_received_;
     bool first_reconfigure_call_;
 
@@ -278,8 +289,8 @@ class AmclNode
     boost::recursive_mutex latest_amcl_pose_mutex_;
     dynamic_reconfigure::Server<amcl::AMCLConfig> *dsrv_;
     amcl::AMCLConfig default_config_;
-    ros::Timer check_laser_timer_;
-    ros::Timer check_lidar_timer_;
+    ros::Timer check_planar_scanner_timer_;
+    ros::Timer check_point_cloud_scanner_timer_;
     ros::Timer publish_transform_timer_;
 
     int max_beams_, min_particles_, max_particles_;
@@ -290,27 +301,27 @@ class AmclNode
     bool global_localization_active_;
     double global_localization_alpha_slow_, global_localization_alpha_fast_;
     double z_hit_, z_short_, z_max_, z_rand_, sigma_hit_, lambda_short_;
-    double lidar_height_;
+    double point_cloud_scanner_height_;
     //beam skip related params
     bool do_beamskip_;
     double beam_skip_distance_, beam_skip_threshold_, beam_skip_error_threshold_;
     double sensor_likelihood_max_dist_;
-    double laser_gompertz_a_;
-    double laser_gompertz_b_;
-    double laser_gompertz_c_;
-    double laser_gompertz_input_shift_;
-    double laser_gompertz_input_scale_;
-    double laser_gompertz_output_shift_;
+    double planar_gompertz_a_;
+    double planar_gompertz_b_;
+    double planar_gompertz_c_;
+    double planar_gompertz_input_shift_;
+    double planar_gompertz_input_scale_;
+    double planar_gompertz_output_shift_;
     double off_map_factor_;
     double non_free_space_factor_;
     double non_free_space_radius_;
     double global_localization_off_map_factor_;
     double global_localization_non_free_space_factor_;
-    odom_model_t odom_model_type_;
+    OdomModelType odom_model_type_;
     double init_pose_[3];
     double init_cov_[3];
-    laser_model_t laser_model_type_;
-    lidar_model_t lidar_model_type_;
+    PlanarModelType planar_model_type_;
+    PointCloudModelType point_cloud_model_type_;
     bool tf_broadcast_;
     bool tf_reverse_;
 
@@ -319,18 +330,10 @@ class AmclNode
     bool save_pose_;
     std::string saved_pose_filepath_;
 
-    void reconfigureCB(amcl::AMCLConfig &config, uint32_t level);
-    void reconfigure2D(amcl::AMCLConfig &config);
-    void reconfigure3D(amcl::AMCLConfig &config);
-
-    AMCLLaserData *last_laser_data_;
-    AMCLLidarData *last_lidar_data_;
-    ros::Time last_laser_received_ts_, last_lidar_received_ts_;
-    ros::Duration laser_check_interval_, lidar_check_interval_;
-    void checkLaserReceived(const ros::TimerEvent& event);
-    void checkLidarReceived(const ros::TimerEvent& event);
-
-    void publishTransform(const ros::TimerEvent& event);
+    PlanarData *last_planar_data_;
+    PointCloudData *last_point_cloud_data_;
+    ros::Time last_planar_scan_received_ts_, last_point_cloud_scan_received_ts_;
+    ros::Duration planar_scanner_check_interval_, point_cloud_scanner_check_interval_;
 };
 
 }

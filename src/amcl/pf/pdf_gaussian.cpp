@@ -21,8 +21,7 @@
 /**************************************************************************
  * Desc: Useful pdf functions
  * Author: Andrew Howard
- * Date: 10 Dec 2002
- * CVS: $Id: pf_pdf.c 6348 2008-04-17 02:53:17Z gerkey $
+ * Maintainer: Tyler Buchman (tyler_buchman@jabil.com)
  *************************************************************************/
 
 #include <assert.h>
@@ -32,7 +31,7 @@
 
 #include "ros/ros.h"
 
-#include "pf_pdf.h"
+#include "pdf_gaussian.h"
 
 // Random number generator seed value
 
@@ -48,15 +47,15 @@ PDFGaussian::PDFGaussian(PFVector x, PFMatrix cx)
 {
   PFMatrix m;
 
-  this->x = x;
-  this->cx = cx;
+  this->x_ = x;
+  this->cx_ = cx;
 
   // Decompose the convariance matrix into a rotation
   // matrix and a diagonal matrix.
-  cx.decompose(&cr, &m);
-  cd.v[0] = sqrt(m.m[0][0]);
-  cd.v[1] = sqrt(m.m[1][1]);
-  cd.v[2] = sqrt(m.m[2][2]);
+  cx_.decompose(&cr_, &m);
+  cd_.v[0] = sqrt(m.m[0][0]);
+  cd_.v[1] = sqrt(m.m[1][1]);
+  cd_.v[2] = sqrt(m.m[2][2]);
 }
 
 // Generate a sample from the the pdf.
@@ -70,14 +69,14 @@ PDFGaussian::sample()
   // Generate a random vector
   for (i = 0; i < 3; i++)
   {
-    r.v[i] = PDFGaussian::draw(cd.v[i]);
+    r.v[i] = PDFGaussian::draw(cd_.v[i]);
   }
 
   for (i = 0; i < 3; i++)
   {
-    v.v[i] = x.v[i];
+    v.v[i] = x_.v[i];
     for (j = 0; j < 3; j++)
-      v.v[i] += cr.m[i][j] * r.v[j];
+      v.v[i] += cr_.m[i][j] * r.v[j];
   }
 
   return v;

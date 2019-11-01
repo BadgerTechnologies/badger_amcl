@@ -21,18 +21,16 @@
 /**************************************************************************
  * Desc: Global map (grid-based)
  * Author: Andrew Howard
- * Date: 6 Feb 2003
- * CVS: $Id: map.h 1713 2003-08-23 04:03:43Z inspectorg $
+ * Mainainer: Tyler Buchman (tyler_buchman@jabil.com)
  **************************************************************************/
 
-#ifndef MAP_H
-#define MAP_H
+#ifndef AMCL_MAP_H
+#define AMCL_MAP_H
 
 #include <vector>
 
 namespace amcl
 {
-
 
 class Map
 {
@@ -52,11 +50,10 @@ class Map
     double getScale();
     void setScale(double _scale);
   protected:
-    double scale;
+    double scale_;
     // Max distance at which we care about obstacles, for constructing
     // likelihood field
-    double max_occ_dist;
-
+    double max_occ_dist_;
 };
 
 }

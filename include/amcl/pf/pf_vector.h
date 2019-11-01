@@ -21,12 +21,11 @@
 /**************************************************************************
  * Desc: Vector functions
  * Author: Andrew Howard
- * Date: 10 Dec 2002
- * CVS: $Id: pf_vector.h 6345 2008-04-17 01:36:39Z gerkey $
+ * Maintainter: Tyler Buchman (tyler_buchman@jabil.com)
  *************************************************************************/
 
-#ifndef PF_VECTOR_H
-#define PF_VECTOR_H
+#ifndef AMCL_PF_VECTOR_H
+#define AMCL_PF_VECTOR_H
 
 #include <stdio.h>
 
@@ -42,19 +41,19 @@ class PFVector
     PFVector();
 
     // Check for NAN or INF in any component
-    bool is_finite();
+    bool isFinite();
 
     // Simple vector addition
-    static PFVector pf_vector_add(PFVector a, PFVector b);
+    static PFVector pfVectorAdd(PFVector a, PFVector b);
 
     // Simple vector subtraction
-    static PFVector pf_vector_sub(PFVector a, PFVector b);
+    static PFVector pfVectorSub(PFVector a, PFVector b);
 
     // Transform from local to global coords (a + b)
-    static PFVector pf_vector_coord_add(PFVector a, PFVector b);
+    static PFVector pfVectorCoordAdd(PFVector a, PFVector b);
 
     // Transform from global to local coords (a - b)
-    static PFVector pf_vector_coord_sub(PFVector a, PFVector b);
+    static PFVector pfVectorCoordSub(PFVector a, PFVector b);
 };
 
 
@@ -67,7 +66,7 @@ class PFMatrix
     PFMatrix();
 
     // Check for NAN or INF in any component
-    bool is_finite();
+    bool isFinite();
 
     // Decompose a covariance matrix [a] into a rotation matrix [r] and a
     // diagonal matrix [d] such that a = r * d * r^T.

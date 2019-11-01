@@ -1,7 +1,4 @@
 /*
- *  Copyright (c) 2008, Willow Garage, Inc.
- *  All rights reserved.
- *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
  *  License as published by the Free Software Foundation; either
@@ -17,6 +14,13 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
+///////////////////////////////////////////////////////////////////////////
+//
+// Desc: AMCL Node for 3D AMCL
+// Author: Tyler Buchman (tyler_buchman@jabil.com)
+// Date: 29 Oct 2019
+//
+///////////////////////////////////////////////////////////////////////////
 
 #include <algorithm>
 #include <vector>
@@ -30,10 +34,10 @@
 #include <signal.h>
 
 #include "map.h"
-#include "pf.h"
+#include "particle_filter.h"
 #include "pf_vector.h"
-#include "amcl_odom.h"
-#include "amcl_node.h"
+#include "odom.h"
+#include "node.h"
 
 #include "ros/assert.h"
 
@@ -70,7 +74,7 @@
 
 using namespace amcl;
 
-AmclNode::AmclNode() :
+Node::Node() :
         sent_first_transform_(false),
         latest_tf_valid_(false),
         map_(NULL),
@@ -93,14 +97,12 @@ AmclNode::AmclNode() :
   private_nh_.param("first_map_only", first_map_only_, false);
 
   double tmp;
-  private_nh_.param("gui_publish_rate", tmp, -1.0);
-  gui_publish_period = ros::Duration(1.0/tmp);
   private_nh_.param("transform_publish_rate", tmp, 50.0);
-  transform_publish_period = ros::Duration(1.0/tmp);
+  transform_publish_period_ = ros::Duration(1.0/tmp);
   private_nh_.param("save_pose_to_server_rate", tmp, 2.0);
-  save_pose_to_server_period = ros::Duration(1.0/tmp);
+  save_pose_to_server_period_ = ros::Duration(1.0/tmp);
   private_nh_.param("save_pose_to_file_rate", tmp, 0.1);
-  save_pose_to_file_period = ros::Duration(1.0/tmp);
+  save_pose_to_file_period_ = ros::Duration(1.0/tmp);
 
   private_nh_.param("min_particles", min_particles_, 100);
   private_nh_.param("max_particles", max_particles_, 5000);
@@ -177,7 +179,6 @@ AmclNode::AmclNode() :
 
   initial_pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("initialpose", 1);
 
-  cloud_pub_interval.fromSec(1.0);
   tfb_ = new tf::TransformBroadcaster();
   tf_ = new TransformListenerWrapper();
 
@@ -190,7 +191,7 @@ AmclNode::AmclNode() :
   }
   map_odom_transform_pub_ = nh_.advertise<nav_msgs::Odometry>("amcl_map_odom_transform", 1);
   global_loc_srv_ = nh_.advertiseService("global_localization",
-					 &AmclNode::globalLocalizationCallback,
+					 &Node::globalLocalizationCallback,
                                          this);
 
   loadPose();
@@ -204,20 +205,20 @@ AmclNode::AmclNode() :
     init3D();
   }
 
-  initial_pose_sub_ = nh_.subscribe("initialpose", 2, &AmclNode::initialPoseReceived, this);
+  initial_pose_sub_ = nh_.subscribe("initialpose", 2, &Node::initialPoseReceived, this);
 
   if (odom_integrator_topic_.size()) {
-    odom_integrator_sub_ = nh_.subscribe(odom_integrator_topic_, 20, &AmclNode::integrateOdom, this);
+    odom_integrator_sub_ = nh_.subscribe(odom_integrator_topic_, 20, &Node::integrateOdom, this);
     absolute_motion_pub_ = nh_.advertise<geometry_msgs::Pose2D>("amcl_absolute_motion", 20, false);
   }
 
   if(map_type_ == 2)
   {
-    map_sub_ = nh_.subscribe("map", 1, &AmclNode::occupancyMapReceived, this);
+    map_sub_ = nh_.subscribe("map", 1, &Node::occupancyMapReceived, this);
   }
   else if(map_type_ == 3)
   {
-    map_sub_ = nh_.subscribe("/octomap_binary", 1, &AmclNode::octoMapReceived, this);
+    map_sub_ = nh_.subscribe("/octomap_binary", 1, &Node::octoMapReceived, this);
   }
   else
   {
@@ -227,15 +228,15 @@ AmclNode::AmclNode() :
   m_force_update = false;
 
   dsrv_ = new dynamic_reconfigure::Server<amcl::AMCLConfig>(ros::NodeHandle("~"));
-  dynamic_reconfigure::Server<amcl::AMCLConfig>::CallbackType cb = boost::bind(&AmclNode::reconfigureCB, this, _1, _2);
+  dynamic_reconfigure::Server<amcl::AMCLConfig>::CallbackType cb = boost::bind(&Node::reconfigureCB, this, _1, _2);
   dsrv_->setCallback(cb);
 
-  publish_transform_timer_ = nh_.createTimer(transform_publish_period,
-                                             boost::bind(&AmclNode::publishTransform, this, _1));
+  publish_transform_timer_ = nh_.createTimer(transform_publish_period_,
+                                             boost::bind(&Node::publishTransform, this, _1));
 }
 
 void
-AmclNode::reconfigureCB(AMCLConfig &config, uint32_t level)
+Node::reconfigureCB(AMCLConfig &config, uint32_t level)
 {
   boost::recursive_mutex::scoped_lock cfl(configuration_mutex_);
 
@@ -274,10 +275,9 @@ AmclNode::reconfigureCB(AMCLConfig &config, uint32_t level)
     resample_model_type_ = PF_RESAMPLE_MULTINOMIAL;
   }
 
-  gui_publish_period = ros::Duration(1.0/config.gui_publish_rate);
-  transform_publish_period = ros::Duration(1.0/config.transform_publish_rate);
-  save_pose_to_server_period = ros::Duration(1.0/config.save_pose_to_server_rate);
-  save_pose_to_file_period = ros::Duration(1.0/config.save_pose_to_file_rate);
+  transform_publish_period_ = ros::Duration(1.0/config.transform_publish_rate);
+  save_pose_to_server_period_ = ros::Duration(1.0/config.save_pose_to_server_rate);
+  save_pose_to_file_period_ = ros::Duration(1.0/config.save_pose_to_file_rate);
 
   transform_tolerance_.fromSec(config.transform_tolerance);
 
@@ -320,31 +320,30 @@ AmclNode::reconfigureCB(AMCLConfig &config, uint32_t level)
   beam_skip_threshold_ = config.beam_skip_threshold;
 
   pf_ = new ParticleFilter(min_particles_, max_particles_, alpha_slow_, alpha_fast_,
-                           (pf_init_model_fn_t)AmclNode::uniformPoseGenerator, (void *)this);
+                           (PFInitModelFnPtr)Node::uniformPoseGenerator, (void *)this);
   pf_err_ = config.kld_err;
   pf_z_ = config.kld_z;
-  pf_->pop_err = pf_err_;
-  pf_->pop_z = pf_z_;
-  pf_->set_resample_model(resample_model_type_);
+  pf_->setPopulationSizeParameters(pf_err_, pf_z_);
+  pf_->setResampleModel(resample_model_type_);
 
   // Initialize the filter
   PFVector pf_init_pose_mean;
-  pf_init_pose_mean.v[0] = last_published_pose.pose.pose.position.x;
-  pf_init_pose_mean.v[1] = last_published_pose.pose.pose.position.y;
-  pf_init_pose_mean.v[2] = tf::getYaw(last_published_pose.pose.pose.orientation);
+  pf_init_pose_mean.v[0] = last_published_pose_.pose.pose.position.x;
+  pf_init_pose_mean.v[1] = last_published_pose_.pose.pose.position.y;
+  pf_init_pose_mean.v[2] = tf::getYaw(last_published_pose_.pose.pose.orientation);
   PFMatrix pf_init_pose_cov;
-  pf_init_pose_cov.m[0][0] = last_published_pose.pose.covariance[6*0+0];
-  pf_init_pose_cov.m[1][1] = last_published_pose.pose.covariance[6*1+1];
-  pf_init_pose_cov.m[2][2] = last_published_pose.pose.covariance[6*5+5];
+  pf_init_pose_cov.m[0][0] = last_published_pose_.pose.covariance[6*0+0];
+  pf_init_pose_cov.m[1][1] = last_published_pose_.pose.covariance[6*1+1];
+  pf_init_pose_cov.m[2][2] = last_published_pose_.pose.covariance[6*5+5];
   pf_->init(pf_init_pose_mean, pf_init_pose_cov);
   pf_init_ = false;
 
   // Instantiate the sensor objects
   // Odometry
   delete odom_;
-  odom_ = new AMCLOdom();
+  odom_ = new Odom();
   ROS_ASSERT(odom_);
-  odom_->SetModel( odom_model_type_, alpha1_, alpha2_, alpha3_, alpha4_, alpha5_ );
+  odom_->setModel( odom_model_type_, alpha1_, alpha2_, alpha3_, alpha4_, alpha5_ );
   odom_frame_id_ = config.odom_frame_id;
   base_frame_id_ = config.base_frame_id;
   global_frame_id_ = config.global_frame_id;
@@ -362,14 +361,14 @@ AmclNode::reconfigureCB(AMCLConfig &config, uint32_t level)
   const std::string filename = config.saved_pose_filename;
   saved_pose_filepath_ = makeFilepathFromName(filename);
 
-  initial_pose_sub_ = nh_.subscribe("initialpose", 2, &AmclNode::initialPoseReceived, this);
+  initial_pose_sub_ = nh_.subscribe("initialpose", 2, &Node::initialPoseReceived, this);
 
-  publish_transform_timer_ = nh_.createTimer(transform_publish_period,
-                                             boost::bind(&AmclNode::publishTransform, this, _1));
+  publish_transform_timer_ = nh_.createTimer(transform_publish_period_,
+                                             boost::bind(&Node::publishTransform, this, _1));
 }
 
 void
-AmclNode::loadPose()
+Node::loadPose()
 {
   if(loadPoseFromServer())
   {
@@ -393,7 +392,7 @@ AmclNode::loadPose()
 }
 
 void
-AmclNode::publishInitPose()
+Node::publishInitPose()
 {
   geometry_msgs::PoseWithCovarianceStamped pose;
   pose.header.stamp = ros::Time::now();
@@ -412,7 +411,7 @@ AmclNode::publishInitPose()
 }
 
 bool
-AmclNode::loadPoseFromServer()
+Node::loadPoseFromServer()
 {
   double tmp_pos;
   bool success;
@@ -486,7 +485,7 @@ AmclNode::loadPoseFromServer()
 }
 
 bool
-AmclNode::loadPoseFromFile()
+Node::loadPoseFromFile()
 {
   double x, y, z, w, roll, pitch, yaw, xx, yy, aa;
   try
@@ -526,7 +525,7 @@ AmclNode::loadPoseFromFile()
 }
 
 YAML::Node
-AmclNode::loadYamlFromFile()
+Node::loadYamlFromFile()
 {
   YAML::Node node = YAML::LoadFile(saved_pose_filepath_);
   std::string key = node.begin()->first.as<std::string>();
@@ -580,7 +579,7 @@ AmclNode::loadYamlFromFile()
 }
 
 void
-AmclNode::savePoseToServer()
+Node::savePoseToServer()
 {
   if(!save_pose_) {
     ROS_DEBUG("As specified, not saving pose to server");
@@ -588,7 +587,7 @@ AmclNode::savePoseToServer()
   }
   // We need to apply the last transform to the latest odom pose to get
   // the latest map pose to store.  We'll take the covariance from
-  // last_published_pose.
+  // last_published_pose_.
   tf::Pose map_pose = latest_tf_.inverse() * latest_odom_pose_;
   double yaw,pitch,roll;
   map_pose.getBasis().getEulerYPR(yaw, pitch, roll);
@@ -597,24 +596,24 @@ AmclNode::savePoseToServer()
   private_nh_.setParam("initial_pose_y", map_pose.getOrigin().y());
   private_nh_.setParam("initial_pose_a", yaw);
   private_nh_.setParam("initial_cov_xx",
-                                  last_published_pose.pose.covariance[INDEX_XX_]);
+                                  last_published_pose_.pose.covariance[INDEX_XX_]);
   private_nh_.setParam("initial_cov_yy",
-                                  last_published_pose.pose.covariance[INDEX_YY_]);
+                                  last_published_pose_.pose.covariance[INDEX_YY_]);
   private_nh_.setParam("initial_cov_aa",
-                                  last_published_pose.pose.covariance[INDEX_AA_]);
+                                  last_published_pose_.pose.covariance[INDEX_AA_]);
   geometry_msgs::Pose pose;
   tf::poseTFToMsg(map_pose, pose);
   boost::recursive_mutex::scoped_lock lpl(latest_amcl_pose_mutex_);
   latest_amcl_pose_.pose.pose = pose;
-  latest_amcl_pose_.pose.covariance[INDEX_XX_] = last_published_pose.pose.covariance[INDEX_XX_];
-  latest_amcl_pose_.pose.covariance[INDEX_YY_] = last_published_pose.pose.covariance[INDEX_YY_];
-  latest_amcl_pose_.pose.covariance[INDEX_AA_] = last_published_pose.pose.covariance[INDEX_AA_];
+  latest_amcl_pose_.pose.covariance[INDEX_XX_] = last_published_pose_.pose.covariance[INDEX_XX_];
+  latest_amcl_pose_.pose.covariance[INDEX_YY_] = last_published_pose_.pose.covariance[INDEX_YY_];
+  latest_amcl_pose_.pose.covariance[INDEX_AA_] = last_published_pose_.pose.covariance[INDEX_AA_];
   latest_amcl_pose_.header.stamp = ros::Time::now();
   latest_amcl_pose_.header.frame_id = "map";
 }
 
 void
-AmclNode::savePoseToFile()
+Node::savePoseToFile()
 {
   if(!save_pose_) {
     ROS_DEBUG("As specified, not saving pose to file");
@@ -670,7 +669,7 @@ AmclNode::savePoseToFile()
 }
 
 std::string
-AmclNode::makeFilepathFromName(const std::string filename)
+Node::makeFilepathFromName(const std::string filename)
 {
   const char* bar_common = std::getenv("BAR_COMMON");
   if(bar_common == nullptr) {
@@ -681,16 +680,15 @@ AmclNode::makeFilepathFromName(const std::string filename)
 }
 
 void
-AmclNode::initFromNewMap()
+Node::initFromNewMap()
 {
   // Create the particle filter
   ROS_INFO("initializing pf");
   pf_ = new ParticleFilter(min_particles_, max_particles_, alpha_slow_, alpha_fast_,
-                           (pf_init_model_fn_t)AmclNode::uniformPoseGenerator, (void *)this);
+                           (PFInitModelFnPtr)Node::uniformPoseGenerator, (void *)this);
   ROS_INFO("done initializing pf");
-  pf_->pop_err = pf_err_;
-  pf_->pop_z = pf_z_;
-  pf_->set_resample_model(resample_model_type_);
+  pf_->setPopulationSizeParameters(pf_err_, pf_z_);
+  pf_->setResampleModel(resample_model_type_);
 
   PFVector pf_init_pose_mean;
   pf_init_pose_mean.v[0] = init_pose_[0];
@@ -706,17 +704,17 @@ AmclNode::initFromNewMap()
   // Instantiate the sensor objects
   // Odometry
   delete odom_;
-  odom_ = new AMCLOdom();
+  odom_ = new Odom();
   ROS_ASSERT(odom_);
-  odom_->SetModel( odom_model_type_, alpha1_, alpha2_, alpha3_, alpha4_, alpha5_ );
+  odom_->setModel( odom_model_type_, alpha1_, alpha2_, alpha3_, alpha4_, alpha5_ );
 
   if(map_type_ == 2)
   {
-    initFromNewMap2D();
+    initFromNewOccupancyMap();
   }
   else if(map_type_ == 3)
   {
-    initFromNewMap3D();
+    initFromNewOctoMap();
   }
 
   // In case the initial pose message arrived before the first map,
@@ -725,7 +723,7 @@ AmclNode::initFromNewMap()
 }
 
 void
-AmclNode::freeMapDependentMemory()
+Node::freeMapDependentMemory()
 {
   if( map_ != NULL ) {
     delete map_;
@@ -739,38 +737,46 @@ AmclNode::freeMapDependentMemory()
   odom_ = NULL;
   if(map_type_ == 2)
   {
-    freeMapDependentMemory2D();
+    freeOccupancyMapDependentMemory();
   }
   else if(map_type_ == 3)
   {
-    freeMapDependentMemory3D();
+    freeOctoMapDependentMemory();
   }
 }
 
-AmclNode::~AmclNode()
+Node::~Node()
 {
   delete dsrv_;
   freeMapDependentMemory();
-  deleteAmclNode2D();
+  deleteNode2D();
+  if(map_type_ == 2)
+  {
+    deleteNode2D();
+  }
+  else if(map_type_ == 3)
+  {
+    deleteNode3D();
+  }
+
   delete tfb_;
   delete tf_;
-  // TODO: delete everything allocated in constructor
 }
 
 void
-AmclNode::initOdomIntegrator()
+Node::initOdomIntegrator()
 {
   odom_integrator_ready_ = false;
 }
 
 void
-AmclNode::resetOdomIntegrator()
+Node::resetOdomIntegrator()
 {
   odom_integrator_absolute_motion_ = PFVector();
 }
 
 void
-AmclNode::integrateOdom(const nav_msgs::OdometryConstPtr& msg)
+Node::integrateOdom(const nav_msgs::OdometryConstPtr& msg)
 {
   // Integrate absolute motion relative to the base,
   // by finding the delta from one odometry message to another.
@@ -792,7 +798,7 @@ AmclNode::integrateOdom(const nav_msgs::OdometryConstPtr& msg)
 
     delta.v[0] = pose.v[0] - odom_integrator_last_pose_.v[0];
     delta.v[1] = pose.v[1] - odom_integrator_last_pose_.v[1];
-    delta.v[2] = angle_diff(pose.v[2], odom_integrator_last_pose_.v[2]);
+    delta.v[2] = angleDiff(pose.v[2], odom_integrator_last_pose_.v[2]);
 
     // project bearing change onto average orientation, x is forward translation, y is strafe
     double delta_trans, delta_rot, delta_bearing;
@@ -806,7 +812,7 @@ AmclNode::integrateOdom(const nav_msgs::OdometryConstPtr& msg)
     }
     else
     {
-      delta_bearing = angle_diff(atan2(delta.v[1], delta.v[0]),
+      delta_bearing = angleDiff(atan2(delta.v[1], delta.v[0]),
                                  odom_integrator_last_pose_.v[2] + delta_rot/2);
     }
     double cs_bearing = cos(delta_bearing);
@@ -825,7 +831,7 @@ AmclNode::integrateOdom(const nav_msgs::OdometryConstPtr& msg)
 }
 
 bool
-AmclNode::getOdomPose(tf::Stamped<tf::Pose>& odom_pose,
+Node::getOdomPose(tf::Stamped<tf::Pose>& odom_pose,
                       double& x, double& y, double& yaw,
                       const ros::Time& t, const std::string& f)
 {
@@ -850,10 +856,9 @@ AmclNode::getOdomPose(tf::Stamped<tf::Pose>& odom_pose,
   return true;
 }
 
-#include <stdlib.h>
 // Helper function to generate a random free-space pose
 PFVector
-AmclNode::randomFreeSpacePose()
+Node::randomFreeSpacePose()
 {
   unsigned int rand_index = drand48() * free_space_indices.size();
   std::pair<int,int> free_point = free_space_indices[rand_index];
@@ -867,7 +872,7 @@ AmclNode::randomFreeSpacePose()
 
 // Helper function to score a pose for uniform pose generation
 double
-AmclNode::scorePose(const PFVector &p)
+Node::scorePose(const PFVector &p)
 {
   if(map_type_ == 2)
   {
@@ -885,9 +890,9 @@ AmclNode::scorePose(const PFVector &p)
 }
 
 PFVector
-AmclNode::uniformPoseGenerator(void* arg)
+Node::uniformPoseGenerator(void* arg)
 {
-  AmclNode *self = (AmclNode*)arg;
+  Node *self = (Node*)arg;
   double good_weight = self->uniform_pose_starting_weight_threshold_;
   const double deweight_multiplier = self->uniform_pose_deweight_multiplier_;
   PFVector p;
@@ -912,7 +917,7 @@ AmclNode::uniformPoseGenerator(void* arg)
 }
 
 bool
-AmclNode::globalLocalizationCallback(std_srvs::Empty::Request& req,
+Node::globalLocalizationCallback(std_srvs::Empty::Request& req,
                                      std_srvs::Empty::Response& res)
 {
   if( map_ == NULL ) {
@@ -920,8 +925,7 @@ AmclNode::globalLocalizationCallback(std_srvs::Empty::Request& req,
   }
   boost::recursive_mutex::scoped_lock cfl(configuration_mutex_);
   global_localization_active_ = true;
-  pf_->alpha_slow = global_localization_alpha_slow_;
-  pf_->alpha_fast = global_localization_alpha_fast_;
+  pf_->setDecayRates(global_localization_alpha_slow_, global_localization_alpha_fast_);
   if(map_type_ == 2)
   {
     globalLocalizationCallback2D();
@@ -932,14 +936,14 @@ AmclNode::globalLocalizationCallback(std_srvs::Empty::Request& req,
   }
 
   ROS_INFO("reinitializing pf");
-  pf_->init_model((pf_init_model_fn_t)AmclNode::uniformPoseGenerator, (void *)this);
+  pf_->initModel((PFInitModelFnPtr)Node::uniformPoseGenerator, (void *)this);
   ROS_INFO("pf reinitialized");
   pf_init_ = false;
   return true;
 }
 
 void
-AmclNode::publishTransform(const ros::TimerEvent& event)
+Node::publishTransform(const ros::TimerEvent& event)
 {
   boost::recursive_mutex::scoped_lock tfl(tf_mutex_);
   if (tf_broadcast_ && latest_tf_valid_)
@@ -979,7 +983,7 @@ AmclNode::publishTransform(const ros::TimerEvent& event)
 }
 
 double
-AmclNode::getYaw(tf::Pose& t)
+Node::getYaw(tf::Pose& t)
 {
   double yaw, pitch, roll;
   t.getBasis().getEulerYPR(yaw,pitch,roll);
@@ -987,13 +991,13 @@ AmclNode::getYaw(tf::Pose& t)
 }
 
 void
-AmclNode::initialPoseReceived(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg)
+Node::initialPoseReceived(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg)
 {
   handleInitialPoseMessage(*msg);
 }
 
 void
-AmclNode::handleInitialPoseMessage(const geometry_msgs::PoseWithCovarianceStamped& orig_msg)
+Node::handleInitialPoseMessage(const geometry_msgs::PoseWithCovarianceStamped& orig_msg)
 {
   ROS_DEBUG("initial pose received");
   boost::recursive_mutex::scoped_lock cfl(configuration_mutex_);
@@ -1102,7 +1106,7 @@ AmclNode::handleInitialPoseMessage(const geometry_msgs::PoseWithCovarianceStampe
   pf_init_pose_cov.m[2][2] = msg.pose.covariance[6*5+5];
 
   delete initial_pose_hyp_;
-  initial_pose_hyp_ = new amcl_hyp_t();
+  initial_pose_hyp_ = new AMCLHyp();
   initial_pose_hyp_->pf_pose_mean = pf_init_pose_mean;
   initial_pose_hyp_->pf_pose_cov = pf_init_pose_cov;
   applyInitialPose();
@@ -1117,7 +1121,7 @@ AmclNode::handleInitialPoseMessage(const geometry_msgs::PoseWithCovarianceStampe
  * and set to NULL after it is used.
  */
 void
-AmclNode::applyInitialPose()
+Node::applyInitialPose()
 {
   boost::recursive_mutex::scoped_lock cfl(configuration_mutex_);
   if( initial_pose_hyp_ != NULL && map_ != NULL ) {
@@ -1128,3 +1132,26 @@ AmclNode::applyInitialPose()
     initial_pose_hyp_ = NULL;
   }
 }
+
+double
+Node::normalize(double z)
+{
+  return atan2(sin(z),cos(z));
+}
+
+double
+Node::angleDiff(double a, double b)
+{
+  double d1, d2;
+  a = normalize(a);
+  b = normalize(b);
+  d1 = a-b;
+  d2 = 2*M_PI - fabs(d1);
+  if(d1 > 0)
+    d2 *= -1.0;
+  if(fabs(d1) < fabs(d2))
+    return(d1);
+  else
+    return(d2);
+}
+

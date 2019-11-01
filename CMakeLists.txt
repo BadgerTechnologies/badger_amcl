@@ -49,9 +49,9 @@ include_directories(
 )
 
 add_library(amcl_core
-    src/amcl/pf/pf.cpp
+    src/amcl/pf/particle_filter.cpp
     src/amcl/pf/pf_kdtree.cpp
-    src/amcl/pf/pf_pdf.cpp
+    src/amcl/pf/pdf_gaussian.cpp
     src/amcl/pf/pf_vector.cpp
     src/amcl/pf/eig3.cpp
     src/amcl/map/map.cpp
@@ -60,13 +60,13 @@ add_library(amcl_core
     src/amcl/map/occupancy_map_range.cpp
     src/amcl/map/octomap.cpp
     src/amcl/map/octomap_cspace.cpp
-    src/amcl/sensors/amcl_sensor.cpp
-    src/amcl/sensors/amcl_odom.cpp
-    src/amcl/sensors/amcl_laser.cpp
-    src/amcl/sensors/amcl_lidar.cpp
-    src/amcl/node/amcl_node_2d.cpp
-    src/amcl/node/amcl_node_3d.cpp
-	src/amcl/node/amcl_node.cpp
+    src/amcl/sensors/sensor.cpp
+    src/amcl/sensors/odom.cpp
+    src/amcl/sensors/planar_scanner.cpp
+    src/amcl/sensors/point_cloud_scanner.cpp
+    src/amcl/node/node_2d.cpp
+    src/amcl/node/node_3d.cpp
+	src/amcl/node/node.cpp
 )
 target_link_libraries(amcl_core
     ${OCTOMAP_LIBRARIES}
