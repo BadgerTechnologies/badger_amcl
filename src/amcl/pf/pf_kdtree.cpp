@@ -21,8 +21,7 @@
 /**************************************************************************
  * Desc: kd-tree functions
  * Author: Andrew Howard
- * Date: 18 Dec 2002
- * CVS: $Id: pf_kdtree.c 7057 2008-10-02 00:44:06Z gbiggs $
+ * Maintainer: Tyler Buchman (tyler_buchman@jabil.com)
  *************************************************************************/
 
 #include <assert.h>
@@ -39,65 +38,65 @@ using namespace amcl;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Create a tree
-KDTree::KDTree(int max_size)
+PFKDTree::PFKDTree(int max_size)
 {
-  cell_size[0] = 0.50;
-  cell_size[1] = 0.50;
-  cell_size[2] = (10 * M_PI / 180);
+  cell_size_[0] = 0.50;
+  cell_size_[1] = 0.50;
+  cell_size_[2] = (10 * M_PI / 180);
 
-  root = NULL;
+  root_ = NULL;
 
-  node_count = 0;
-  node_max_count = max_size;
-  nodes = (pf_kdtree_node_t*)calloc(node_max_count, sizeof(pf_kdtree_node_t));
+  node_count_ = 0;
+  node_max_count_ = max_size;
+  nodes_ = (PFKDTreeNode*)calloc(node_max_count_, sizeof(PFKDTreeNode));
 
-  leaf_count = 0;
+  leaf_count_ = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Destroy a tree
-KDTree::~KDTree()
+PFKDTree::~PFKDTree()
 {
-  free(nodes);
+  free(nodes_);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Clear all entries from the tree
 void
-KDTree::clear_kdtree()
+PFKDTree::clearKDTree()
 {
-  root = NULL;
-  leaf_count = 0;
-  node_count = 0;
+  root_ = NULL;
+  leaf_count_ = 0;
+  node_count_ = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Insert a pose into the tree.
 void
-KDTree::insert_pose(PFVector pose, double value)
+PFKDTree::insertPose(PFVector pose, double value)
 {
   int key[3];
 
-  key[0] = floor(pose.v[0] / cell_size[0]);
-  key[1] = floor(pose.v[1] / cell_size[1]);
-  key[2] = floor(pose.v[2] / cell_size[2]);
+  key[0] = floor(pose.v[0] / cell_size_[0]);
+  key[1] = floor(pose.v[1] / cell_size_[1]);
+  key[2] = floor(pose.v[2] / cell_size_[2]);
 
-  root = insert_node(NULL, root, key, value);
+  root_ = insertNode(NULL, root_, key, value);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Determine the cluster label for the given pose
 int
-KDTree::get_cluster(PFVector pose)
+PFKDTree::getCluster(PFVector pose)
 {
   int key[3];
-  pf_kdtree_node_t *node;
+  PFKDTreeNode *node;
 
-  key[0] = floor(pose.v[0] / cell_size[0]);
-  key[1] = floor(pose.v[1] / cell_size[1]);
-  key[2] = floor(pose.v[2] / cell_size[2]);
+  key[0] = floor(pose.v[0] / cell_size_[0]);
+  key[1] = floor(pose.v[1] / cell_size_[1]);
+  key[2] = floor(pose.v[2] / cell_size_[2]);
 
-  node = find_node(root, key);
+  node = findNode(root_, key);
   if (node == NULL)
     return -1;
   return node->cluster;
@@ -106,16 +105,16 @@ KDTree::get_cluster(PFVector pose)
 ////////////////////////////////////////////////////////////////////////////////
 // Compare keys to see if they are equal
 bool
-KDTree::equals(int key_a[], int key_b[])
+PFKDTree::equals(int key_a[], int key_b[])
 {
   return (key_a[0] == key_b[0]) and (key_a[1] == key_b[1]) and (key_a[2] == key_b[2]);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Insert a node into the tree
-pf_kdtree_node_t*
-KDTree::insert_node(pf_kdtree_node_t *parent,
-                       pf_kdtree_node_t *node,
+PFKDTreeNode*
+PFKDTree::insertNode(PFKDTreeNode *parent,
+                       PFKDTreeNode *node,
                        int key[], double value)
 {
   int i;
@@ -124,9 +123,9 @@ KDTree::insert_node(pf_kdtree_node_t *parent,
   // If the node doesnt exist yet...
   if (node == NULL)
   {
-    assert(node_count < node_max_count);
-    node = nodes + node_count++;
-    memset(node, 0, sizeof(pf_kdtree_node_t));
+    assert(node_count_ < node_max_count_);
+    node = nodes_ + node_count_++;
+    memset(node, 0, sizeof(PFKDTreeNode));
 
     node->leaf = 1;
 
@@ -139,7 +138,7 @@ KDTree::insert_node(pf_kdtree_node_t *parent,
       node->key[i] = key[i];
 
     node->value = value;
-    leaf_count += 1;
+    leaf_count_ += 1;
   }
 
   // If the node exists, and it is a leaf node...
@@ -173,17 +172,17 @@ KDTree::insert_node(pf_kdtree_node_t *parent,
 
       if (key[node->pivot_dim] < node->pivot_value)
       {
-        node->children[0] = insert_node(node, NULL, key, value);
-        node->children[1] = insert_node(node, NULL, node->key, node->value);
+        node->children[0] = insertNode(node, NULL, key, value);
+        node->children[1] = insertNode(node, NULL, node->key, node->value);
       }
       else
       {
-        node->children[0] = insert_node(node, NULL, node->key, node->value);
-        node->children[1] = insert_node(node, NULL, key, value);
+        node->children[0] = insertNode(node, NULL, node->key, node->value);
+        node->children[1] = insertNode(node, NULL, key, value);
       }
 
       node->leaf = 0;
-      leaf_count -= 1;
+      leaf_count_ -= 1;
     }
   }
 
@@ -194,9 +193,9 @@ KDTree::insert_node(pf_kdtree_node_t *parent,
     assert(node->children[1] != NULL);
 
     if (key[node->pivot_dim] < node->pivot_value)
-      insert_node(node, node->children[0], key, value);
+      insertNode(node, node->children[0], key, value);
     else
-      insert_node(node, node->children[1], key, value);
+      insertNode(node, node->children[1], key, value);
   }
 
   return node;
@@ -204,8 +203,8 @@ KDTree::insert_node(pf_kdtree_node_t *parent,
 
 ////////////////////////////////////////////////////////////////////////////////
 // Recursive node search
-pf_kdtree_node_t*
-KDTree::find_node(pf_kdtree_node_t *node, int key[])
+PFKDTreeNode*
+PFKDTree::findNode(PFKDTreeNode *node, int key[])
 {
   if (node->leaf)
   {
@@ -224,37 +223,37 @@ KDTree::find_node(pf_kdtree_node_t *node, int key[])
 
     // If the keys are different...
     if (key[node->pivot_dim] < node->pivot_value)
-      return find_node(node->children[0], key);
+      return findNode(node->children[0], key);
     else
-      return find_node(node->children[1], key);
+      return findNode(node->children[1], key);
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Cluster the leaves in the tree
 void
-KDTree::cluster()
+PFKDTree::cluster()
 {
   int i;
   int queue_count, cluster_count;
-  std::vector<pf_kdtree_node_t*> queue;
-  pf_kdtree_node_t *node;
+  std::vector<PFKDTreeNode*> queue;
+  PFKDTreeNode *node;
 
   queue_count = 0;
 
   // Put all the leaves in a queue
-  for (i = 0; i < node_count; i++)
+  for (i = 0; i < node_count_; i++)
   {
-    node = nodes + i;
+    node = nodes_ + i;
     if (node->leaf)
     {
       node->cluster = -1;
-      assert(queue_count < node_count);
+      assert(queue_count < node_count_);
       queue.push_back(node);
       queue_count++;
 
       // TESTING; remove
-      assert(node == find_node(root, node->key));
+      assert(node == findNode(root_, node->key));
     }
   }
 
@@ -273,18 +272,18 @@ KDTree::cluster()
     node->cluster = cluster_count++;
 
     // Recursively label nodes in this cluster
-    cluster_node(node, 0);
+    clusterNode(node, 0);
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Recursively label nodes in this cluster
 void
-KDTree::cluster_node(pf_kdtree_node_t *node, int depth)
+PFKDTree::clusterNode(PFKDTreeNode *node, int depth)
 {
   int i;
   int nkey[3];
-  pf_kdtree_node_t *nnode;
+  PFKDTreeNode *nnode;
 
   for (i = 0; i < 3 * 3 * 3; i++)
   {
@@ -292,7 +291,7 @@ KDTree::cluster_node(pf_kdtree_node_t *node, int depth)
     nkey[1] = node->key[1] + ((i % 9) / 3) - 1;
     nkey[2] = node->key[2] + ((i % 9) % 3) - 1;
 
-    nnode = find_node(root, nkey);
+    nnode = findNode(root_, nkey);
     if (nnode == NULL)
       continue;
 
@@ -309,6 +308,12 @@ KDTree::cluster_node(pf_kdtree_node_t *node, int depth)
     // Label this node and recurse
     nnode->cluster = node->cluster;
 
-    cluster_node(nnode, depth + 1);
+    clusterNode(nnode, depth + 1);
   }
+}
+
+int
+PFKDTree::getLeafCount()
+{
+  return leaf_count_;
 }

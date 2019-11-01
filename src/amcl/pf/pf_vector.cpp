@@ -21,8 +21,7 @@
 /**************************************************************************
  * Desc: Vector functions
  * Author: Andrew Howard
- * Date: 10 Dec 2002
- * CVS: $Id: pf_vector.c 6345 2008-04-17 01:36:39Z gerkey $
+ * Maintainer: Tyler Buchman (tyler_buchman@jabil.com)
  *************************************************************************/
 
 #include <math.h>
@@ -45,7 +44,7 @@ PFVector::PFVector()
 
 // Check for NAN or INF in any component
 bool
-PFVector::is_finite()
+PFVector::isFinite()
 {
   int i;
   for (i = 0; i < 3; i++)
@@ -56,7 +55,7 @@ PFVector::is_finite()
 
 // Simple vector addition
 PFVector
-PFVector::pf_vector_add(PFVector a, PFVector b)
+PFVector::pfVectorAdd(PFVector a, PFVector b)
 {
   PFVector c;
   c.v[0] = a.v[0] + b.v[0];
@@ -65,10 +64,9 @@ PFVector::pf_vector_add(PFVector a, PFVector b)
   return c;
 }
 
-
 // Simple vector subtraction
 PFVector
-PFVector::pf_vector_sub(PFVector a, PFVector b)
+PFVector::pfVectorSub(PFVector a, PFVector b)
 {
   PFVector c;
   c.v[0] = a.v[0] - b.v[0];
@@ -77,10 +75,9 @@ PFVector::pf_vector_sub(PFVector a, PFVector b)
   return c;
 }
 
-
 // Transform from local to global coords (a + b)
 PFVector
-PFVector::pf_vector_coord_add(PFVector a, PFVector b)
+PFVector::pfVectorCoordAdd(PFVector a, PFVector b)
 {
   PFVector c;
   c.v[0] = b.v[0] + a.v[0] * cos(b.v[2]) - a.v[1] * sin(b.v[2]);
@@ -90,10 +87,9 @@ PFVector::pf_vector_coord_add(PFVector a, PFVector b)
   return c;
 }
 
-
 // Transform from global to local coords (a - b)
 PFVector
-PFVector::pf_vector_coord_sub(PFVector a, PFVector b)
+PFVector::pfVectorCoordSub(PFVector a, PFVector b)
 {
   PFVector c;
   c.v[0] = +(a.v[0] - b.v[0]) * cos(b.v[2]) + (a.v[1] - b.v[1]) * sin(b.v[2]);
@@ -102,7 +98,6 @@ PFVector::pf_vector_coord_sub(PFVector a, PFVector b)
   c.v[2] = atan2(sin(c.v[2]), cos(c.v[2]));
   return c;
 }
-
 
 // Return a zero matrix
 PFMatrix::PFMatrix()
@@ -116,7 +111,7 @@ PFMatrix::PFMatrix()
 
 // Check for NAN or INF in any component
 bool
-PFMatrix::is_finite()
+PFMatrix::isFinite()
 {
   int i, j;
 
@@ -146,7 +141,7 @@ PFMatrix::decompose(PFMatrix *r, PFMatrix *d)
     }
   }
 
-  eig3::eigen_decomposition(aa, evec, eval);
+  EIG3::eigenDecomposition(aa, evec, eval);
 
   *d = PFMatrix();
   for (i = 0; i < 3; i++)
@@ -158,4 +153,3 @@ PFMatrix::decompose(PFMatrix *r, PFMatrix *d)
     }
   }
 }
-

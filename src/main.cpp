@@ -16,9 +16,11 @@
  *  License along with this library; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
+ *  Maintainter: Tyler Buchman (tyler_buchman@jabil.com)
+ *
  */
 
-#include "node/amcl_node.h"
+#include "node/node.h"
 #include "ros/ros.h"
 
 #include <boost/bind.hpp>
@@ -27,11 +29,11 @@
 
 using namespace amcl;
 
-std::vector<std::pair<int,int> > AmclNode::free_space_indices;
+std::vector<std::pair<int,int> > Node::free_space_indices;
 
 #define USAGE "USAGE: amcl"
 
-boost::shared_ptr<AmclNode> amcl_node_ptr;
+boost::shared_ptr<Node> amcl_node_ptr;
 bool sigFlag = false;
 
 void sigHandler(int sig)
@@ -52,7 +54,7 @@ main(int argc, char** argv)
   signal(SIGTERM, sigHandler);
 
   // Make our node available to sigintHandler
-  amcl_node_ptr.reset(new AmclNode());
+  amcl_node_ptr.reset(new Node());
 
   ros::MultiThreadedSpinner spinner(4);
   spinner.spin();

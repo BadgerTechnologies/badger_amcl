@@ -21,8 +21,7 @@
 /**************************************************************************
  * Desc: Range routines
  * Author: Andrew Howard
- * Date: 18 Jan 2003
- * CVS: $Id: map_range.c 1347 2003-05-05 06:24:33Z inspectorg $
+ * Maintainter: Tyler Buchman (tyler_buchman@jabil.com)
 **************************************************************************/
 
 #include <assert.h>
@@ -93,13 +92,13 @@ OccupancyMap::calcRange(double ox, double oy, double oa, double max_range)
 
   if(steep)
   {
-    if(!isValid({y,x}) || cells[computeCellIndex(y,x)].occ_state > -1)
-      return sqrt((x-x0)*(x-x0) + (y-y0)*(y-y0)) * scale;
+    if(!isValid({y,x}) || cells_[computeCellIndex(y,x)].occ_state > -1)
+      return sqrt((x-x0)*(x-x0) + (y-y0)*(y-y0)) * scale_;
   }
   else
   {
-    if(!isValid({x,y}) || cells[computeCellIndex(x,y)].occ_state > -1)
-      return sqrt((x-x0)*(x-x0) + (y-y0)*(y-y0)) * scale;
+    if(!isValid({x,y}) || cells_[computeCellIndex(x,y)].occ_state > -1)
+      return sqrt((x-x0)*(x-x0) + (y-y0)*(y-y0)) * scale_;
   }
 
   while(x != (x1 + xstep * 1))
@@ -114,13 +113,13 @@ OccupancyMap::calcRange(double ox, double oy, double oa, double max_range)
 
     if(steep)
     {
-      if(!isValid({y,x}) || cells[computeCellIndex(y,x)].occ_state > -1)
-        return sqrt((x-x0)*(x-x0) + (y-y0)*(y-y0)) * scale;
+      if(!isValid({y,x}) || cells_[computeCellIndex(y,x)].occ_state > -1)
+        return sqrt((x-x0)*(x-x0) + (y-y0)*(y-y0)) * scale_;
     }
     else
     {
-      if(!isValid({x,y}) || cells[computeCellIndex(x,y)].occ_state > -1)
-        return sqrt((x-x0)*(x-x0) + (y-y0)*(y-y0)) * scale;
+      if(!isValid({x,y}) || cells_[computeCellIndex(x,y)].occ_state > -1)
+        return sqrt((x-x0)*(x-x0) + (y-y0)*(y-y0)) * scale_;
     }
   }
   return max_range;

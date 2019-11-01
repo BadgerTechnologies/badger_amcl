@@ -22,8 +22,7 @@
 //
 // Desc: AMCL odometry routines
 // Author: Andrew Howard
-// Date: 6 Feb 2003
-// CVS: $Id: amcl_odom.cc 7057 2008-10-02 00:44:06Z gbiggs $
+// Maintainer: Tyler Buchman (tyler_buchman@jabil.com)
 //
 ///////////////////////////////////////////////////////////////////////////
 
@@ -32,111 +31,87 @@
 #include <sys/types.h> // required by Darwin
 #include <math.h>
 
-#include "amcl_odom.h"
+#include "odom.h"
 
 using namespace amcl;
 
-static double
-normalize(double z)
-{
-  return atan2(sin(z),cos(z));
-}
-static double
-angle_diff(double a, double b)
-{
-  double d1, d2;
-  a = normalize(a);
-  b = normalize(b);
-  d1 = a-b;
-  d2 = 2*M_PI - fabs(d1);
-  if(d1 > 0)
-    d2 *= -1.0;
-  if(fabs(d1) < fabs(d2))
-    return(d1);
-  else
-    return(d2);
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 // Default constructor
-AMCLOdom::AMCLOdom() : AMCLSensor()
+Odom::Odom() : Sensor()
 {
-  this->time = 0.0;
 }
 
 void
-AMCLOdom::SetModelDiff(double alpha1, 
-                       double alpha2, 
-                       double alpha3, 
-                       double alpha4)
+Odom::setModelDiff(double alpha1, 
+                     double alpha2, 
+                     double alpha3, 
+                     double alpha4)
 {
-  this->model_type = ODOM_MODEL_DIFF;
-  this->alpha1 = alpha1;
-  this->alpha2 = alpha2;
-  this->alpha3 = alpha3;
-  this->alpha4 = alpha4;
+  this->model_type_ = ODOM_MODEL_DIFF;
+  this->alpha1_ = alpha1;
+  this->alpha2_ = alpha2;
+  this->alpha3_ = alpha3;
+  this->alpha4_ = alpha4;
 }
 
 void
-AMCLOdom::SetModelOmni(double alpha1, 
-                       double alpha2, 
-                       double alpha3, 
-                       double alpha4,
-                       double alpha5)
+Odom::setModelOmni(double alpha1, 
+                     double alpha2, 
+                     double alpha3, 
+                     double alpha4,
+                     double alpha5)
 {
-  this->model_type = ODOM_MODEL_OMNI;
-  this->alpha1 = alpha1;
-  this->alpha2 = alpha2;
-  this->alpha3 = alpha3;
-  this->alpha4 = alpha4;
-  this->alpha5 = alpha5;
+  this->model_type_ = ODOM_MODEL_OMNI;
+  this->alpha1_ = alpha1;
+  this->alpha2_ = alpha2;
+  this->alpha3_ = alpha3;
+  this->alpha4_ = alpha4;
+  this->alpha5_ = alpha5;
 }
 
 void
-AMCLOdom::SetModelGaussian(double alpha1,
-                           double alpha2,
-                           double alpha3,
-                           double alpha4,
-                           double alpha5)
+Odom::setModelGaussian(double alpha1,
+                         double alpha2,
+                         double alpha3,
+                         double alpha4,
+                         double alpha5)
 {
-  this->model_type = ODOM_MODEL_GAUSSIAN;
-  this->alpha1 = alpha1;
-  this->alpha2 = alpha2;
-  this->alpha3 = alpha3;
-  this->alpha4 = alpha4;
-  this->alpha5 = alpha5;
+  this->model_type_ = ODOM_MODEL_GAUSSIAN;
+  this->alpha1_ = alpha1;
+  this->alpha2_ = alpha2;
+  this->alpha3_ = alpha3;
+  this->alpha4_ = alpha4;
+  this->alpha5_ = alpha5;
 }
 
 void
-AMCLOdom::SetModel( odom_model_t type,
+Odom::setModel( OdomModelType type,
                     double alpha1,
                     double alpha2,
                     double alpha3,
                     double alpha4,
                     double alpha5 )
 {
-  this->model_type = type;
-  this->alpha1 = alpha1;
-  this->alpha2 = alpha2;
-  this->alpha3 = alpha3;
-  this->alpha4 = alpha4;
-  this->alpha5 = alpha5;
+  this->model_type_ = type;
+  this->alpha1_ = alpha1;
+  this->alpha2_ = alpha2;
+  this->alpha3_ = alpha3;
+  this->alpha4_ = alpha4;
+  this->alpha5_ = alpha5;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Apply the action model
-bool AMCLOdom::UpdateAction(ParticleFilter *pf, AMCLSensorData *data)
+bool Odom::updateAction(ParticleFilter *pf, SensorData *data)
 {
-  AMCLOdomData *ndata;
-  ndata = (AMCLOdomData*) data;
+  OdomData *ndata;
+  ndata = (OdomData*) data;
 
   // Compute the new sample poses
-  pf_sample_set_t *set;
+  PFSampleSet *set = pf->getCurrentSet();
+  PFVector old_pose = PFVector::pfVectorSub(ndata->pose, ndata->delta);
 
-  set = pf->sets + pf->current_set;
-  PFVector old_pose = PFVector::pf_vector_sub(ndata->pose, ndata->delta);
-
-  switch( this->model_type )
+  switch( this->model_type_ )
   {
   case ODOM_MODEL_OMNI:
   {
@@ -148,18 +123,18 @@ bool AMCLOdom::UpdateAction(ParticleFilter *pf, AMCLSensorData *data)
     delta_rot = ndata->delta.v[2];
 
     // Precompute a couple of things
-    double trans_hat_stddev = (alpha3 * (delta_trans*delta_trans) +
-                               alpha1 * (delta_rot*delta_rot));
-    double rot_hat_stddev = (alpha4 * (delta_rot*delta_rot) +
-                             alpha2 * (delta_trans*delta_trans));
-    double strafe_hat_stddev = (alpha1 * (delta_rot*delta_rot) +
-                                alpha5 * (delta_trans*delta_trans));
+    double trans_hat_stddev = (alpha3_ * (delta_trans*delta_trans) +
+                               alpha1_ * (delta_rot*delta_rot));
+    double rot_hat_stddev = (alpha4_ * (delta_rot*delta_rot) +
+                             alpha2_ * (delta_trans*delta_trans));
+    double strafe_hat_stddev = (alpha1_ * (delta_rot*delta_rot) +
+                                alpha5_ * (delta_trans*delta_trans));
 
     for (int i = 0; i < set->sample_count; i++)
     {
-      pf_sample_t* sample = set->samples + i;
+      PFSample* sample = set->samples + i;
 
-      delta_bearing = angle_diff(atan2(ndata->delta.v[1], ndata->delta.v[0]),
+      delta_bearing = angleDiff(atan2(ndata->delta.v[1], ndata->delta.v[0]),
                                  old_pose.v[2]) + sample->pose.v[2];
       double cs_bearing = cos(delta_bearing);
       double sn_bearing = sin(delta_bearing);
@@ -190,35 +165,35 @@ bool AMCLOdom::UpdateAction(ParticleFilter *pf, AMCLSensorData *data)
             ndata->delta.v[0]*ndata->delta.v[0]) < 0.01)
       delta_rot1 = 0.0;
     else
-      delta_rot1 = angle_diff(atan2(ndata->delta.v[1], ndata->delta.v[0]),
+      delta_rot1 = angleDiff(atan2(ndata->delta.v[1], ndata->delta.v[0]),
                               old_pose.v[2]);
     delta_trans = sqrt(ndata->delta.v[0]*ndata->delta.v[0] +
                        ndata->delta.v[1]*ndata->delta.v[1]);
-    delta_rot2 = angle_diff(ndata->delta.v[2], delta_rot1);
+    delta_rot2 = angleDiff(ndata->delta.v[2], delta_rot1);
 
     // We want to treat backward and forward motion symmetrically for the
     // noise model to be applied below.  The standard model seems to assume
     // forward motion.
-    delta_rot1_noise = std::min(fabs(angle_diff(delta_rot1,0.0)),
-                                fabs(angle_diff(delta_rot1,M_PI)));
-    delta_rot2_noise = std::min(fabs(angle_diff(delta_rot2,0.0)),
-                                fabs(angle_diff(delta_rot2,M_PI)));
+    delta_rot1_noise = std::min(fabs(angleDiff(delta_rot1,0.0)),
+                                fabs(angleDiff(delta_rot1,M_PI)));
+    delta_rot2_noise = std::min(fabs(angleDiff(delta_rot2,0.0)),
+                                fabs(angleDiff(delta_rot2,M_PI)));
 
     for (int i = 0; i < set->sample_count; i++)
     {
-      pf_sample_t* sample = set->samples + i;
+      PFSample* sample = set->samples + i;
 
       // Sample pose differences
-      delta_rot1_hat = angle_diff(delta_rot1,
-                                  PDFGaussian::draw(this->alpha1*delta_rot1_noise*delta_rot1_noise +
-                                                  this->alpha2*delta_trans*delta_trans));
+      delta_rot1_hat = angleDiff(delta_rot1,
+                                  PDFGaussian::draw(this->alpha1_*delta_rot1_noise*delta_rot1_noise +
+                                                  this->alpha2_*delta_trans*delta_trans));
       delta_trans_hat = delta_trans - 
-              PDFGaussian::draw(this->alpha3*delta_trans*delta_trans +
-                              this->alpha4*delta_rot1_noise*delta_rot1_noise +
-                              this->alpha4*delta_rot2_noise*delta_rot2_noise);
-      delta_rot2_hat = angle_diff(delta_rot2,
-                                  PDFGaussian::draw(this->alpha1*delta_rot2_noise*delta_rot2_noise +
-                                                  this->alpha2*delta_trans*delta_trans));
+              PDFGaussian::draw(this->alpha3_*delta_trans*delta_trans +
+                              this->alpha4_*delta_rot1_noise*delta_rot1_noise +
+                              this->alpha4_*delta_rot2_noise*delta_rot2_noise);
+      delta_rot2_hat = angleDiff(delta_rot2,
+                                  PDFGaussian::draw(this->alpha1_*delta_rot2_noise*delta_rot2_noise +
+                                                  this->alpha2_*delta_trans*delta_trans));
 
       // Apply sampled update to particle pose
       sample->pose.v[0] += delta_trans_hat * 
@@ -239,18 +214,18 @@ bool AMCLOdom::UpdateAction(ParticleFilter *pf, AMCLSensorData *data)
     delta_rot = ndata->delta.v[2];
 
     // Precompute a couple of things
-    double trans_hat_stddev = sqrt( alpha3 * (delta_trans*delta_trans) +
-                                    alpha1 * (delta_rot*delta_rot) );
-    double rot_hat_stddev = sqrt( alpha4 * (delta_rot*delta_rot) +
-                                  alpha2 * (delta_trans*delta_trans) );
-    double strafe_hat_stddev = sqrt( alpha1 * (delta_rot*delta_rot) +
-                                     alpha5 * (delta_trans*delta_trans) );
+    double trans_hat_stddev = sqrt( alpha3_ * (delta_trans*delta_trans) +
+                                    alpha1_ * (delta_rot*delta_rot) );
+    double rot_hat_stddev = sqrt( alpha4_ * (delta_rot*delta_rot) +
+                                  alpha2_ * (delta_trans*delta_trans) );
+    double strafe_hat_stddev = sqrt( alpha1_ * (delta_rot*delta_rot) +
+                                     alpha5_ * (delta_trans*delta_trans) );
 
     for (int i = 0; i < set->sample_count; i++)
     {
-      pf_sample_t* sample = set->samples + i;
+      PFSample* sample = set->samples + i;
 
-      delta_bearing = angle_diff(atan2(ndata->delta.v[1], ndata->delta.v[0]),
+      delta_bearing = angleDiff(atan2(ndata->delta.v[1], ndata->delta.v[0]),
                                  old_pose.v[2]) + sample->pose.v[2];
       double cs_bearing = cos(delta_bearing);
       double sn_bearing = sin(delta_bearing);
@@ -281,35 +256,35 @@ bool AMCLOdom::UpdateAction(ParticleFilter *pf, AMCLSensorData *data)
             ndata->delta.v[0]*ndata->delta.v[0]) < 0.01)
       delta_rot1 = 0.0;
     else
-      delta_rot1 = angle_diff(atan2(ndata->delta.v[1], ndata->delta.v[0]),
+      delta_rot1 = angleDiff(atan2(ndata->delta.v[1], ndata->delta.v[0]),
                               old_pose.v[2]);
     delta_trans = sqrt(ndata->delta.v[0]*ndata->delta.v[0] +
                        ndata->delta.v[1]*ndata->delta.v[1]);
-    delta_rot2 = angle_diff(ndata->delta.v[2], delta_rot1);
+    delta_rot2 = angleDiff(ndata->delta.v[2], delta_rot1);
 
     // We want to treat backward and forward motion symmetrically for the
     // noise model to be applied below.  The standard model seems to assume
     // forward motion.
-    delta_rot1_noise = std::min(fabs(angle_diff(delta_rot1,0.0)),
-                                fabs(angle_diff(delta_rot1,M_PI)));
-    delta_rot2_noise = std::min(fabs(angle_diff(delta_rot2,0.0)),
-                                fabs(angle_diff(delta_rot2,M_PI)));
+    delta_rot1_noise = std::min(fabs(angleDiff(delta_rot1,0.0)),
+                                fabs(angleDiff(delta_rot1,M_PI)));
+    delta_rot2_noise = std::min(fabs(angleDiff(delta_rot2,0.0)),
+                                fabs(angleDiff(delta_rot2,M_PI)));
 
     for (int i = 0; i < set->sample_count; i++)
     {
-      pf_sample_t* sample = set->samples + i;
+      PFSample* sample = set->samples + i;
 
       // Sample pose differences
-      delta_rot1_hat = angle_diff(delta_rot1,
-                                  PDFGaussian::draw(sqrt(this->alpha1*delta_rot1_noise*delta_rot1_noise +
-                                                       this->alpha2*delta_trans*delta_trans)));
+      delta_rot1_hat = angleDiff(delta_rot1,
+                                  PDFGaussian::draw(sqrt(this->alpha1_*delta_rot1_noise*delta_rot1_noise +
+                                                       this->alpha2_*delta_trans*delta_trans)));
       delta_trans_hat = delta_trans - 
-              PDFGaussian::draw(sqrt(this->alpha3*delta_trans*delta_trans +
-                                   this->alpha4*delta_rot1_noise*delta_rot1_noise +
-                                   this->alpha4*delta_rot2_noise*delta_rot2_noise));
-      delta_rot2_hat = angle_diff(delta_rot2,
-                                  PDFGaussian::draw(sqrt(this->alpha1*delta_rot2_noise*delta_rot2_noise +
-                                                       this->alpha2*delta_trans*delta_trans)));
+              PDFGaussian::draw(sqrt(this->alpha3_*delta_trans*delta_trans +
+                                   this->alpha4_*delta_rot1_noise*delta_rot1_noise +
+                                   this->alpha4_*delta_rot2_noise*delta_rot2_noise));
+      delta_rot2_hat = angleDiff(delta_rot2,
+                                  PDFGaussian::draw(sqrt(this->alpha1_*delta_rot2_noise*delta_rot2_noise +
+                                                       this->alpha2_*delta_trans*delta_trans)));
 
       // Apply sampled update to particle pose
       sample->pose.v[0] += delta_trans_hat * 
@@ -339,13 +314,13 @@ bool AMCLOdom::UpdateAction(ParticleFilter *pf, AMCLSensorData *data)
     abs_delta_strafe2 = abs_delta_strafe * abs_delta_strafe;
     abs_delta_rot2 = abs_delta_rot * abs_delta_rot;
 
-    double rot_hat_stddev = sqrt(alpha1 * abs_delta_rot2 + alpha2 * abs_delta_trans2);
-    double trans_hat_stddev = sqrt(alpha3 * abs_delta_trans2 + alpha4 * abs_delta_rot2);
-    double strafe_hat_stddev = sqrt(alpha4 * abs_delta_rot2 + alpha5 * abs_delta_strafe2);
+    double rot_hat_stddev = sqrt(alpha1_ * abs_delta_rot2 + alpha2_ * abs_delta_trans2);
+    double trans_hat_stddev = sqrt(alpha3_ * abs_delta_trans2 + alpha4_ * abs_delta_rot2);
+    double strafe_hat_stddev = sqrt(alpha4_ * abs_delta_rot2 + alpha5_ * abs_delta_strafe2);
 
     for (int i = 0; i < set->sample_count; i++)
     {
-      pf_sample_t* sample = set->samples + i;
+      PFSample* sample = set->samples + i;
 
       // estimated direction pointed during motion
       double heading = sample->pose.v[2] + ndata->delta.v[2]/2;
@@ -353,7 +328,7 @@ bool AMCLOdom::UpdateAction(ParticleFilter *pf, AMCLSensorData *data)
       double sn_heading = sin(heading);
 
       // relative direction we moved
-      double delta_bearing = angle_diff(atan2(ndata->delta.v[1], ndata->delta.v[0]),
+      double delta_bearing = angleDiff(atan2(ndata->delta.v[1], ndata->delta.v[0]),
                                  old_pose.v[2]) + sample->pose.v[2];
       double cs_bearing = cos(delta_bearing);
       double sn_bearing = sin(delta_bearing);
@@ -376,4 +351,26 @@ bool AMCLOdom::UpdateAction(ParticleFilter *pf, AMCLSensorData *data)
   break;
   }
   return true;
+}
+
+double
+Odom::normalize(double z)
+{
+  return atan2(sin(z),cos(z));
+}
+
+double
+Odom::angleDiff(double a, double b)
+{
+  double d1, d2;
+  a = normalize(a);
+  b = normalize(b);
+  d1 = a-b;
+  d2 = 2*M_PI - fabs(d1);
+  if(d1 > 0)
+    d2 *= -1.0;
+  if(fabs(d1) < fabs(d2))
+    return(d1);
+  else
+    return(d2);
 }

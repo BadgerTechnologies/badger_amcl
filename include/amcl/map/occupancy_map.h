@@ -21,12 +21,11 @@
 /**************************************************************************
  * Desc: Global map (grid-based)
  * Author: Andrew Howard
- * Date: 6 Feb 2003
- * CVS: $Id: map.h 1713 2003-08-23 04:03:43Z inspectorg $
+ * Maintainter: Tyler Buchman (tyler_buchman@jabil.com)
  **************************************************************************/
 
-#ifndef OCCUPANCY_MAP_H
-#define OCCUPANCY_MAP_H
+#ifndef AMCL_OCCUPANCY_MAP_H
+#define AMCL_OCCUPANCY_MAP_H
 
 #include <cstdint>
 #include <vector>
@@ -38,12 +37,11 @@ namespace amcl
 {
 
 // Description for a single map cell.
-struct map_cell_t
+struct MapCell
 {
   // Occupancy state (-1 = free, 0 = unknown, +1 = occ)
   int8_t occ_state;
 };
-
 
 class OccupancyMap : public Map
 {
@@ -70,7 +68,7 @@ class OccupancyMap : public Map
     unsigned int computeCellIndex(int i, int j);
     int8_t getOccState(int i, int j);
     double getMaxOccDist();
-    map_cell_t* getCells();
+    MapCell* getCells();
     void initCells(int num);
     void setCellOccState(int index, int8_t state);
 
@@ -116,26 +114,26 @@ class OccupancyMap : public Map
         }
     };
 
-    // Map origin; the map is a viewport onto a conceptual larger map.
-    double origin_x, origin_y;
-
-    // Map dimensions (number of cells)
-    int size_x, size_y;
-
-    // The map occupancy data, stored as a grid
-    map_cell_t *cells;
-
-    // The map distance data, stored as a grid
-    float *distances;
-
-    CachedDistanceMap* cdm;
-
     void setMapOccDist(int i, int j, float d);
     bool enqueue(int i, int j, int src_i, int src_j,
 	             std::priority_queue<CellData>& Q);
 
     friend bool operator<(const OccupancyMap::CellData& a,
                           const OccupancyMap::CellData& b);
+
+    // Map origin; the map is a viewport onto a conceptual larger map.
+    double origin_x_, origin_y_;
+
+    // Map dimensions (number of cells)
+    int size_x_, size_y_;
+
+    // The map occupancy data, stored as a grid
+    MapCell *cells_;
+
+    // The map distance data, stored as a grid
+    float *distances_;
+
+    CachedDistanceMap* cdm_;
 };
 
 inline bool operator<(const OccupancyMap::CellData& a,

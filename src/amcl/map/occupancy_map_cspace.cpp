@@ -18,6 +18,12 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
+/**************************************************************************
+ * Desc: Global map (grid-based)
+ * Author: Andrew Howard
+ * Maintainter: Tyler Buchman (tyler_buchman@jabil.com)
+**************************************************************************/
+
 
 #include <queue>
 #include <stdlib.h>
@@ -33,12 +39,12 @@ OccupancyMap::enqueue(int i, int j, int src_i, int src_j,
 {
   int di = abs(i - src_i);
   int dj = abs(j - src_j);
-  double distance = cdm->distances_[di][dj];
+  double distance = cdm_->distances_[di][dj];
 
-  if(distance > cdm->cell_radius_)
+  if(distance > cdm_->cell_radius_)
     return false;
 
-  setMapOccDist(i, j, distance * scale);
+  setMapOccDist(i, j, distance * scale_);
 
   CellData cell = CellData(this);
   cell.i_ = i;
@@ -53,31 +59,31 @@ OccupancyMap::enqueue(int i, int j, int src_i, int src_j,
 
 // Update the cspace distance values
 void
-OccupancyMap::updateCSpace(double _max_occ_dist)
+OccupancyMap::updateCSpace(double max_occ_dist)
 {
   std::priority_queue<CellData> Q;
 
-  if (distances)
-    free(distances);
-  distances = new float[unsigned(size_x)*size_y];
+  if (distances_)
+    free(distances_);
+  distances_ = new float[unsigned(size_x_)*size_y_];
 
-  std::vector<bool> marked(unsigned(size_x) * size_y, false);
+  std::vector<bool> marked(unsigned(size_x_) * size_y_, false);
 
-  max_occ_dist = _max_occ_dist;
+  max_occ_dist_ = max_occ_dist;
 
-  if(!cdm || (cdm->scale_ != scale) || (cdm->max_dist_ != max_occ_dist))
+  if(!cdm_ || (cdm_->scale_ != scale_) || (cdm_->max_dist_ != max_occ_dist_))
   {
-    if(cdm)
-      delete cdm;
-    cdm = new CachedDistanceMap(scale, max_occ_dist);
+    if(cdm_)
+      delete cdm_;
+    cdm_ = new CachedDistanceMap(scale_, max_occ_dist_);
   }
 
   // Enqueue all the obstacle cells
   CellData cell = CellData(this);
-  for(int i=0; i<size_x; i++)
+  for(int i=0; i<size_x_; i++)
   {
     cell.src_i_ = cell.i_ = i;
-    for(int j=0; j<size_y; j++)
+    for(int j=0; j<size_y_; j++)
     {
       if(getOccState(i, j) == +1)
       {
@@ -110,14 +116,14 @@ OccupancyMap::updateCSpace(double _max_occ_dist)
       if(not marked[index])
         marked[index] = enqueue(i, j, current_cell.src_i_, current_cell.src_j_, Q);
     }
-    if((int)current_cell.i_ < size_x - 1)
+    if((int)current_cell.i_ < size_x_ - 1)
     {
       int i = current_cell.i_+1, j = current_cell.j_;
       unsigned int index = computeCellIndex(i, j);
       if(not marked[index])
         marked[index] = enqueue(i, j, current_cell.src_i_, current_cell.src_j_, Q);
     }
-    if((int)current_cell.j_ < size_y - 1)
+    if((int)current_cell.j_ < size_y_ - 1)
     {
       int i = current_cell.i_, j = current_cell.j_+1;
       unsigned int index = computeCellIndex(i, j);
@@ -133,6 +139,6 @@ OccupancyMap::setMapOccDist(int i, int j, float d)
 {
   if (isValid({i, j}))
   {
-    distances[computeCellIndex(i, j)] = d;
+    distances_[computeCellIndex(i, j)] = d;
   }
 }

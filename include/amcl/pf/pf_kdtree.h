@@ -21,8 +21,7 @@
 /**************************************************************************
  * Desc: KD tree functions
  * Author: Andrew Howard
- * Date: 18 Dec 2002
- * CVS: $Id: pf_kdtree.h 6532 2008-06-11 02:45:56Z gbiggs $
+ * Maintainter: Tyler Buchman (tyler_buchman@jabil.com)
  *************************************************************************/
 
 #ifndef PF_KDTREE_H
@@ -53,56 +52,59 @@ typedef struct pf_kdtree_node
   // Child nodes
   struct pf_kdtree_node *children[2];
 
-} pf_kdtree_node_t;
+} PFKDTreeNode;
 
 
 // A kd tree
-class KDTree
+class PFKDTree
 {
   public:
     // Create a tree
-    KDTree(int max_size);
+    PFKDTree(int max_size);
 
     // Destroy a tree
-    ~KDTree();
+    ~PFKDTree();
 
     // Clear all entries from the tree
-    void clear_kdtree();
+    void clearKDTree();
 
     // Insert a pose into the tree
-    void insert_pose(PFVector pose, double value);
+    void insertPose(PFVector pose, double value);
 
     // Cluster the leaves in the tree
     void cluster();
 
     // Determine the cluster label for the given pose
-    int get_cluster(PFVector pose);
+    int getCluster(PFVector pose);
 
-    // Cell size
-    double cell_size[3];
+    int getLeafCount();
 
-    // The root node of the tree
-    pf_kdtree_node_t *root;
-
-    // The number of nodes in the tree
-    int node_count, node_max_count;
-    pf_kdtree_node_t *nodes;
-
-    // The number of leaf nodes in the tree
-    int leaf_count;
-
+  private:
     // Compare keys to see if they are equal
     bool equals(int key_a[], int key_b[]);
 
     // Insert a node into the tree
-    pf_kdtree_node_t* insert_node(pf_kdtree_node_t *parent, pf_kdtree_node_t *node,
-                                  int key[], double value);
+    PFKDTreeNode* insertNode(PFKDTreeNode *parent, PFKDTreeNode *node,
+                                 int key[], double value);
 
     // Recursive node search
-    pf_kdtree_node_t* find_node(pf_kdtree_node_t *node, int key[]);
+    PFKDTreeNode* findNode(PFKDTreeNode *node, int key[]);
 
     // Recursively label nodes in this cluster
-    void cluster_node(pf_kdtree_node_t *node, int depth);
+    void clusterNode(PFKDTreeNode *node, int depth);
+
+    // Cell size
+    double cell_size_[3];
+
+    // The root node of the tree
+    PFKDTreeNode *root_;
+
+    // The number of nodes in the tree
+    int node_count_, node_max_count_;
+    PFKDTreeNode *nodes_;
+
+    // The number of leaf nodes in the tree
+    int leaf_count_;
 };
 
 }

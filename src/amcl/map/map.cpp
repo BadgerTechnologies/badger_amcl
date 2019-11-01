@@ -21,19 +21,17 @@
 /**************************************************************************
  * Desc: Global map (grid-based)
  * Author: Andrew Howard
- * Date: 6 Feb 2003
- * CVS: $Id: map.c 1713 2003-08-23 04:03:43Z inspectorg $
+ * Maintainter: Tyler Buchman (tyler_buchman@jabil.com)
 **************************************************************************/
 
 #include "map.h"
-#include <stdint.h>
 
 using namespace amcl;
 
 // Create a new map
 Map::Map()
 {
-  scale = 0;
+  scale_ = 0;
 }
 
 // Destroy a map
@@ -44,11 +42,11 @@ Map::~Map()
 double
 Map::getScale()
 {
-  return scale;
+  return scale_;
 }
 
 void
-Map::setScale(double _scale)
+Map::setScale(double scale)
 {
-  scale = _scale;
+  scale_ = scale;
 }

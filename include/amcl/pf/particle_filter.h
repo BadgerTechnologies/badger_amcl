@@ -21,12 +21,11 @@
 /**************************************************************************
  * Desc: Simple particle filter for localization.
  * Author: Andrew Howard
- * Date: 10 Dec 2002
- * CVS: $Id: pf.h 3293 2005-11-19 08:37:45Z gerkey $
+ * Maintainter: Tyler Buchman (tyler_buchman@jabil.com)
  *************************************************************************/
 
-#ifndef PF_H
-#define PF_H
+#ifndef AMCL_PARTICLE_FILTER_H
+#define AMCL_PARTICLE_FILTER_H
 
 #include "pf_vector.h"
 #include "pf_kdtree.h"
@@ -38,25 +37,7 @@ typedef enum
 {
   PF_RESAMPLE_MULTINOMIAL,
   PF_RESAMPLE_SYSTEMATIC,
-} pf_resample_model_t;
-
-// Forward declarations
-struct _pf_sample_set_t;
-
-// Function prototype for the initialization model; generates a sample pose from
-// an appropriate distribution.
-typedef PFVector (*pf_init_model_fn_t) (void *init_data);
-
-// Function prototype for the action model; generates a sample pose from
-// an appropriate distribution
-typedef void (*pf_action_model_fn_t) (void *action_data, 
-                                      struct _pf_sample_set_t* set);
-
-// Function prototype for the sensor model; determines the probability
-// for the given set of sample poses.
-typedef double (*pf_sensor_model_fn_t) (void *sensor_data, 
-                                        struct _pf_sample_set_t* set);
-
+} PFResampleModelType;
 
 // Information for a single sample
 typedef struct
@@ -67,8 +48,7 @@ typedef struct
   // Weight for this pose
   double weight;
   
-} pf_sample_t;
-
+} PFSample;
 
 // Information for a cluster of samples
 typedef struct
@@ -86,29 +66,39 @@ typedef struct
   // Workspace
   double m[4], c[2][2];
   
-} pf_cluster_t;
-
+} PFCluster;
 
 // Information for a set of samples
-typedef struct _pf_sample_set_t
+typedef struct
 {
   // The samples
   int sample_count;
-  pf_sample_t *samples;
+  PFSample *samples;
 
   // A kdtree encoding the histogram
-  KDTree *kdtree;
+  PFKDTree *kdtree;
 
   // Clusters
   int cluster_count, cluster_max_count;
-  pf_cluster_t *clusters;
+  PFCluster *clusters;
 
   // Filter statistics
   PFVector mean;
   PFMatrix cov;
   int converged; 
-} pf_sample_set_t;
+} PFSampleSet;
 
+// Function prototype for the initialization model; generates a sample pose from
+// an appropriate distribution.
+typedef PFVector (*PFInitModelFnPtr) (void *init_data);
+
+// Function prototype for the action model; generates a sample pose from
+// an appropriate distribution
+typedef void (*PFActionModelFnPtr) (void *action_data, PFSampleSet* set);
+
+// Function prototype for the sensor model; determines the probability
+// for the given set of sample poses.
+typedef double (*PFSensorModelFnPtr) (void *sensor_data, PFSampleSet* set);
 
 // Information for an entire filter
 class ParticleFilter
@@ -116,80 +106,94 @@ class ParticleFilter
   public:
     // Create a new filter
     ParticleFilter(int min_samples, int max_samples, double alpha_slow, double alpha_fast,
-         pf_init_model_fn_t random_pose_fn, void *random_pose_data);
+         PFInitModelFnPtr random_pose_fn, void *random_pose_data);
 
     // Free an existing filter
     ~ParticleFilter();
 
     // Set the resample model
-    void set_resample_model(pf_resample_model_t resample_model);
+    void setResampleModel(PFResampleModelType resample_model);
 
-    double resample_systematic(double w_diff);
+    double resampleSystematic(double w_diff);
 
-    double resample_multinomial(double w_diff);
+    double resampleMultinomial(double w_diff);
 
     // Initialize the filter using a guassian
     void init(PFVector mean, PFMatrix cov);
 
     // Initialize the filter using some model
-    void init_model(pf_init_model_fn_t init_fn, void *init_data);
+    void initModel(PFInitModelFnPtr init_fn, void *init_data);
 
     // Update the filter with some new action
-    void update_action(pf_action_model_fn_t action_fn, void *action_data);
+    void updateAction(PFActionModelFnPtr action_fn, void *action_data);
 
     // Update the filter with some new sensor observation
-    void update_sensor(pf_sensor_model_fn_t sensor_fn, void *sensor_data);
+    void updateSensor(PFSensorModelFnPtr sensor_fn, void *sensor_data);
 
     // Resample the distribution
-    void update_resample();
+    void updateResample();
 
     // Compute the CEP statistics (mean and variance).
-    void get_cep_stats(PFVector *mean, double *var);
+    void getCepStats(PFVector *mean, double *var);
 
     // Compute the statistics for a particular cluster.  Returns false if
     // there is no such cluster.
-    bool get_cluster_stats(int cluster, double *weight, PFVector *mean, PFMatrix *cov);
+    bool getClusterStats(int cluster, double *weight, PFVector *mean, PFMatrix *cov);
 
     //calculate if the particle filter has converged - 
     //and sets the converged flag in the current set and the pf 
-    bool update_converged();
+    bool updateConverged();
 
     //sets the current set and pf converged values to zero
-    void init_converged();
+    void initConverged();
 
-    pf_resample_model_t resample_model;
+    // sets population size parameters
+    void setPopulationSizeParameters(double pop_err, double pop_z);
 
-    // This min and max number of samples
-    int min_samples, max_samples;
+    // sets decay rates for running averages
+    void setDecayRates(double alpha_slow, double alpha_fast);
 
-    // Population size parameters
-    double pop_err, pop_z;
-  
-    // The sample sets.  We keep two sets and use [current_set]
-    // to identify the active set.
-    int current_set;
-    pf_sample_set_t sets[2];
+    // gets pointer to current sample set
+    PFSampleSet* getCurrentSet();
 
-    // Running averages, slow and fast, of likelihood
-    double w_slow, w_fast;
-
-    // Decay rates for running averages
-    double alpha_slow, alpha_fast;
-
-    // Function used to draw random pose samples
-    pf_init_model_fn_t random_pose_fn;
-    void *random_pose_data;
-
-    double dist_threshold; //distance threshold in each axis over which the pf is considered to not be converged
-    int converged; 
+    // getter and setter for whether the particle filter has converged
+    bool isConverged();
+    void setConverged(bool converged);
 
   private:
     // Compute the required number of samples, given that there are k bins
     // with samples in them.
-    int resample_limit(int k);
+    int resampleLimit(int k);
 
     // Re-compute the cluster statistics for a sample set
-    void cluster_stats(pf_sample_set_t *sample_set);
+    void clusterStats(PFSampleSet *sample_set);
+
+    PFResampleModelType resample_model_;
+
+    // This min and max number of samples
+    int min_samples_, max_samples_;
+
+    // Running averages, slow and fast, of likelihood
+    double w_slow_, w_fast_;
+
+    // Function used to draw random pose samples
+    PFInitModelFnPtr random_pose_fn_;
+    void *random_pose_data_;
+
+    double dist_threshold_; //distance threshold in each axis over which the pf is considered to not be converged
+
+    // Population size parameters
+    double pop_err_, pop_z_;
+
+    // Decay rates for running averages
+    double alpha_slow_, alpha_fast_;
+
+    // The sample sets.  We keep two sets and use [current_set]
+    // to identify the active set.
+    int current_set_;
+    PFSampleSet sets_[2];
+
+    bool converged_;
 };
 
 }
