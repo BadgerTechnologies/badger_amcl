@@ -142,11 +142,11 @@ class Node
     void pointCloudReceived(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan);
     void initialPoseReceived(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg);
     void handleInitialPoseMessage(const geometry_msgs::PoseWithCovarianceStamped& orig_msg);
-    void occupancyMapReceived(const nav_msgs::OccupancyGridConstPtr& msg);
-    void octoMapReceived(const octomap_msgs::OctomapConstPtr& msg);
+    void occupancyMapMsgReceived(const nav_msgs::OccupancyGridConstPtr& msg);
+    void octomapMsgReceived(const octomap_msgs::OctomapConstPtr& msg);
     void initFromNewMap();
     void initFromNewOccupancyMap();
-    void initFromNewOctoMap();
+    void initFromNewOctomap();
     void freeMapDependentMemory();
     void freeOccupancyMapDependentMemory();
     void freeOctoMapDependentMemory();
