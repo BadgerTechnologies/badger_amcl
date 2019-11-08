@@ -683,10 +683,8 @@ void
 Node::initFromNewMap()
 {
   // Create the particle filter
-  ROS_INFO("initializing pf");
   pf_ = new ParticleFilter(min_particles_, max_particles_, alpha_slow_, alpha_fast_,
                            (PFInitModelFnPtr)Node::uniformPoseGenerator, (void *)this);
-  ROS_INFO("done initializing pf");
   pf_->setPopulationSizeParameters(pf_err_, pf_z_);
   pf_->setResampleModel(resample_model_type_);
 
@@ -860,10 +858,15 @@ Node::getOdomPose(tf::Stamped<tf::Pose>& odom_pose,
 PFVector
 Node::randomFreeSpacePose()
 {
+  PFVector p;
+  if(free_space_indices.size() == 0)
+  {
+    ROS_WARN("Free space indices have not been initialized");
+    return p;
+  }
   unsigned int rand_index = drand48() * free_space_indices.size();
   std::pair<int,int> free_point = free_space_indices[rand_index];
   std::vector<double> p_vec = map_->convertMapToWorld({free_point.first, free_point.second});
-  PFVector p;
   p.v[0] = p_vec[0];
   p.v[1] = p_vec[1];
   p.v[2] = drand48() * 2 * M_PI - M_PI;
@@ -935,9 +938,7 @@ Node::globalLocalizationCallback(std_srvs::Empty::Request& req,
     globalLocalizationCallback3D();
   }
 
-  ROS_INFO("reinitializing pf");
   pf_->initModel((PFInitModelFnPtr)Node::uniformPoseGenerator, (void *)this);
-  ROS_INFO("pf reinitialized");
   pf_init_ = false;
   return true;
 }
