@@ -214,11 +214,11 @@ Node::Node() :
 
   if(map_type_ == 2)
   {
-    map_sub_ = nh_.subscribe("map", 1, &Node::occupancyMapReceived, this);
+    map_sub_ = nh_.subscribe("/map", 1, &Node::occupancyMapMsgReceived, this);
   }
   else if(map_type_ == 3)
   {
-    map_sub_ = nh_.subscribe("/octomap_binary", 1, &Node::octoMapReceived, this);
+    map_sub_ = nh_.subscribe("/octomap_binary", 1, &Node::octomapMsgReceived, this);
   }
   else
   {
@@ -714,7 +714,7 @@ Node::initFromNewMap()
   }
   else if(map_type_ == 3)
   {
-    initFromNewOctoMap();
+    initFromNewOctomap();
   }
 
   // In case the initial pose message arrived before the first map,

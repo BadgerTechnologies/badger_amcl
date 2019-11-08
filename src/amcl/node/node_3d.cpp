@@ -199,7 +199,7 @@ Node::reconfigure3D(amcl::AMCLConfig &config)
 }
 
 void
-Node::octoMapReceived(const octomap_msgs::OctomapConstPtr& msg)
+Node::octomapMsgReceived(const octomap_msgs::OctomapConstPtr& msg)
 {
   if( first_map_only_ && first_map_received_ ) {
     return;
@@ -222,7 +222,7 @@ Node::octoMapReceived(const octomap_msgs::OctomapConstPtr& msg)
 }
 
 void
-Node::initFromNewOctoMap()
+Node::initFromNewOctomap()
 {
   delete point_cloud_scanner_;
   point_cloud_scanner_ = new PointCloudScanner(max_beams_, (OctoMap*)map_, point_cloud_scanner_height_);

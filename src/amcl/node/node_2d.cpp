@@ -295,7 +295,7 @@ Node::reconfigure2D(AMCLConfig &config)
 }
 
 void
-Node::occupancyMapReceived(const nav_msgs::OccupancyGridConstPtr& msg)
+Node::occupancyMapMsgReceived(const nav_msgs::OccupancyGridConstPtr& msg)
 {
   if( first_map_only_ && first_map_received_ ) {
     return;
