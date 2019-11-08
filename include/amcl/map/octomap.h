@@ -50,7 +50,7 @@ class OctoMap : public Map
     // Test to see if the given map coords lie within the absolute map bounds.
     bool isValid(std::vector<int> coords);
     std::vector<int> getSize();
-    void getMinMaxCells(std::vector<int> min_cells, std::vector<int> max_cells);
+    void getMinMaxCells(std::vector<int> &min_cells, std::vector<int> &max_cells);
     std::vector<double> getOrigin();
     void setOrigin(std::vector<double> origin);
     // Update the cspace distance values

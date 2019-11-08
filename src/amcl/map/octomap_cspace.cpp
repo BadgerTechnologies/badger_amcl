@@ -48,6 +48,7 @@ OctoMap::updateCSpace(double max_occ_dist)
 void
 OctoMap::updateCSpace()
 {
+  ROS_INFO("updating CSpace");
   if(distances_)
   {
     distances_->clear();
@@ -160,6 +161,7 @@ OctoMap::updateCSpace()
     }
     Q.pop();
   }
+  ROS_INFO("done updating CSpace");
 }
 
 // Helper function for updateCSpace

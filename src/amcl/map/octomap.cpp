@@ -95,7 +95,7 @@ OctoMap::getSize()
 }
 
 void
-OctoMap::getMinMaxCells(std::vector<int> min_cells, std::vector<int> max_cells)
+OctoMap::getMinMaxCells(std::vector<int> &min_cells, std::vector<int> &max_cells)
 {
   min_cells = cropped_min_cells_;
   max_cells = cropped_max_cells_;
