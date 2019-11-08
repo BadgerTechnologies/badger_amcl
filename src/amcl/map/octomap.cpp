@@ -88,11 +88,17 @@ OctoMap::setOrigin(std::vector<double> origin)
 
 // returns vector of map size in voxels
 // each voxel represents map_size_in_meters / resolution
-// TODO: should return full cells or max - min?
 std::vector<int>
 OctoMap::getSize()
 {
   return full_cells_;
+}
+
+void
+OctoMap::getMinMaxCells(std::vector<int> min_cells, std::vector<int> max_cells)
+{
+  min_cells = cropped_min_cells_;
+  max_cells = cropped_max_cells_;
 }
 
 // converts map voxel coordinates to global coordinates in meters

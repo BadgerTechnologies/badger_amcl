@@ -236,13 +236,11 @@ Node::initFromNewOctoMap()
   // Index of free space
   // Must be calculated after the occ_dist is setup by the laser model
   free_space_indices.resize(0);
-  std::vector<int> size_vec = map_->getSize();
-  for(int i = 0; i < size_vec[0]; i++)
-    for(int j = 0; j < size_vec[1]; j++)
-      if(map_->isValid({i, j}))
-      {
-        free_space_indices.push_back(std::make_pair(i,j));
-      }
+  std::vector<int> min_cells(3), max_cells(3);
+  ((OctoMap*)map_)->getMinMaxCells(min_cells, max_cells);
+  for(int i = min_cells[0]; i < max_cells[0]; i++)
+    for(int j = min_cells[1]; j < max_cells[1]; j++)
+      free_space_indices.push_back(std::make_pair(i,j));
 }
 
 void
