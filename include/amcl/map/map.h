@@ -46,7 +46,6 @@ class Map
     virtual std::vector<int> getSize() = 0;
     virtual std::vector<double> getOrigin() = 0;
     virtual void setOrigin(std::vector<double> _origin) = 0;
-    virtual void updateCSpace(double max_occ_dist_) = 0;
     double getScale();
     void setScale(double _scale);
   protected:

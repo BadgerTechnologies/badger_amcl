@@ -30,15 +30,16 @@
 
 using namespace amcl;
 
-OctoMap::OctoMap()
+OctoMap::OctoMap(bool wait_for_occupancy_map)
 {
+  wait_for_occupancy_map_ = wait_for_occupancy_map;
   origin_ = std::vector<double>(3);
   full_cells_ = std::vector<int>(3);
   cropped_min_cells_ = std::vector<int>(3);
   cropped_max_cells_ = std::vector<int>(3);
-
+  map_min_bounds_ = std::vector<double>(2);
+  map_max_bounds_ = std::vector<double>(2);
   max_occ_dist_ = 0.0;
-
   octree_ = new octomap::OcTree(scale_);
   distances_ = nullptr;
   cdm_ = nullptr;
@@ -66,11 +67,8 @@ OctoMap::initFromOctree(octomap::OcTree* octree, double lidar_height)
   octree_->getMetricMax(max_x, max_y, max_z);
   setOrigin({min_x, min_y, min_z});
   // crop values here if required
-  // TODO: crop to 2d map size
   cropped_min_cells_ = convertWorldToMap({min_x, min_y, min_z});
   cropped_max_cells_ = convertWorldToMap({max_x, max_y, max_z});
-  // create occ states
-  updateCSpace();
 }
 
 // getter and setter for global origin of octomap
@@ -160,7 +158,29 @@ OctoMap::computeCellIndex(int i, int j, int k)
   return i + j * unsigned(full_cells_[0]) + k * unsigned(full_cells_[1]) * unsigned(full_cells_[2]);
 }
 
-double OctoMap::getMaxOccDist()
+double
+OctoMap::getMaxOccDist()
 {
   return max_occ_dist_;
+}
+
+void
+OctoMap::setMapBounds(std::vector<double> map_min, std::vector<double> map_max)
+{
+  std::vector<int> cells_min, cells_max;
+  // add a buffer around map bounds to ensure representation
+  // of objects at extreme map values
+  for(int i = 0; i < map_min.size(); i++)
+  {
+    map_min[i] -= max_occ_dist_;
+    map_max[i] += max_occ_dist_;
+  }
+  cells_min = convertWorldToMap(map_min);
+  cells_max = convertWorldToMap(map_max);
+  for(int i = 0; i < cells_min.size(); i++)
+  {
+    cropped_min_cells_[i] = std::max(cropped_min_cells_[i], cells_min[i]);
+    cropped_max_cells_[i] = std::min(cropped_max_cells_[i], cells_max[i]);
+  }
+  updateCSpace();
 }

@@ -29,7 +29,7 @@
 
 using namespace amcl;
 
-std::vector<std::pair<int,int> > Node::free_space_indices;
+std::vector<std::pair<int,int> > Node::free_space_indices_;
 
 #define USAGE "USAGE: amcl"
 

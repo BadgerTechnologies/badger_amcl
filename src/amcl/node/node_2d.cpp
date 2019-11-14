@@ -78,6 +78,7 @@ using namespace amcl;
 void
 Node::init2D()
 {
+  occupancy_map_ = NULL;
   planar_scanner_ = NULL;
   last_planar_data_ = NULL;
   private_nh_.param("planar_scanner_min_range", sensor_min_range_, -1.0);
@@ -124,8 +125,7 @@ Node::init2D()
   if (map_scale_up_factor_ > 16)
     map_scale_up_factor_ = 16;
 
-
-  planar_scan_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, scan_topic_, 100);
+  planar_scan_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, planar_scan_topic_, 100);
   planar_scan_filter_ =
       new tf::MessageFilter<sensor_msgs::LaserScan>(*planar_scan_sub_, *tf_, odom_frame_id_, 100);
   planar_scan_filter_->registerCallback(boost::bind(&Node::planarScanReceived, this, _1));
@@ -143,7 +143,7 @@ Node::checkPlanarScanReceived(const ros::TimerEvent& event)
   if(d > planar_scanner_check_interval_)
   {
     ROS_WARN("No planar scan received (and thus no pose updates have been published) for %f seconds.  Verify that data is being published on the %s topic.",
-             d.toSec(), ros::names::resolve(scan_topic_).c_str());
+             d.toSec(), ros::names::resolve(planar_scan_topic_).c_str());
   }
 }
 
@@ -154,20 +154,20 @@ Node::checkPlanarScanReceived(const ros::TimerEvent& event)
 OccupancyMap*
 Node::convertMap( const nav_msgs::OccupancyGrid& map_msg )
 {
-  OccupancyMap* map = new OccupancyMap();
-  ROS_ASSERT(map);
+  OccupancyMap* occupancy_map = new OccupancyMap();
+  ROS_ASSERT(occupancy_map);
   std::vector<int> size_vec;
   double scale = map_msg.info.resolution / map_scale_up_factor_;
   size_vec.push_back(map_msg.info.width * map_scale_up_factor_);
   size_vec.push_back(map_msg.info.height * map_scale_up_factor_);
-  map->setSize(size_vec);
-  map->setScale(scale);
+  occupancy_map->setSize(size_vec);
+  occupancy_map->setScale(scale);
   std::vector<double> origin;
   origin.push_back(map_msg.info.origin.position.x + (size_vec[0] / 2) * scale);
   origin.push_back(map_msg.info.origin.position.y + (size_vec[1] / 2) * scale);
-  map->setOrigin(origin);
-  map->initCells(size_vec[0]*size_vec[1]);
-  ROS_ASSERT(map->getCells());
+  occupancy_map->setOrigin(origin);
+  occupancy_map->initCells(size_vec[0]*size_vec[1]);
+  ROS_ASSERT(occupancy_map->getCells());
   for(int y=0;y<size_vec[1];y++)
   {
     int i=y*size_vec[0];
@@ -177,15 +177,14 @@ Node::convertMap( const nav_msgs::OccupancyGrid& map_msg )
       const int msg_i=msg_row+x/map_scale_up_factor_;
 
       if(map_msg.data[msg_i] == 0)
-        map->setCellOccState(i, -1);
+        occupancy_map->setCellOccState(i, -1);
       else if(map_msg.data[msg_i] == 100)
-        map->setCellOccState(i, +1);
+        occupancy_map->setCellOccState(i, +1);
       else
-        map->setCellOccState(i, 0);
+        occupancy_map->setCellOccState(i, 0);
     }
   }
-
-  return map;
+  return occupancy_map;
 }
 
 // Helper function to score a pose for uniform pose generation
@@ -245,7 +244,7 @@ Node::reconfigure2D(AMCLConfig &config)
   else if(config.planar_model_type == "likelihood_field_gompertz")
     planar_model_type_ = PLANAR_MODEL_LIKELIHOOD_FIELD_GOMPERTZ;
   delete planar_scanner_;
-  planar_scanner_ = new PlanarScanner(max_beams_, (OccupancyMap*)map_);
+  planar_scanner_ = new PlanarScanner(max_beams_, occupancy_map_);
   ROS_ASSERT(planar_scanner_);
   if(planar_model_type_ == PLANAR_MODEL_BEAM)
     planar_scanner_->setModelBeam(z_hit_, z_short_, z_max_, z_rand_,
@@ -297,17 +296,50 @@ Node::reconfigure2D(AMCLConfig &config)
 void
 Node::occupancyMapMsgReceived(const nav_msgs::OccupancyGridConstPtr& msg)
 {
-  if( first_map_only_ && first_map_received_ ) {
+  if( first_map_only_ && first_occupancy_map_received_ ) {
+    ROS_DEBUG("occupancy map already received");
     return;
   }
 
   boost::recursive_mutex::scoped_lock cfl(configuration_mutex_);
 
-  ROS_INFO("Received a %d X %d map @ %.3f m/pix\n",
+  ROS_INFO("Received a %d X %d occupancy map @ %.3f m/pix\n",
            msg->info.width,
            msg->info.height,
            msg->info.resolution);
 
+  if( occupancy_map_ != NULL )
+  {
+    delete occupancy_map_;
+    occupancy_map_ = NULL;
+  }
+  occupancy_map_ = convertMap(*msg);
+  first_occupancy_map_received_ = true;
+
+  // if the OccupancyMap is a secondary map source
+  if(map_type_ == 3)
+  {
+    if(first_octomap_received_ and wait_for_occupancy_map_)
+    {
+      std::vector<double> map_min, map_max;
+      map_min = {0.0, 0.0};
+      map_max = occupancy_map_->convertMapToWorld(occupancy_map_->getSize());
+      octomap_->setMapBounds(map_min, map_max);
+      update3DFreeSpaceIndices();
+    }
+    return;
+  }
+  else if(map_type_ != 2)
+  {
+    return;
+  }
+
+  if( map_ != NULL )
+  {
+    delete map_;
+    map_ = NULL;
+  }
+  map_ = occupancy_map_;
   freeMapDependentMemory();
   // Clear queued planar scanner objects because they hold pointers to the existing map
   planar_scanners_.clear();
@@ -315,18 +347,14 @@ Node::occupancyMapMsgReceived(const nav_msgs::OccupancyGridConstPtr& msg)
   frame_to_planar_scanner_.clear();
   delete last_planar_data_;
   last_planar_data_ = NULL;
-
-  map_ = convertMap(*msg);
   initFromNewMap();
-
-  first_map_received_ = true;
 }
 
 void
 Node::initFromNewOccupancyMap()
 {
   delete planar_scanner_;
-  planar_scanner_ = new PlanarScanner(max_beams_, (OccupancyMap*)map_);
+  planar_scanner_ = new PlanarScanner(max_beams_, occupancy_map_);
   ROS_ASSERT(planar_scanner_);
   if(planar_model_type_ == PLANAR_MODEL_BEAM)
     planar_scanner_->setModelBeam(z_hit_, z_short_, z_max_, z_rand_,
@@ -369,20 +397,22 @@ Node::initFromNewOccupancyMap()
 
   // Index of free space
   // Must be calculated after the occ_dist is setup by the planar model
-  free_space_indices.resize(0);
+  free_space_indices_.resize(0);
   std::vector<int> size_vec = map_->getSize();
   for(int i = 0; i < size_vec[0]; i++)
     for(int j = 0; j < size_vec[1]; j++)
       if(((OccupancyMap*)map_)->getOccState(i,j) == -1)
         if(((OccupancyMap*)map_)->getOccDist(i,j) > non_free_space_radius_)
-          free_space_indices.push_back(std::make_pair(i,j));
+          free_space_indices_.push_back(std::make_pair(i,j));
 }
 
 void
 Node::planarScanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan)
 {
   last_planar_scan_received_ts_ = ros::Time::now();
-  if( map_ == NULL ) {
+  if(map_type_ != 2)
+    return;
+  if(map_ == NULL) {
     return;
   }
   boost::recursive_mutex::scoped_lock cfl(configuration_mutex_);
@@ -415,7 +445,6 @@ Node::planarScanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan)
     tf::Stamped<tf::Pose> planar_scanner_pose;
     try
     {
-      ROS_INFO("2d base_frame_id: %s", base_frame_id_.c_str());
       this->tf_->transformPose(base_frame_id_, ident, planar_scanner_pose);
     }
     catch(tf::TransformException& e)
@@ -784,6 +813,10 @@ Node::globalLocalizationCallback2D()
 void
 Node::freeOccupancyMapDependentMemory()
 {
+  if( occupancy_map_ != NULL ) {
+    delete occupancy_map_;
+    occupancy_map_ = NULL;
+  }
   delete planar_scanner_;
   planar_scanner_ = NULL;
 }
