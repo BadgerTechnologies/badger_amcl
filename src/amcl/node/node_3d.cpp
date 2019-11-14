@@ -46,6 +46,8 @@ using namespace amcl;
 void
 Node::init3D()
 {
+  octomap_ = NULL;
+  octree_ = NULL;
   point_cloud_scanner_ = NULL;
   last_point_cloud_data_ = NULL;
   private_nh_.param("point_cloud_scanner_max_beams", max_beams_, 256);
@@ -73,7 +75,7 @@ Node::init3D()
     point_cloud_model_type_ = POINT_CLOUD_MODEL;
   }
 
-  point_cloud_scan_sub_ = new message_filters::Subscriber<sensor_msgs::PointCloud2>(nh_, scan_topic_, 1);
+  point_cloud_scan_sub_ = new message_filters::Subscriber<sensor_msgs::PointCloud2>(nh_, point_cloud_scan_topic_, 1);
   point_cloud_scan_filter_ =
           new tf::MessageFilter<sensor_msgs::PointCloud2>(*point_cloud_scan_sub_, *tf_, odom_frame_id_, 1);
   point_cloud_scan_filter_->registerCallback(boost::bind(&Node::pointCloudReceived, this, _1));
@@ -99,10 +101,9 @@ Node::checkPointCloudScanReceived(const ros::TimerEvent& event)
   ros::Duration d = ros::Time::now() - last_point_cloud_scan_received_ts_;
   if(d > point_cloud_scanner_check_interval_)
   {
-    ROS_WARN("No point cloud scan received (and thus no pose updates have been published) for %f seconds. "
+    ROS_DEBUG("No point cloud scan received (and thus no pose updates have been published) for %f seconds. "
              "Verify that data is being published on the %s topic.",
-             d.toSec(),
-             ros::names::resolve(scan_topic_).c_str());
+             d.toSec(), ros::names::resolve(point_cloud_scan_topic_).c_str());
   }
 }
 
@@ -113,10 +114,9 @@ Node::checkPointCloudScanReceived(const ros::TimerEvent& event)
 OctoMap*
 Node::convertMap(const octomap_msgs::Octomap& map_msg)
 {
-    OctoMap* map = new OctoMap();
+    OctoMap* octomap = new OctoMap(wait_for_occupancy_map_);
+    ROS_ASSERT(octomap);
     octomap::AbstractOcTree* absoctree;
-    octomap::OcTree* octree;
-    ROS_ASSERT(map);
     double scale = map_msg.resolution;
     bool binary = map_msg.binary;
     if(binary)
@@ -125,17 +125,15 @@ Node::convertMap(const octomap_msgs::Octomap& map_msg)
     }
     else
     {
-      // ROS_ERROR("OcTree message not in binary format. Cannot read data into OcTree");
-      // return nullptr;
       absoctree = octomap_msgs::fullMsgToMap(map_msg);
     }
     if(absoctree)
     {
-      octree = dynamic_cast<octomap::OcTree*>(absoctree);
+      octree_ = dynamic_cast<octomap::OcTree*>(absoctree);
     }
-    map->setScale(scale);
-    map->initFromOctree(octree, point_cloud_scanner_height_);
-    return map;
+    octomap->setScale(scale);
+    octomap->initFromOctree(octree_, point_cloud_scanner_height_);
+    return octomap;
 }
 
 double
@@ -184,29 +182,52 @@ Node::reconfigure3D(amcl::AMCLConfig &config)
     point_cloud_model_type_ = POINT_CLOUD_MODEL;
   }
   delete point_cloud_scanner_;
-  point_cloud_scanner_ = new PointCloudScanner(max_beams_, (OctoMap*)map_, point_cloud_scanner_height_);
+  point_cloud_scanner_ = new PointCloudScanner(max_beams_, octomap_, point_cloud_scanner_height_);
   ROS_ASSERT(point_cloud_scanner_);
   if(point_cloud_model_type_ == POINT_CLOUD_MODEL)
   {
     ROS_WARN("setting point cloud model type from reconfigure 3d");
     point_cloud_scanner_->setPointCloudModel(z_hit_, z_rand_, sigma_hit_, sensor_likelihood_max_dist_);
+    octomap_->updateCSpace();
   }
   point_cloud_scanner_->setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
   delete point_cloud_scan_filter_;
   point_cloud_scan_filter_ = new tf::MessageFilter<sensor_msgs::PointCloud2>(*point_cloud_scan_sub_, *tf_,
-                                                                     odom_frame_id_, 100);
+                                                                             odom_frame_id_, 100);
   point_cloud_scan_filter_->registerCallback(boost::bind(&Node::pointCloudReceived, this, _1));
 }
 
 void
 Node::octomapMsgReceived(const octomap_msgs::OctomapConstPtr& msg)
 {
-  if( first_map_only_ && first_map_received_ ) {
+  if( first_map_only_ && first_octomap_received_ ) {
     return;
   }
 
   boost::recursive_mutex::scoped_lock cfl(configuration_mutex_);
-  ROS_DEBUG("Received a new Octomap");
+  ROS_INFO("Received a new Octomap");
+
+  if( map_ != NULL )
+  {
+    delete map_;
+    map_ = NULL;
+  }
+  if( octomap_ != NULL )
+  {
+    delete octomap_;
+    octomap_ = NULL;
+    delete octree_;
+    octree_ = NULL;
+  }
+
+  octomap_ = convertMap(*msg);
+  first_octomap_received_ = true;
+
+  // if the OctoMap is a secondary map source
+  if(map_type_ != 3)
+    return;
+
+  map_ = octomap_;
   freeMapDependentMemory();
   // Clear queued point cloud objects because they hold pointers to the existing map
   point_cloud_scanners_.clear();
@@ -214,18 +235,14 @@ Node::octomapMsgReceived(const octomap_msgs::OctomapConstPtr& msg)
   frame_to_point_cloud_scanner_.clear();
   delete last_point_cloud_data_;
   last_point_cloud_data_ = NULL;
-
-  map_ = convertMap(*msg);
   initFromNewMap();
-
-  first_map_received_ = true;
 }
 
 void
 Node::initFromNewOctomap()
 {
   delete point_cloud_scanner_;
-  point_cloud_scanner_ = new PointCloudScanner(max_beams_, (OctoMap*)map_, point_cloud_scanner_height_);
+  point_cloud_scanner_ = new PointCloudScanner(max_beams_, octomap_, point_cloud_scanner_height_);
   ROS_ASSERT(point_cloud_scanner_);
   if(point_cloud_model_type_ == POINT_CLOUD_MODEL)
   {
@@ -233,22 +250,44 @@ Node::initFromNewOctomap()
   }
   point_cloud_scanner_->setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
 
+  // if we are using both maps as bounds
+  // and the occupancy map has already arrived
+  if(wait_for_occupancy_map_ and first_occupancy_map_received_)
+  {
+    std::vector<double> map_min, map_max;
+    map_min = {0.0, 0.0};
+    map_max = occupancy_map_->convertMapToWorld(occupancy_map_->getSize());
+    octomap_->setMapBounds(map_min, map_max);
+  }
+  update3DFreeSpaceIndices();
+}
+
+void
+Node::update3DFreeSpaceIndices()
+{
   // Index of free space
   // Must be calculated after the occ_dist is setup by the laser model
-  free_space_indices.resize(0);
+  free_space_indices_.resize(0);
   std::vector<int> min_cells(3), max_cells(3);
-  ((OctoMap*)map_)->getMinMaxCells(min_cells, max_cells);
+  octomap_->getMinMaxCells(min_cells, max_cells);
   for(int i = min_cells[0]; i < max_cells[0]; i++)
     for(int j = min_cells[1]; j < max_cells[1]; j++)
-      free_space_indices.push_back(std::make_pair(i,j));
+      free_space_indices_.push_back(std::make_pair(i,j));
 }
 
 void
 Node::pointCloudReceived(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan)
 {
   last_point_cloud_scan_received_ts_ = ros::Time::now();
+  if(map_type_ != 3)
+    return;
   if(map_ == NULL) {
     ROS_DEBUG("map is null");
+    return;
+  }
+  if(not octomap_->isCSpaceCreated())
+  {
+    ROS_DEBUG("CSpace not yet created");
     return;
   }
 

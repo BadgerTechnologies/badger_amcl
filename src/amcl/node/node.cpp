@@ -83,18 +83,21 @@ Node::Node() :
         odom_(NULL),
 	    private_nh_("~"),
         initial_pose_hyp_(NULL),
-        first_map_received_(false),
         first_reconfigure_call_(true),
         global_localization_active_(false)
 {
   boost::recursive_mutex::scoped_lock cfl(configuration_mutex_);
 
-  const std::string default_scan_topic = "/scan";
-  private_nh_.param("scan_topic", scan_topic_, default_scan_topic);
+  const std::string default_planar_scan_topic = "/scans/mark_and_clear";
+  private_nh_.param("planar_scan_topic", planar_scan_topic_, default_planar_scan_topic);
+  const std::string default_point_cloud_scan_topic = "/scans/top/points_filtered";
+  private_nh_.param("point_cloud_scan_topic", point_cloud_scan_topic_, default_point_cloud_scan_topic);
   // 2: 2d, 3: 3d, else: none
   private_nh_.param("map_type", map_type_, 0);
   // Grab params off the param server
   private_nh_.param("first_map_only", first_map_only_, false);
+  // irrelevant if occupancy map is the primary map for localization
+  private_nh_.param("wait_for_occupancy_map", wait_for_occupancy_map_, false);
 
   double tmp;
   private_nh_.param("transform_publish_rate", tmp, 50.0);
@@ -193,14 +196,9 @@ Node::Node() :
   global_loc_srv_ = nh_.advertiseService("global_localization",
 					 &Node::globalLocalizationCallback,
                                          this);
-
   loadPose();
-
-  if(map_type_ == 2)
-  {
-    init2D();
-  }
-  else if(map_type_ == 3)
+  init2D();
+  if(map_type_ == 3)
   {
     init3D();
   }
@@ -212,18 +210,10 @@ Node::Node() :
     absolute_motion_pub_ = nh_.advertise<geometry_msgs::Pose2D>("amcl_absolute_motion", 20, false);
   }
 
-  if(map_type_ == 2)
-  {
-    map_sub_ = nh_.subscribe("/map", 1, &Node::occupancyMapMsgReceived, this);
-  }
-  else if(map_type_ == 3)
-  {
-    map_sub_ = nh_.subscribe("/octomap_binary", 1, &Node::octomapMsgReceived, this);
-  }
-  else
-  {
-    ROS_WARN("Failed to subscribe to map topic, map type invalid");
-  }
+  first_occupancy_map_received_ = false;
+  first_octomap_received_ = false;
+  occupancy_map_sub_ = nh_.subscribe("map", 1, &Node::occupancyMapMsgReceived, this);
+  octomap_sub_ = nh_.subscribe("octomap_binary", 1, &Node::octomapMsgReceived, this);
 
   m_force_update = false;
 
@@ -255,7 +245,8 @@ Node::reconfigureCB(AMCLConfig &config, uint32_t level)
     config.restore_defaults = false;
   }
 
-  scan_topic_ = config.scan_topic;
+  planar_scan_topic_ = config.planar_scan_topic;
+  point_cloud_scan_topic_ = config.point_cloud_scan_topic;
 
   // 2: 2d, 3: 3d, else: none
   map_type_ = config.map_type;
@@ -723,11 +714,8 @@ Node::initFromNewMap()
 void
 Node::freeMapDependentMemory()
 {
-  if( map_ != NULL ) {
-    delete map_;
-    map_ = NULL;
-  }
-  if( pf_ != NULL ) {
+  if( pf_ != NULL )
+  {
     pf_->~ParticleFilter();
     pf_ = NULL;
   }
@@ -746,6 +734,24 @@ Node::freeMapDependentMemory()
 Node::~Node()
 {
   delete dsrv_;
+  if( map_ != NULL )
+  {
+    delete map_;
+    map_ = NULL;
+  }
+  if( occupancy_map_ != NULL )
+  {
+    delete occupancy_map_;
+    occupancy_map_ = NULL;
+  }
+  if( octomap_ != NULL )
+  {
+    delete octomap_;
+    octomap_ = NULL;
+    delete octree_;
+    octree_ = NULL;
+  }
+
   freeMapDependentMemory();
   deleteNode2D();
   if(map_type_ == 2)
@@ -859,13 +865,13 @@ PFVector
 Node::randomFreeSpacePose()
 {
   PFVector p;
-  if(free_space_indices.size() == 0)
+  if(free_space_indices_.size() == 0)
   {
     ROS_WARN("Free space indices have not been initialized");
     return p;
   }
-  unsigned int rand_index = drand48() * free_space_indices.size();
-  std::pair<int,int> free_point = free_space_indices[rand_index];
+  unsigned int rand_index = drand48() * free_space_indices_.size();
+  std::pair<int,int> free_point = free_space_indices_[rand_index];
   std::vector<double> p_vec = map_->convertMapToWorld({free_point.first, free_point.second});
   p.v[0] = p_vec[0];
   p.v[1] = p_vec[1];

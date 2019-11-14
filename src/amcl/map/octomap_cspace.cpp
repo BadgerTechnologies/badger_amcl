@@ -37,10 +37,9 @@ using namespace amcl;
 // This version also updates the max_occ_dist_ variable and
 // calls the base non-parameter updateCSpace
 void
-OctoMap::updateCSpace(double max_occ_dist)
+OctoMap::updateMaxOccDist(double max_occ_dist)
 {
   this->max_occ_dist_ = max_occ_dist;
-  updateCSpace();
 }
 
 // Creates the distances lookup object populated with the distance from
@@ -48,7 +47,13 @@ OctoMap::updateCSpace(double max_occ_dist)
 void
 OctoMap::updateCSpace()
 {
-  ROS_INFO("updating CSpace");
+  if(max_occ_dist_ == 0.0)
+  {
+    ROS_DEBUG("Failed to update cspace, max occ dist is 0");
+    return;
+  }
+
+  ROS_INFO("Updating CSpace");
   if(distances_)
   {
     distances_->clear();
@@ -57,11 +62,6 @@ OctoMap::updateCSpace()
   octomap::OcTree* marked = new octomap::OcTree(scale_);
 
   distances_ = new octomap::OcTreeDistance(scale_, max_occ_dist_);
-
-  if(max_occ_dist_ == 0.0)
-  {
-    return;
-  }
 
   if(!cdm_ || (cdm_->scale_ != scale_)
      || (std::fabs(cdm_->max_dist_ - max_occ_dist_) > EPSILON_DOUBLE))
@@ -161,7 +161,7 @@ OctoMap::updateCSpace()
     }
     Q.pop();
   }
-  ROS_INFO("done updating CSpace");
+  ROS_INFO("Done updating CSpace");
 }
 
 // Helper function for updateCSpace
@@ -226,4 +226,10 @@ OctoMap::getOccDist(int i, int j)
     distance = std::min(distance, getOccDist(i, j, k));
   }
   return distance;
+}
+
+bool
+OctoMap::isCSpaceCreated()
+{
+  return distances_ != nullptr;
 }

@@ -118,6 +118,9 @@ class Node
     const int INDEX_YY_ = 6*1+1;
     const int INDEX_AA_ = 6*5+5;
 
+    static PFVector uniformPoseGenerator(void* arg);
+    static std::vector<std::pair<int,int> > free_space_indices_;
+
     void init2D();
     void init3D();
     void deleteNode2D();
@@ -131,8 +134,7 @@ class Node
     PFVector randomFreeSpacePose();
     // Pose-generating function used to uniformly distribute particles over
     // the map
-    static PFVector uniformPoseGenerator(void* arg);
-    static std::vector<std::pair<int,int> > free_space_indices;
+    void update3DFreeSpaceIndices();
     // Callbacks
     bool globalLocalizationCallback(std_srvs::Empty::Request& req,
                                     std_srvs::Empty::Response& res);
@@ -152,6 +154,7 @@ class Node
     void freeOctoMapDependentMemory();
     OccupancyMap* convertMap( const nav_msgs::OccupancyGrid& map_msg );
     OctoMap* convertMap( const octomap_msgs::Octomap& map_msg );
+
     std::string makeFilepathFromName( const std::string filename );
     void loadPose();
     void publishInitPose();
@@ -185,7 +188,8 @@ class Node
     double normalize(double z);
     double angleDiff(double a, double b);
 
-    std::string scan_topic_;
+    std::string planar_scan_topic_;
+    std::string point_cloud_scan_topic_;
 
     tf::TransformBroadcaster* tfb_;
 
@@ -213,9 +217,6 @@ class Node
     std::string global_frame_id_;
     std::string global_alt_frame_id_;
 
-    bool first_map_only_;
-    int map_scale_up_factor_;
-
     ros::Duration transform_publish_period_;
     ros::Time save_pose_to_server_last_time_;
     ros::Time save_pose_to_file_last_time_;
@@ -224,6 +225,9 @@ class Node
 
     geometry_msgs::PoseWithCovarianceStamped last_published_pose_;
 
+    OccupancyMap* occupancy_map_;
+    OctoMap* octomap_;
+    octomap::OcTree* octree_;
     Map* map_;
 
     message_filters::Subscriber<sensor_msgs::LaserScan>* planar_scan_sub_;
@@ -278,11 +282,16 @@ class Node
     ros::Publisher initial_pose_pub_;
     ros::ServiceServer global_loc_srv_;
     ros::Subscriber initial_pose_sub_old_;
-    ros::Subscriber map_sub_;
+    ros::Subscriber occupancy_map_sub_;
+    ros::Subscriber octomap_sub_;
 
     AMCLHyp* initial_pose_hyp_;
-    bool first_map_received_;
+    int map_scale_up_factor_;
+    bool first_map_only_;
+    bool first_occupancy_map_received_;
+    bool first_octomap_received_;
     bool first_reconfigure_call_;
+    bool wait_for_occupancy_map_;
 
     boost::recursive_mutex configuration_mutex_;
     boost::recursive_mutex tf_mutex_;
@@ -324,7 +333,6 @@ class Node
     PointCloudModelType point_cloud_model_type_;
     bool tf_broadcast_;
     bool tf_reverse_;
-
     double off_object_penalty_factor_;
 
     bool save_pose_;

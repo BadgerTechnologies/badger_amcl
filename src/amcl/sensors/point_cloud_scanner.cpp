@@ -61,7 +61,7 @@ PointCloudScanner::setPointCloudModel(double z_hit, double z_rand, double sigma_
   this->z_hit_ = z_hit;
   this->z_rand_ = z_rand;
   this->sigma_hit_ = sigma_hit;
-  this->map_->updateCSpace(max_occ_dist);
+  this->map_->updateMaxOccDist(max_occ_dist);
 }
 
 void
