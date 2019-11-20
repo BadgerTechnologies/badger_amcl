@@ -58,8 +58,16 @@ Node::init3D()
   private_nh_.param("point_cloud_scanner_non_free_space_factor", non_free_space_factor_, 1.0);
   private_nh_.param("point_cloud_scanner_non_free_space_radius", non_free_space_radius_, 0.0);
   private_nh_.param("point_cloud_scanner_likelihood_max_dist", sensor_likelihood_max_dist_, 0.36);
-  private_nh_.param("global_localization_point_cloud_scanner_off_map_factor", global_localization_off_map_factor_, 1.0);
-  private_nh_.param("global_localization_point_cloud_scanner_non_free_space_factor", global_localization_non_free_space_factor_, 1.0);
+  private_nh_.param("point_cloud_gompertz_a", point_cloud_gompertz_a_, 1.0);
+  private_nh_.param("point_cloud_gompertz_b", point_cloud_gompertz_b_, 1.0);
+  private_nh_.param("point_cloud_gompertz_c", point_cloud_gompertz_c_, 1.0);
+  private_nh_.param("point_cloud_gompertz_input_shift", point_cloud_gompertz_input_shift_, 0.0);
+  private_nh_.param("point_cloud_gompertz_input_scale", point_cloud_gompertz_input_scale_, 1.0);
+  private_nh_.param("point_cloud_gompertz_output_shift", point_cloud_gompertz_output_shift_, 0.0);
+  private_nh_.param("global_localization_point_cloud_scanner_off_map_factor",
+                    global_localization_off_map_factor_, 1.0);
+  private_nh_.param("global_localization_point_cloud_scanner_non_free_space_factor",
+                    global_localization_non_free_space_factor_, 1.0);
   private_nh_.param("point_cloud_scanner_height", point_cloud_scanner_height_, 1.8);
   private_nh_.param("off_object_penalty_factor", off_object_penalty_factor_, 1.0);
   std::string tmp_model_type;
@@ -67,6 +75,10 @@ Node::init3D()
   if(tmp_model_type == "point cloud")
   {
     point_cloud_model_type_ = POINT_CLOUD_MODEL;
+  }
+  else if(tmp_model_type == "point cloud gompertz")
+  {
+    point_cloud_model_type_ = POINT_CLOUD_MODEL_GOMPERTZ;
   }
   else
   {
@@ -81,7 +93,8 @@ Node::init3D()
   point_cloud_scan_filter_->registerCallback(boost::bind(&Node::pointCloudReceived, this, _1));
   // 15s timer to warn on lack of receipt of point cloud scans, #5209
   point_cloud_scanner_check_interval_ = ros::Duration(15.0);
-  check_point_cloud_scanner_timer_ = nh_.createTimer(point_cloud_scanner_check_interval_, boost::bind(&Node::checkPointCloudScanReceived, this, _1));
+  check_point_cloud_scanner_timer_ = nh_.createTimer(point_cloud_scanner_check_interval_,
+                                                     boost::bind(&Node::checkPointCloudScanReceived, this, _1));
 
   try
   {
@@ -181,6 +194,10 @@ Node::reconfigure3D(amcl::AMCLConfig &config)
   {
     point_cloud_model_type_ = POINT_CLOUD_MODEL;
   }
+  else if(config.point_cloud_model_type == "point cloud gompertz")
+  {
+    point_cloud_model_type_ = POINT_CLOUD_MODEL_GOMPERTZ;
+  }
   delete point_cloud_scanner_;
   point_cloud_scanner_ = new PointCloudScanner(max_beams_, octomap_, point_cloud_scanner_height_);
   ROS_ASSERT(point_cloud_scanner_);
@@ -190,6 +207,23 @@ Node::reconfigure3D(amcl::AMCLConfig &config)
     point_cloud_scanner_->setPointCloudModel(z_hit_, z_rand_, sigma_hit_, sensor_likelihood_max_dist_);
     octomap_->updateCSpace();
   }
+  else if(point_cloud_model_type_ == POINT_CLOUD_MODEL_GOMPERTZ){
+    ROS_INFO("Initializing likelihood field (gompertz) model; this can take some time on large maps...");
+    point_cloud_scanner_->setPointCloudModelGompertz(z_hit_, z_rand_, sigma_hit_, sensor_likelihood_max_dist_,
+                                                     point_cloud_gompertz_a_, point_cloud_gompertz_b_,
+                                                     point_cloud_gompertz_c_, point_cloud_gompertz_input_shift_,
+                                                     point_cloud_gompertz_input_scale_,
+                                                     point_cloud_gompertz_output_shift_);
+    ROS_INFO("Gompertz key points by total planar scan match: "
+        "0.0: %f, 0.25: %f, 0.5: %f, 0.75: %f, 1.0: %f",
+        point_cloud_scanner_->applyGompertz(z_rand_),
+        point_cloud_scanner_->applyGompertz(z_rand_ + z_hit_ * .25),
+        point_cloud_scanner_->applyGompertz(z_rand_ + z_hit_ * .5),
+        point_cloud_scanner_->applyGompertz(z_rand_ + z_hit_ * .75),
+        point_cloud_scanner_->applyGompertz(z_rand_ + z_hit_));
+    ROS_INFO("Done initializing likelihood (gompertz) field model.");
+  }
+
   point_cloud_scanner_->setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
   delete point_cloud_scan_filter_;
   point_cloud_scan_filter_ = new tf::MessageFilter<sensor_msgs::PointCloud2>(*point_cloud_scan_sub_, *tf_,
@@ -247,6 +281,22 @@ Node::initFromNewOctomap()
   if(point_cloud_model_type_ == POINT_CLOUD_MODEL)
   {
     point_cloud_scanner_->setPointCloudModel(z_hit_, z_rand_, sigma_hit_, sensor_likelihood_max_dist_);
+  }
+  else if(point_cloud_model_type_ == POINT_CLOUD_MODEL_GOMPERTZ){
+    ROS_INFO("Initializing likelihood field (gompertz) model; this can take some time on large maps...");
+    point_cloud_scanner_->setPointCloudModelGompertz(z_hit_, z_rand_, sigma_hit_, sensor_likelihood_max_dist_,
+                                                     point_cloud_gompertz_a_, point_cloud_gompertz_b_,
+                                                     point_cloud_gompertz_c_, point_cloud_gompertz_input_shift_,
+                                                     point_cloud_gompertz_input_scale_,
+                                                     point_cloud_gompertz_output_shift_);
+    ROS_INFO("Gompertz key points by total planar scan match: "
+        "0.0: %f, 0.25: %f, 0.5: %f, 0.75: %f, 1.0: %f",
+        point_cloud_scanner_->applyGompertz(z_rand_),
+        point_cloud_scanner_->applyGompertz(z_rand_ + z_hit_ * .25),
+        point_cloud_scanner_->applyGompertz(z_rand_ + z_hit_ * .5),
+        point_cloud_scanner_->applyGompertz(z_rand_ + z_hit_ * .75),
+        point_cloud_scanner_->applyGompertz(z_rand_ + z_hit_));
+    ROS_INFO("Done initializing likelihood (gompertz) field model.");
   }
   point_cloud_scanner_->setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
 

@@ -43,6 +43,7 @@ namespace amcl
 typedef enum
 {
   POINT_CLOUD_MODEL,
+  POINT_CLOUD_MODEL_GOMPERTZ,
 } PointCloudModelType;
 
 
@@ -62,6 +63,9 @@ class PointCloudScanner : public Sensor
     ~PointCloudScanner();
 
     void setPointCloudModel(double z_hit, double z_rand, double sigma_hit, double max_occ_dist);
+    void setPointCloudModelGompertz(double z_hit, double z_rand, double sigma_hit, double max_occ_dist,
+                                    double gompertz_a, double gompertz_b, double gompertz_c,
+                                    double input_shift, double input_scale, double output_shift);
 
     // Update the filter based on the sensor model.  Returns true if the
     // filter has been updated.
@@ -82,14 +86,27 @@ class PointCloudScanner : public Sensor
     void setPointCloudScannerToFootprintTF(tf::Transform lidarToFootprintTF);
 
     int getMaxBeams();
+    double applyGompertz(double p);
 
   private:
     // Determine the probability for the given pose
     static double calcPointCloudModel(PointCloudData *data, PFSampleSet *set);
+    static double calcPointCloudModelGompertz(PointCloudData *data, PFSampleSet *set);
+    static bool getMapCloud(PointCloudScanner *self, PointCloudData *data, PFVector pose,
+                            pcl::PointCloud<pcl::PointXYZ>& map_cloud);
 
     OctoMap *map_;
     PFVector point_cloud_scanner_pose_;
     PointCloudModelType model_type_;
+
+    // Parameters for applying Gompertz function to sample weights
+    double gompertz_a_;
+    double gompertz_b_;
+    double gompertz_c_;
+    double input_shift_;
+    double input_scale_;
+    double output_shift_;
+
     double off_map_factor_;
     double non_free_space_factor_;
     double non_free_space_radius_;
