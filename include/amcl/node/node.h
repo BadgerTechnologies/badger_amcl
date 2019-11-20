@@ -321,6 +321,12 @@ class Node
     double planar_gompertz_input_shift_;
     double planar_gompertz_input_scale_;
     double planar_gompertz_output_shift_;
+    double point_cloud_gompertz_a_;
+    double point_cloud_gompertz_b_;
+    double point_cloud_gompertz_c_;
+    double point_cloud_gompertz_input_shift_;
+    double point_cloud_gompertz_input_scale_;
+    double point_cloud_gompertz_output_shift_;
     double off_map_factor_;
     double non_free_space_factor_;
     double non_free_space_radius_;

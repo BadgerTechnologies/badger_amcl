@@ -100,8 +100,10 @@ Node::init2D()
   private_nh_.param("planar_scanner_off_map_factor", off_map_factor_, 1.0);
   private_nh_.param("planar_scanner_non_free_space_factor", non_free_space_factor_, 1.0);
   private_nh_.param("planar_scanner_non_free_space_radius", non_free_space_radius_, 0.0);
-  private_nh_.param("global_localization_planar_off_map_factor", global_localization_off_map_factor_, 1.0);
-  private_nh_.param("global_localization_planar_non_free_space_factor", global_localization_non_free_space_factor_, 1.0);
+  private_nh_.param("global_localization_planar_off_map_factor",
+                    global_localization_off_map_factor_, 1.0);
+  private_nh_.param("global_localization_planar_non_free_space_factor",
+                    global_localization_non_free_space_factor_, 1.0);
   std::string tmp_model_type;
   private_nh_.param("planar_model_type", tmp_model_type, std::string("likelihood_field"));
   if(tmp_model_type == "beam")
@@ -142,7 +144,8 @@ Node::checkPlanarScanReceived(const ros::TimerEvent& event)
   ros::Duration d = ros::Time::now() - last_planar_scan_received_ts_;
   if(d > planar_scanner_check_interval_)
   {
-    ROS_WARN("No planar scan received (and thus no pose updates have been published) for %f seconds.  Verify that data is being published on the %s topic.",
+    ROS_WARN("No planar scan received (and thus no pose updates have been published) for %f seconds."
+             "Verify that data is being published on the %s topic.",
              d.toSec(), ros::names::resolve(planar_scan_topic_).c_str());
   }
 }

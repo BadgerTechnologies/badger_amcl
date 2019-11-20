@@ -40,8 +40,7 @@ using namespace amcl;
 ////////////////////////////////////////////////////////////////////////////////
 // Default constructor
 PlanarScanner::PlanarScanner(size_t max_beams, OccupancyMap* map) : Sensor(),
-						     max_samples_(0), max_obs_(0), 
-						     temp_obs_(NULL)
+                             max_samples_(0), max_obs_(0), temp_obs_(NULL)
 {
   this->max_beams_ = max_beams;
   this->map_ = map;
@@ -63,11 +62,11 @@ PlanarScanner::~PlanarScanner()
 
 void 
 PlanarScanner::setModelBeam(double z_hit,
-                        double z_short,
-                        double z_max,
-                        double z_rand,
-                        double sigma_hit,
-                        double lambda_short)
+                            double z_short,
+                            double z_max,
+                            double z_rand,
+                            double sigma_hit,
+                            double lambda_short)
 {
   this->model_type_ = PLANAR_MODEL_BEAM;
   this->z_hit_ = z_hit;
@@ -80,9 +79,9 @@ PlanarScanner::setModelBeam(double z_hit,
 
 void 
 PlanarScanner::setModelLikelihoodField(double z_hit,
-                                   double z_rand,
-                                   double sigma_hit,
-                                   double max_occ_dist)
+                                       double z_rand,
+                                       double sigma_hit,
+                                       double max_occ_dist)
 {
   this->model_type_ = PLANAR_MODEL_LIKELIHOOD_FIELD;
   this->z_hit_ = z_hit;
@@ -93,13 +92,13 @@ PlanarScanner::setModelLikelihoodField(double z_hit,
 
 void 
 PlanarScanner::setModelLikelihoodFieldProb(double z_hit,
-				       double z_rand,
-				       double sigma_hit,
-				       double max_occ_dist,
-				       bool do_beamskip,
-				       double beam_skip_distance,
-				       double beam_skip_threshold, 
-				       double beam_skip_error_threshold)
+                                           double z_rand,
+				                           double sigma_hit,
+				                           double max_occ_dist,
+				                           bool do_beamskip,
+				                           double beam_skip_distance,
+				                           double beam_skip_threshold, 
+				                           double beam_skip_error_threshold)
 {
   this->model_type_ = PLANAR_MODEL_LIKELIHOOD_FIELD_PROB;
   this->z_hit_ = z_hit;
@@ -114,17 +113,17 @@ PlanarScanner::setModelLikelihoodFieldProb(double z_hit,
 
 void
 PlanarScanner::setModelLikelihoodFieldGompertz(double z_hit,
-                                           double z_rand,
-                                           double sigma_hit,
-                                           double max_occ_dist,
-                                           double gompertz_a,
-                                           double gompertz_b,
-                                           double gompertz_c,
-                                           double input_shift,
-                                           double input_scale,
-                                           double output_shift)
+                                               double z_rand,
+                                               double sigma_hit,
+                                               double max_occ_dist,
+                                               double gompertz_a,
+                                               double gompertz_b,
+                                               double gompertz_c,
+                                               double input_shift,
+                                               double input_scale,
+                                               double output_shift)
 {
-  ROS_INFO("initializing model likelihood field gompertz");
+  ROS_INFO("Initializing model likelihood field gompertz");
   this->model_type_ = PLANAR_MODEL_LIKELIHOOD_FIELD_GOMPERTZ;
   this->z_hit_ = z_hit;
   this->z_rand_ = z_rand;
@@ -136,16 +135,12 @@ PlanarScanner::setModelLikelihoodFieldGompertz(double z_hit,
   this->input_shift_ = input_shift;
   this->input_scale_ = input_scale;
   this->output_shift_ = output_shift;
-  ROS_INFO("done model likelihood field gompertz, updating cspace");
-
   this->map_->updateCSpace(max_occ_dist);
-  ROS_INFO("done updating cspace");
 }
 
 void
-PlanarScanner::setMapFactors(double off_map_factor,
-              double non_free_space_factor,
-              double non_free_space_radius)
+PlanarScanner::setMapFactors(double off_map_factor, double non_free_space_factor,
+                             double non_free_space_radius)
 {
   this->off_map_factor_ = off_map_factor;
   this->non_free_space_factor_ = non_free_space_factor;
@@ -567,7 +562,8 @@ PlanarScanner::calcLikelihoodFieldModelProb(PlanarData *data, PFSampleSet* set)
     bool error = false; 
 
     if(skipped_beam_count >= (beam_ind * self->beam_skip_error_threshold_)){
-      fprintf(stderr, "Over %f%% of the observations were not in the map - pf may have converged to wrong pose - integrating all observations\n", (100 * self->beam_skip_error_threshold_));
+      fprintf(stderr, "Over %f%% of the observations were not in the map - pf may have converged to "
+              "wrong pose - integrating all observations\n", (100 * self->beam_skip_error_threshold_));
       error = true; 
     }
 

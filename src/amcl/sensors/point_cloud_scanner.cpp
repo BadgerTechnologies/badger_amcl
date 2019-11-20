@@ -65,6 +65,24 @@ PointCloudScanner::setPointCloudModel(double z_hit, double z_rand, double sigma_
 }
 
 void
+PointCloudScanner::setPointCloudModelGompertz(double z_hit, double z_rand, double sigma_hit, double max_occ_dist,
+                                              double gompertz_a, double gompertz_b, double gompertz_c,
+                                              double input_shift, double input_scale, double output_shift)
+{
+  this->model_type_ = POINT_CLOUD_MODEL_GOMPERTZ;
+  this->z_hit_ = z_hit;
+  this->z_rand_ = z_rand;
+  this->sigma_hit_ = sigma_hit;
+  this->gompertz_a_ = gompertz_a;
+  this->gompertz_b_ = gompertz_b;
+  this->gompertz_c_ = gompertz_c;
+  this->input_shift_ = input_shift;
+  this->input_scale_ = input_scale;
+  this->output_shift_ = output_shift;
+  this->map_->updateMaxOccDist(max_occ_dist);
+}
+
+void
 PointCloudScanner::setMapFactors(double off_map_factor,
                          double non_free_space_factor,
                          double non_free_space_radius)
@@ -112,6 +130,10 @@ PointCloudScanner::applyModelToSampleSet(SensorData *data, PFSampleSet *set)
   {
     rv = calcPointCloudModel((PointCloudData*) data, set);
   }
+  else if(self->model_type_ == POINT_CLOUD_MODEL_GOMPERTZ)
+  {
+    rv = calcPointCloudModelGompertz((PointCloudData*) data, set);
+  }
 
   // Apply the any configured correction factors from map
   if (rv > 0.0)
@@ -148,7 +170,6 @@ PointCloudScanner::calcPointCloudModel(PointCloudData *data, PFSampleSet* set)
   double total_weight = 0.0, p, z, pz;
   PFSample *sample;
   PFVector pose;
-  int count = 0;
 
   self = (PointCloudScanner*) data->sensor_;
   const double MAX_OCC_DIST = self->map_->getMaxOccDist();
@@ -161,26 +182,9 @@ PointCloudScanner::calcPointCloudModel(PointCloudData *data, PFSampleSet* set)
     pose = sample->pose;
     p = 1.0;
     pcl::PointCloud<pcl::PointXYZ>::iterator it;
-    pcl::PointCloud<pcl::PointXYZ> footprint_cloud, map_cloud;
-    tf::Vector3 footprint_to_map_origin(pose.v[0], pose.v[1], 0.0);
-    tf::Quaternion footprint_to_map_q(tf::Vector3(0.0, 0.0, 1.0), pose.v[2]);
-    tf::Transform footprint_to_map_tf(footprint_to_map_q, footprint_to_map_origin);
-    try
-    {
-      it = data->points_.begin();
-      tf::Matrix3x3 m = self->point_cloud_scanner_to_footprint_tf_.getBasis();
-      pcl_ros::transformPointCloud(data->points_, footprint_cloud, self->point_cloud_scanner_to_footprint_tf_);
-      it = footprint_cloud.begin();
-      pcl_ros::transformPointCloud(footprint_cloud, map_cloud, footprint_to_map_tf);
-      it = map_cloud.begin();
-    }
-    catch(tf::TransformException& e)
-    {
-      ROS_ERROR("Failed to transform sensor point cloud to map point cloud.");
+    pcl::PointCloud<pcl::PointXYZ> map_cloud;
+    if(!getMapCloud(self, data, pose, map_cloud))
       return 0.0;
-    }
-    int count = 0;
-    bool publish = (sample_index % 1000 == 2);
     for(it = map_cloud.begin(); it != map_cloud.end(); ++it)
     {
       std::vector<int> map_coords = self->map_->convertWorldToMap({it->x, it->y, it->z});
@@ -189,14 +193,84 @@ PointCloudScanner::calcPointCloudModel(PointCloudData *data, PFSampleSet* set)
       pz += self->z_rand_ * z_rand_mult;
       assert(pz <= 1.0);
       assert(pz >= 0.0);
-      double p_before = p;
       p += pz*pz*pz;
     }
-    double weight_before = sample->weight;
     sample->weight *= p;
     total_weight += sample->weight;
   }
   return total_weight;
+}
+
+double
+PointCloudScanner::calcPointCloudModelGompertz(PointCloudData *data, PFSampleSet* set)
+{
+  PointCloudScanner *self;
+  double total_weight = 0.0, p, z, pz, sum_pz;
+  PFSample *sample;
+  PFVector pose;
+  self = (PointCloudScanner*) data->sensor_;
+  const double MAX_OCC_DIST = self->map_->getMaxOccDist();
+  double z_hit_denom = 2 * self->sigma_hit_ * self->sigma_hit_;
+  for(int sample_index = 0; sample_index < set->sample_count; sample_index++)
+  {
+    sample = set->samples + sample_index;
+    pose = sample->pose;
+    pcl::PointCloud<pcl::PointXYZ>::iterator it;
+    pcl::PointCloud<pcl::PointXYZ> map_cloud;
+    if(!getMapCloud(self, data, pose, map_cloud))
+      return 0.0;
+    sum_pz = 0;
+    int count = 0;
+    for(it = map_cloud.begin(); it != map_cloud.end(); ++it)
+    {
+      std::vector<int> map_coords = self->map_->convertWorldToMap({it->x, it->y, it->z});
+      z = self->map_->getOccDist(map_coords[0], map_coords[1], map_coords[2]);
+      pz = self->z_hit_ * exp(-(z*z) / z_hit_denom);
+      pz += self->z_rand_;
+      sum_pz += pz;
+      count++;
+    }
+    p = sum_pz / count;
+    p = self->applyGompertz(p);
+    sample->weight *= p;
+    total_weight += sample->weight;
+  }
+  return total_weight;
+}
+
+bool
+PointCloudScanner::getMapCloud(PointCloudScanner *self, PointCloudData *data,
+                               PFVector pose, pcl::PointCloud<pcl::PointXYZ>& map_cloud)
+{
+  pcl::PointCloud<pcl::PointXYZ> footprint_cloud;
+  tf::Vector3 footprint_to_map_origin(pose.v[0], pose.v[1], 0.0);
+  tf::Quaternion footprint_to_map_q(tf::Vector3(0.0, 0.0, 1.0), pose.v[2]);
+  tf::Transform footprint_to_map_tf(footprint_to_map_q, footprint_to_map_origin);
+  try
+  {
+    tf::Matrix3x3 m = self->point_cloud_scanner_to_footprint_tf_.getBasis();
+    pcl_ros::transformPointCloud(data->points_, footprint_cloud, self->point_cloud_scanner_to_footprint_tf_);
+    pcl_ros::transformPointCloud(footprint_cloud, map_cloud, footprint_to_map_tf);
+  }
+  catch(tf::TransformException& e)
+  {
+    ROS_ERROR("Failed to transform sensor point cloud to map point cloud.");
+    return false;
+  }
+  return true;
+}
+
+double
+PointCloudScanner::applyGompertz(double p)
+{
+  // shift and scale p
+  p = p * this->input_scale_ + this->input_shift_;
+  // apply gompertz
+  p = this->gompertz_a_ * exp( -1.0 * this->gompertz_b_ * exp( -1.0 * this->gompertz_c_ * p ) );
+  // shift output
+  p += this->output_shift_;
+
+  return p;
 }
 
 int

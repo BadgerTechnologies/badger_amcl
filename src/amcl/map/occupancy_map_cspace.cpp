@@ -31,6 +31,8 @@
 #include "map.h"
 #include "occupancy_map.h"
 
+#include "ros/ros.h"
+
 using namespace amcl;
 
 bool
@@ -61,6 +63,7 @@ OccupancyMap::enqueue(int i, int j, int src_i, int src_j,
 void
 OccupancyMap::updateCSpace(double max_occ_dist)
 {
+  ROS_INFO("Updating Occupancy Map CSpace");
   std::priority_queue<CellData> Q;
 
   if (distances_)
@@ -132,6 +135,7 @@ OccupancyMap::updateCSpace(double max_occ_dist)
     }
     Q.pop();
   }
+  ROS_INFO("Done updating Occupancy Map CSpace");
 }
 
 void

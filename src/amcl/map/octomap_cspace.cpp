@@ -53,7 +53,7 @@ OctoMap::updateCSpace()
     return;
   }
 
-  ROS_INFO("Updating CSpace");
+  ROS_INFO("Updating OctoMap CSpace");
   if(distances_)
   {
     distances_->clear();
@@ -161,7 +161,7 @@ OctoMap::updateCSpace()
     }
     Q.pop();
   }
-  ROS_INFO("Done updating CSpace");
+  ROS_INFO("Done updating OctoMap CSpace");
 }
 
 // Helper function for updateCSpace
