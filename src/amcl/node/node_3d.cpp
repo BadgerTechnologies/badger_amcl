@@ -365,7 +365,7 @@ Node::pointCloudReceived(const sensor_msgs::PointCloud2ConstPtr& point_cloud_sca
     scanner_index = frame_to_point_cloud_scanner_.size();
 
     tf::Stamped<tf::Pose> ident (tf::Transform(tf::createIdentityQuaternion(),
-                                             tf::Vector3(0,0,0)),
+                                               tf::Vector3(0,0,0)),
                                  ros::Time(), point_cloud_scan->header.frame_id);
     tf::Stamped<tf::Pose> point_cloud_scanner_pose;
     try
@@ -404,7 +404,7 @@ Node::pointCloudReceived(const sensor_msgs::PointCloud2ConstPtr& point_cloud_sca
   if(!getOdomPose(latest_odom_pose_, pose.v[0], pose.v[1], pose.v[2],
                   point_cloud_scan->header.stamp, base_frame_id_))
   {
-    ROS_ERROR("Couldn't determine robot's pose associated with point cloud scan");
+    ROS_DEBUG("Couldn't determine robot's pose associated with point cloud scan");
     return;
   }
 
@@ -659,14 +659,14 @@ Node::pointCloudReceived(const sensor_msgs::PointCloud2ConstPtr& point_cloud_sca
     if((save_pose_to_server_period_.toSec() > 0.0) &&
        (now - save_pose_to_server_last_time_) >= save_pose_to_server_period_)
     {
-      ROS_DEBUG("time to save pose to server: %f", save_pose_to_server_period_.toSec());
+      ROS_DEBUG("Time to save pose to server: %f", save_pose_to_server_period_.toSec());
       this->savePoseToServer();
       save_pose_to_server_last_time_ = now;
     }
     if((save_pose_to_file_period_.toSec() > 0.0) &&
        (now - save_pose_to_file_last_time_) >= save_pose_to_file_period_)
     {
-      ROS_DEBUG("time to save pose to file: %f", save_pose_to_file_period_.toSec());
+      ROS_DEBUG("Time to save pose to file: %f", save_pose_to_file_period_.toSec());
       this->savePoseToFile();
       save_pose_to_file_last_time_ = now;
     }
