@@ -180,6 +180,7 @@ Node::Node() :
 
   transform_tolerance_.fromSec(tmp_tol);
 
+  initial_pose_sub_ = nh_.subscribe("initialpose", 2, &Node::initialPoseReceived, this);
   initial_pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("initialpose", 1);
 
   tfb_ = new tf::TransformBroadcaster();
@@ -203,13 +204,12 @@ Node::Node() :
     init3D();
   }
 
-  initial_pose_sub_ = nh_.subscribe("initialpose", 2, &Node::initialPoseReceived, this);
-
   if (odom_integrator_topic_.size()) {
     odom_integrator_sub_ = nh_.subscribe(odom_integrator_topic_, 20, &Node::integrateOdom, this);
     absolute_motion_pub_ = nh_.advertise<geometry_msgs::Pose2D>("amcl_absolute_motion", 20, false);
   }
 
+  // To prevent a race condition, this block must be after the load pose block
   first_occupancy_map_received_ = false;
   first_octomap_received_ = false;
   occupancy_map_sub_ = nh_.subscribe("map", 1, &Node::occupancyMapMsgReceived, this);
@@ -379,11 +379,10 @@ Node::loadPose()
     init_cov_[1] = 0.5 * 0.5;
     init_cov_[2] = (M_PI/12.0) * (M_PI/12.0);
   }
-  publishInitPose();
 }
 
 void
-Node::publishInitPose()
+Node::publishInitialPose()
 {
   geometry_msgs::PoseWithCovarianceStamped pose;
   pose.header.stamp = ros::Time::now();
@@ -398,6 +397,8 @@ Node::publishInitPose()
   cov_vals[INDEX_AA_] = init_cov_[2];
   for(int i = 0; i < cov_vals.size(); i++)
   {  pose.pose.covariance[i] = cov_vals[i];  }
+  ROS_INFO("Publishing initial pose: (%0.3f, %0.3f)",
+           pose.pose.pose.position.x, pose.pose.pose.position.y);
   initial_pose_pub_.publish(pose);
 }
 
@@ -472,6 +473,7 @@ Node::loadPoseFromServer()
   {
     init_cov_[2] = tmp_pos;
   }
+  ROS_INFO("initial pose loaded: (%f, %f, %f)", init_pose_[0], init_pose_[1], init_pose_[2]);
   return true;
 }
 
@@ -706,9 +708,8 @@ Node::initFromNewMap()
     initFromNewOctomap();
   }
 
-  // In case the initial pose message arrived before the first map,
-  // try to apply the initial pose now that the map has arrived.
-  applyInitialPose();
+  // Publish initial pose loaded from the server or file at startup
+  publishInitialPose();
 }
 
 void
@@ -849,7 +850,7 @@ Node::getOdomPose(tf::Stamped<tf::Pose>& odom_pose,
   }
   catch(tf::TransformException e)
   {
-    ROS_WARN("Failed to compute odom pose, skipping scan (%s)", e.what());
+    ROS_DEBUG("Failed to compute odom pose, skipping scan (%s)", e.what());
     return false;
   }
   x = odom_pose.getOrigin().x();
@@ -1006,7 +1007,6 @@ Node::initialPoseReceived(const geometry_msgs::PoseWithCovarianceStampedConstPtr
 void
 Node::handleInitialPoseMessage(const geometry_msgs::PoseWithCovarianceStamped& orig_msg)
 {
-  ROS_DEBUG("initial pose received");
   boost::recursive_mutex::scoped_lock cfl(configuration_mutex_);
   geometry_msgs::PoseWithCovarianceStamped msg(orig_msg);
   // Rewrite to our global frame if received in the alt frame.
@@ -1096,6 +1096,9 @@ Node::handleInitialPoseMessage(const geometry_msgs::PoseWithCovarianceStamped& o
            pose_new.getOrigin().x(),
            pose_new.getOrigin().y(),
            getYaw(pose_new));
+
+  ROS_INFO("Initial pose received by AMCL: (%.3f, %.3f)",
+           pose_new.getOrigin().x(), pose_new.getOrigin().y());
   // Re-initialize the filter
   PFVector pf_init_pose_mean;
   pf_init_pose_mean.v[0] = pose_new.getOrigin().x();
@@ -1124,7 +1127,7 @@ Node::handleInitialPoseMessage(const geometry_msgs::PoseWithCovarianceStamped& o
 
 /**
  * If initial_pose_hyp_ and map_ are both non-null, apply the initial
- * pose to the particle filter state.  initial_pose_hyp_ is deleted
+ * pose to the particle filter state. Initial_pose_hyp_ is deleted
  * and set to NULL after it is used.
  */
 void

@@ -157,7 +157,7 @@ class Node
 
     std::string makeFilepathFromName( const std::string filename );
     void loadPose();
-    void publishInitPose();
+    void publishInitialPose();
     bool loadPoseFromServer();
     bool loadPoseFromFile();
 
@@ -234,7 +234,6 @@ class Node
     message_filters::Subscriber<sensor_msgs::PointCloud2>* point_cloud_scan_sub_;
     tf::MessageFilter<sensor_msgs::LaserScan>* planar_scan_filter_;
     tf::MessageFilter<sensor_msgs::PointCloud2>* point_cloud_scan_filter_;
-    ros::Subscriber initial_pose_sub_;
     std::vector< PlanarScanner* > planar_scanners_;
     std::vector< PointCloudScanner* > point_cloud_scanners_;
     std::vector< bool > planar_scanners_update_;
@@ -280,8 +279,8 @@ class Node
     ros::Publisher alt_particlecloud_pub_;
     ros::Publisher map_odom_transform_pub_;
     ros::Publisher initial_pose_pub_;
+    ros::Subscriber initial_pose_sub_;
     ros::ServiceServer global_loc_srv_;
-    ros::Subscriber initial_pose_sub_old_;
     ros::Subscriber occupancy_map_sub_;
     ros::Subscriber octomap_sub_;
 
