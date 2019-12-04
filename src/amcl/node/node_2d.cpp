@@ -418,6 +418,12 @@ Node::planarScanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan)
   if(map_ == NULL) {
     return;
   }
+  if(not occupancy_map_->isCSpaceCreated())
+  {
+    ROS_DEBUG("CSpace not yet created");
+    return;
+  }
+
   boost::recursive_mutex::scoped_lock cfl(configuration_mutex_);
   int scanner_index = -1;
 

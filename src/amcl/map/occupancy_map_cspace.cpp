@@ -146,3 +146,9 @@ OccupancyMap::setMapOccDist(int i, int j, float d)
     distances_[computeCellIndex(i, j)] = d;
   }
 }
+
+bool
+OccupancyMap::isCSpaceCreated()
+{
+  return distances_ != nullptr;
+}
