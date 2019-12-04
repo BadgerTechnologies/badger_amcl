@@ -71,6 +71,7 @@ class OccupancyMap : public Map
     MapCell* getCells();
     void initCells(int num);
     void setCellOccState(int index, int8_t state);
+    bool isCSpaceCreated();
 
   private:
     struct CellData {
