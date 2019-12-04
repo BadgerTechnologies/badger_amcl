@@ -181,7 +181,8 @@ Node::Node() :
   transform_tolerance_.fromSec(tmp_tol);
 
   initial_pose_sub_ = nh_.subscribe("initialpose", 2, &Node::initialPoseReceived, this);
-  initial_pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("initialpose", 1);
+  initial_pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>(
+                        "initialpose", 1, boost::bind(&Node::newInitialPoseSubscriber, this, _1));
 
   tfb_ = new tf::TransformBroadcaster();
   tf_ = new TransformListenerWrapper();
@@ -1143,6 +1144,23 @@ Node::applyInitialPose()
   }
 }
 
+void
+Node::newInitialPoseSubscriber(const ros::SingleSubscriberPublisher& single_sub_pub)
+{
+  boost::recursive_mutex::scoped_lock lpl(latest_amcl_pose_mutex_);
+  if(latest_amcl_pose_.header.frame_id.compare("map") != 0)
+  {
+    ROS_DEBUG("New initial pose subscriber registered. "
+              "Latest amcl pose uninitialized, no pose will be published.");
+    return;
+  }
+  ROS_INFO("New initial pose subscriber registered. "
+           "Publishing latest amcl pose: (%f, %f).",
+           latest_amcl_pose_.pose.pose.position.x,
+           latest_amcl_pose_.pose.pose.position.y);
+  single_sub_pub.publish(latest_amcl_pose_);
+}
+
 double
 Node::normalize(double z)
 {
@@ -1164,4 +1182,3 @@ Node::angleDiff(double a, double b)
   else
     return(d2);
 }
-
