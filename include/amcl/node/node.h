@@ -163,6 +163,7 @@ class Node
 
     YAML::Node loadYamlFromFile();
     void applyInitialPose();
+    void newInitialPoseSubscriber(const ros::SingleSubscriberPublisher& single_sub_pub);
 
     double getYaw(tf::Pose& t);
 
