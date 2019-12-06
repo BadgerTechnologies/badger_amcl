@@ -127,15 +127,18 @@ Node::init2D()
   if (map_scale_up_factor_ > 16)
     map_scale_up_factor_ = 16;
 
-  planar_scan_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, planar_scan_topic_, 100);
-  planar_scan_filter_ =
-      new tf::MessageFilter<sensor_msgs::LaserScan>(*planar_scan_sub_, *tf_, odom_frame_id_, 100);
-  planar_scan_filter_->registerCallback(boost::bind(&Node::planarScanReceived, this, _1));
+  if(map_type_ == 2)
+  {
+    planar_scan_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, planar_scan_topic_, 100);
+    planar_scan_filter_ =
+        new tf::MessageFilter<sensor_msgs::LaserScan>(*planar_scan_sub_, *tf_, odom_frame_id_, 100);
+    planar_scan_filter_->registerCallback(boost::bind(&Node::planarScanReceived, this, _1));
 
-  // 15s timer to warn on lack of receipt of planar scans, #5209
-  planar_scanner_check_interval_ = ros::Duration(15.0);
-  check_planar_scanner_timer_ = nh_.createTimer(planar_scanner_check_interval_,
+    // 15s timer to warn on lack of receipt of planar scans, #5209
+    planar_scanner_check_interval_ = ros::Duration(15.0);
+    check_planar_scanner_timer_ = nh_.createTimer(planar_scanner_check_interval_,
                                        boost::bind(&Node::checkPlanarScanReceived, this, _1));
+  }
 }
 
 void
@@ -413,8 +416,6 @@ void
 Node::planarScanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan)
 {
   last_planar_scan_received_ts_ = ros::Time::now();
-  if(map_type_ != 2)
-    return;
   if(map_ == NULL) {
     return;
   }

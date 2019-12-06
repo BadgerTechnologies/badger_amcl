@@ -87,14 +87,17 @@ Node::init3D()
     point_cloud_model_type_ = POINT_CLOUD_MODEL;
   }
 
-  point_cloud_scan_sub_ = new message_filters::Subscriber<sensor_msgs::PointCloud2>(nh_, point_cloud_scan_topic_, 1);
-  point_cloud_scan_filter_ =
-          new tf::MessageFilter<sensor_msgs::PointCloud2>(*point_cloud_scan_sub_, *tf_, odom_frame_id_, 1);
-  point_cloud_scan_filter_->registerCallback(boost::bind(&Node::pointCloudReceived, this, _1));
-  // 15s timer to warn on lack of receipt of point cloud scans, #5209
-  point_cloud_scanner_check_interval_ = ros::Duration(15.0);
-  check_point_cloud_scanner_timer_ = nh_.createTimer(point_cloud_scanner_check_interval_,
-                                                     boost::bind(&Node::checkPointCloudScanReceived, this, _1));
+  if(map_type_ == 3)
+  {
+    point_cloud_scan_sub_ = new message_filters::Subscriber<sensor_msgs::PointCloud2>(nh_, point_cloud_scan_topic_, 1);
+    point_cloud_scan_filter_ =
+            new tf::MessageFilter<sensor_msgs::PointCloud2>(*point_cloud_scan_sub_, *tf_, odom_frame_id_, 1);
+    point_cloud_scan_filter_->registerCallback(boost::bind(&Node::pointCloudReceived, this, _1));
+    // 15s timer to warn on lack of receipt of point cloud scans, #5209
+    point_cloud_scanner_check_interval_ = ros::Duration(15.0);
+    check_point_cloud_scanner_timer_ = nh_.createTimer(point_cloud_scanner_check_interval_,
+                                                       boost::bind(&Node::checkPointCloudScanReceived, this, _1));
+  }
 
   try
   {
@@ -329,8 +332,6 @@ void
 Node::pointCloudReceived(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan)
 {
   last_point_cloud_scan_received_ts_ = ros::Time::now();
-  if(map_type_ != 3)
-    return;
   if(map_ == NULL) {
     ROS_DEBUG("map is null");
     return;
