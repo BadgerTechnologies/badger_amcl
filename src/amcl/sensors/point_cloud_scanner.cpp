@@ -37,7 +37,6 @@
 
 using namespace amcl;
 
-
 PointCloudScanner::PointCloudScanner(size_t max_beams, OctoMap* map, double point_cloud_scanner_height) : Sensor()
 {
   this->max_beams_ = max_beams;
@@ -47,6 +46,9 @@ PointCloudScanner::PointCloudScanner(size_t max_beams, OctoMap* map, double poin
   this->off_map_factor_ = 1.0;
   this->non_free_space_factor_ = 1.0;
   this->non_free_space_radius_ = 0.0;
+
+  if(this->map_vec_.size() != 3)
+    this->map_vec_.reserve(3);
 }
 
 PointCloudScanner::~PointCloudScanner()
@@ -146,10 +148,9 @@ PointCloudScanner::applyModelToSampleSet(SensorData *data, PFSampleSet *set)
       pose = sample->pose;
 
       // Convert to map grid coords.
-      std::vector<int> m_vec;
-      m_vec = self->map_->convertWorldToMap({pose.v[0], pose.v[1]});
-      mi = m_vec[0];
-      mj = m_vec[1];
+      self->map_->convertWorldToMap({pose.v[0], pose.v[1]}, &self->map_vec_);
+      mi = self->map_vec_[0];
+      mj = self->map_vec_[1];
 
       // Apply off map factor
       if(!self->map_->isValid({mi, mj}))
@@ -187,8 +188,8 @@ PointCloudScanner::calcPointCloudModel(PointCloudData *data, PFSampleSet* set)
       return 0.0;
     for(it = map_cloud.begin(); it != map_cloud.end(); ++it)
     {
-      std::vector<int> map_coords = self->map_->convertWorldToMap({it->x, it->y, it->z});
-      z = self->map_->getOccDist(map_coords[0], map_coords[1], map_coords[2]);
+      self->map_->convertWorldToMap({it->x, it->y, it->z}, &self->map_vec_);
+      z = self->map_->getOccDist(self->map_vec_[0], self->map_vec_[1], self->map_vec_[2]);
       pz = self->z_hit_ * exp(-(z*z) / z_hit_denom);
       pz += self->z_rand_ * z_rand_mult;
       assert(pz <= 1.0);
@@ -223,8 +224,8 @@ PointCloudScanner::calcPointCloudModelGompertz(PointCloudData *data, PFSampleSet
     int count = 0;
     for(it = map_cloud.begin(); it != map_cloud.end(); ++it)
     {
-      std::vector<int> map_coords = self->map_->convertWorldToMap({it->x, it->y, it->z});
-      z = self->map_->getOccDist(map_coords[0], map_coords[1], map_coords[2]);
+      self->map_->convertWorldToMap({it->x, it->y, it->z}, &self->map_vec_);
+      z = self->map_->getOccDist(self->map_vec_[0], self->map_vec_[1], self->map_vec_[2]);
       pz = self->z_hit_ * exp(-(z*z) / z_hit_denom);
       pz += self->z_rand_;
       sum_pz += pz;

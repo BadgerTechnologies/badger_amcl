@@ -48,6 +48,9 @@ PlanarScanner::PlanarScanner(size_t max_beams, OccupancyMap* map) : Sensor(),
   this->off_map_factor_ = 1.0;
   this->non_free_space_factor_ = 1.0;
   this->non_free_space_radius_ = 0.0;
+
+  if(this->map_vec_.size() != 2)
+    this->map_vec_.reserve(2);
 }
 
 PlanarScanner::~PlanarScanner()
@@ -199,10 +202,9 @@ PlanarScanner::applyModelToSampleSet(SensorData *data, PFSampleSet *set)
       pose = sample->pose;
 
       // Convert to map grid coords.
-      std::vector<int> m_vec;
-      m_vec = self->map_->convertWorldToMap({pose.v[0], pose.v[1]});
-      mi = m_vec[0];
-      mj = m_vec[1];
+      self->map_->convertWorldToMap({pose.v[0], pose.v[1]}, &self->map_vec_);
+      mi = self->map_vec_[0];
+      mj = self->map_vec_[1];
 
       // Apply off map factor
       if(!self->map_->isValid({mi, mj}))
@@ -360,11 +362,10 @@ PlanarScanner::calcLikelihoodFieldModel(PlanarData *data, PFSampleSet* set)
       hit.v[1] = pose.v[1] + obs_range * sin(pose.v[2] + obs_bearing);
 
       // Convert to map_ grid coords.
-      std::vector<int> m_vec;
       int mi, mj;
-      m_vec = self->map_->convertWorldToMap({hit.v[0], hit.v[1]});
-      mi = m_vec[0];
-      mj = m_vec[1];
+      self->map_->convertWorldToMap({hit.v[0], hit.v[1]}, &self->map_vec_);
+      mi = self->map_vec_[0];
+      mj = self->map_vec_[1];
 
       // Part 1: Get distance from the hit to closest obstacle.
       // Off-map penalized as max distance
@@ -499,11 +500,10 @@ PlanarScanner::calcLikelihoodFieldModelProb(PlanarData *data, PFSampleSet* set)
       hit.v[1] = pose.v[1] + obs_range * sin(pose.v[2] + obs_bearing);
 
       // Convert to map grid coords.
-      std::vector<int> m_vec;
       int mi, mj;
-      m_vec = self->map_->convertWorldToMap({hit.v[0], hit.v[1]});
-      mi = m_vec[0];
-      mj = m_vec[1];
+      self->map_->convertWorldToMap({hit.v[0], hit.v[1]}, &self->map_vec_);
+      mi = self->map_vec_[0];
+      mj = self->map_vec_[1];
 
       // Part 1: Get distance from the hit to closest obstacle.
       // Off-map penalized as max distance
@@ -662,11 +662,10 @@ PlanarScanner::calcLikelihoodFieldModelGompertz(PlanarData *data, PFSampleSet* s
       hit.v[1] = pose.v[1] + obs_range * sin(pose.v[2] + obs_bearing);
 
       // Convert to map grid coords.
-      std::vector<int> m_vec;
       int mi, mj;
-      m_vec = self->map_->convertWorldToMap({hit.v[0], hit.v[1]});
-      mi = m_vec[0];
-      mj = m_vec[1];
+      self->map_->convertWorldToMap({hit.v[0], hit.v[1]}, &self->map_vec_);
+      mi = self->map_vec_[0];
+      mj = self->map_vec_[1];
       // Part 1: Get distance from the hit to closest obstacle.
       // Off-map penalized as max distance
       if(!self->map_->isValid({mi, mj}))

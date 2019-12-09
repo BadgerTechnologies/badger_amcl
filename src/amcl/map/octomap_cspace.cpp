@@ -76,18 +76,19 @@ OctoMap::updateCSpace()
 
   // Enqueue all the obstacle cells
   CellData cell = CellData(this);
+  std::vector<double> world_coords(3);
+  std::vector<int> map_coords(3);
+
   for(octomap::OcTree::leaf_iterator it = octree_->begin_leafs(), end=octree_->end_leafs();
       it != end; ++it)
   {
     if(octree_->isNodeOccupied(*it))
     {
-      std::vector<double> world_coords;
-      std::vector<int> map_coords;
       int i, j, k;
-      world_coords.push_back(it.getX());
-      world_coords.push_back(it.getY());
-      world_coords.push_back(it.getZ());
-      map_coords = convertWorldToMap(world_coords);
+      world_coords[0] = it.getX();
+      world_coords[1] = it.getY();
+      world_coords[2] = it.getZ();
+      convertWorldToMap(world_coords, &map_coords);
       i = map_coords[0];
       j = map_coords[1];
       k = map_coords[2];

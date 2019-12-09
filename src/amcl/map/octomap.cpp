@@ -67,8 +67,8 @@ OctoMap::initFromOctree(octomap::OcTree* octree, double lidar_height)
   octree_->getMetricMax(max_x, max_y, max_z);
   setOrigin({min_x, min_y, min_z});
   // crop values here if required
-  cropped_min_cells_ = convertWorldToMap({min_x, min_y, min_z});
-  cropped_max_cells_ = convertWorldToMap({max_x, max_y, max_z});
+  convertWorldToMap({min_x, min_y, min_z}, &cropped_min_cells_);
+  convertWorldToMap({max_x, max_y, max_z}, &cropped_max_cells_);
 }
 
 // getter and setter for global origin of octomap
@@ -100,37 +100,34 @@ OctoMap::getMinMaxCells(std::vector<int> &min_cells, std::vector<int> &max_cells
 }
 
 // converts map voxel coordinates to global coordinates in meters
-std::vector<double>
-OctoMap::convertMapToWorld(std::vector<int> map_coords)
+void
+OctoMap::convertMapToWorld(const std::vector<int> &map_coords, std::vector<double> *world_coords)
 {
   std::vector<double> return_vals;
   int i = map_coords[0];
   int j = map_coords[1];
-  return_vals.push_back(origin_[0] + i * scale_);
-  return_vals.push_back(origin_[1] + j * scale_);
+  (*world_coords)[0] = origin_[0] + i * scale_;
+  (*world_coords)[1] = origin_[1] + j * scale_;
   if(map_coords.size() > 2)
   {
     int k = map_coords[2];
-    return_vals.push_back(origin_[2] + k * scale_);
+    (*world_coords)[2] = origin_[2] + k * scale_;
   }
-  return return_vals;
 }
 
 // converts global coordinates in meters to map voxel coordinates
-std::vector<int>
-OctoMap::convertWorldToMap(std::vector<double> world_coords)
+void
+OctoMap::convertWorldToMap(const std::vector<double> &world_coords, std::vector<int> *map_coords)
 {
-  std::vector<int> return_vals;
   double x = world_coords[0];
   double y = world_coords[1];
-  return_vals.push_back(floor((x - origin_[0]) / scale_ + 0.5));
-  return_vals.push_back(floor((y - origin_[1]) / scale_ + 0.5));
+  (*map_coords)[0] = floor((x - origin_[0]) / scale_ + 0.5);
+  (*map_coords)[1] = floor((y - origin_[1]) / scale_ + 0.5);
   if(world_coords.size() > 2)
   {
     double z = world_coords[2];
-    return_vals.push_back(floor((z - origin_[2]) / scale_ + 0.5));
+    (*map_coords)[2] = floor((z - origin_[2]) / scale_ + 0.5);
   }
-  return return_vals;
 }
 
 // returns true if all coordinates are within the represented map
@@ -167,7 +164,7 @@ OctoMap::getMaxOccDist()
 void
 OctoMap::setMapBounds(std::vector<double> map_min, std::vector<double> map_max)
 {
-  std::vector<int> cells_min, cells_max;
+  std::vector<int> cells_min(map_min.size()), cells_max(map_max.size());
   // add a buffer around map bounds to ensure representation
   // of objects at extreme map values
   for(int i = 0; i < map_min.size(); i++)
@@ -175,8 +172,8 @@ OctoMap::setMapBounds(std::vector<double> map_min, std::vector<double> map_max)
     map_min[i] -= max_occ_dist_;
     map_max[i] += max_occ_dist_;
   }
-  cells_min = convertWorldToMap(map_min);
-  cells_max = convertWorldToMap(map_max);
+  convertWorldToMap(map_min, &cells_min);
+  convertWorldToMap(map_max, &cells_max);
   for(int i = 0; i < cells_min.size(); i++)
   {
     cropped_min_cells_[i] = std::max(cropped_min_cells_[i], cells_min[i]);

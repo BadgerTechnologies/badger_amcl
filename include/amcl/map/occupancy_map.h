@@ -49,9 +49,9 @@ class OccupancyMap : public Map
     OccupancyMap();
     ~OccupancyMap();
     // Convert from map index to world coords
-    std::vector<double> convertMapToWorld(std::vector<int> map_coords);
+    void convertMapToWorld(const std::vector<int> &map_coords, std::vector<double> *world_coords);
     // Convert from world coords to map coords
-    std::vector<int> convertWorldToMap(std::vector<double> world_coords);
+    void convertWorldToMap(const std::vector<double> &world_coords, std::vector<int> *map_coords);
     // Test to see if the given map coords lie within the absolute map bounds.
     bool isValid(std::vector<int> coords);
     std::vector<double> getOrigin();

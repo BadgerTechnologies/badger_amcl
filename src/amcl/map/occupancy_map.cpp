@@ -120,26 +120,26 @@ OccupancyMap::getOccDist(int i, int j)
   return max_occ_dist_;
 }
 
-std::vector<double>
-OccupancyMap::convertMapToWorld(std::vector<int> map_coords)
+void
+OccupancyMap::convertMapToWorld(const std::vector<int> &map_coords,
+                                std::vector<double> *world_coords)
 {
   std::vector<double> return_vals;
   int i = map_coords[0];
   int j = map_coords[1];
-  return_vals.push_back(origin_x_ + (i - size_x_ / 2) * scale_);
-  return_vals.push_back(origin_y_ + (j - size_y_ / 2) * scale_);
-  return return_vals;
+  (*world_coords)[0] = origin_x_ + (i - size_x_ / 2) * scale_;
+  (*world_coords)[1] = origin_y_ + (j - size_y_ / 2) * scale_;
 }
 
-std::vector<int>
-OccupancyMap::convertWorldToMap(std::vector<double> world_coords)
+void
+OccupancyMap::convertWorldToMap(const std::vector<double> &world_coords,
+                                std::vector<int> *map_coords)
 {
   std::vector<int> return_vals;
   double x = world_coords[0];
   double y = world_coords[1];
-  return_vals.push_back(floor((x - origin_x_) / scale_ + 0.5) + size_x_ / 2);
-  return_vals.push_back(floor((y - origin_y_) / scale_ + 0.5) + size_y_ / 2);
-  return return_vals;
+  (*map_coords)[0] = floor((x - origin_x_) / scale_ + 0.5) + size_x_ / 2;
+  (*map_coords)[1] = floor((y - origin_y_) / scale_ + 0.5) + size_y_ / 2;
 }
 
 bool
