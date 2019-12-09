@@ -122,6 +122,11 @@ class PointCloudScanner : public Sensor
     double point_cloud_scanner_height_;
 
     tf::Transform point_cloud_scanner_to_footprint_tf_;
+
+    // Vector to store converted map coordinates.
+    // Making this a class variable reduces the number of
+    // times we need to create an instance of this vector.
+    std::vector<int> map_vec_;
 };
 
 }

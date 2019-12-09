@@ -183,6 +183,11 @@ class PlanarScanner : public Sensor
     double off_map_factor_;
     double non_free_space_factor_;
     double non_free_space_radius_;
+
+    // Vector to store converted map coordinates.
+    // Making this a class variable reduces the number of
+    // times we need to create an instance of this vector.
+    std::vector<int> map_vec_;
 };
 
 }

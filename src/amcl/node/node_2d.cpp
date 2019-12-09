@@ -327,9 +327,9 @@ Node::occupancyMapMsgReceived(const nav_msgs::OccupancyGridConstPtr& msg)
   {
     if(first_octomap_received_ and wait_for_occupancy_map_)
     {
-      std::vector<double> map_min, map_max;
+      std::vector<double> map_min, map_max(2);
       map_min = {0.0, 0.0};
-      map_max = occupancy_map_->convertMapToWorld(occupancy_map_->getSize());
+      occupancy_map_->convertMapToWorld(occupancy_map_->getSize(), &map_max);
       octomap_->setMapBounds(map_min, map_max);
       update3DFreeSpaceIndices();
     }

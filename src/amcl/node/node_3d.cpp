@@ -307,9 +307,9 @@ Node::initFromNewOctomap()
   // and the occupancy map has already arrived
   if(wait_for_occupancy_map_ and first_occupancy_map_received_)
   {
-    std::vector<double> map_min, map_max;
+    std::vector<double> map_min, map_max(2);
     map_min = {0.0, 0.0};
-    map_max = occupancy_map_->convertMapToWorld(occupancy_map_->getSize());
+    occupancy_map_->convertMapToWorld(occupancy_map_->getSize(), &map_max);
     octomap_->setMapBounds(map_min, map_max);
   }
   update3DFreeSpaceIndices();
@@ -554,12 +554,12 @@ Node::pointCloudReceived(const sensor_msgs::PointCloud2ConstPtr& point_cloud_sca
     int max_weight_hyp = -1;
     std::vector<AMCLHyp> hyps;
     hyps.resize(pf_->getCurrentSet()->cluster_count);
+    double weight;
+    PFVector pose_mean;
+    PFMatrix pose_cov;
     for(int hyp_count = 0;
         hyp_count < pf_->getCurrentSet()->cluster_count; hyp_count++)
     {
-      double weight;
-      PFVector pose_mean;
-      PFMatrix pose_cov;
       if (!pf_->getClusterStats(hyp_count, &weight, &pose_mean, &pose_cov))
       {
         ROS_ERROR("Couldn't get stats on cluster %d", hyp_count);

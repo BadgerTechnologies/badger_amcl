@@ -41,7 +41,7 @@ double
 OccupancyMap::calcRange(double ox, double oy, double oa, double max_range)
 {
   // Bresenham raytracing
-  std::vector<int> tmp_vec;
+  std::vector<int> tmp_vec(2);
   int x0,x1,y0,y1;
   int x,y;
   int xstep, ystep;
@@ -49,11 +49,10 @@ OccupancyMap::calcRange(double ox, double oy, double oa, double max_range)
   int tmp;
   int deltax, deltay, error, deltaerr;
 
-  tmp_vec = convertWorldToMap({ox, oy});
+  convertWorldToMap({ox, oy}, &tmp_vec);
   x0 = tmp_vec[0];
   y0 = tmp_vec[1];
-  tmp_vec = convertWorldToMap({ox + max_range * cos(oa),
-                               oy + max_range * sin(oa)});
+  convertWorldToMap({ox + max_range * cos(oa), oy + max_range * sin(oa)}, &tmp_vec);
   x1 = tmp_vec[0];
   y1 = tmp_vec[1];
 

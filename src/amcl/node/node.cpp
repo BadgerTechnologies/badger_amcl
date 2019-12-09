@@ -874,7 +874,8 @@ Node::randomFreeSpacePose()
   }
   unsigned int rand_index = drand48() * free_space_indices_.size();
   std::pair<int,int> free_point = free_space_indices_[rand_index];
-  std::vector<double> p_vec = map_->convertMapToWorld({free_point.first, free_point.second});
+  std::vector<double> p_vec(2);
+  map_->convertMapToWorld({free_point.first, free_point.second}, &p_vec);
   p.v[0] = p_vec[0];
   p.v[1] = p_vec[1];
   p.v[2] = drand48() * 2 * M_PI - M_PI;

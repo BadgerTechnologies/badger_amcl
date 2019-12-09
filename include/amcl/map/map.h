@@ -38,9 +38,11 @@ class Map
     Map();
     ~Map();
     // Convert from map index to world coords
-    virtual std::vector<double> convertMapToWorld(std::vector<int> map_coords) = 0;
+    virtual void convertMapToWorld(const std::vector<int> &map_coords,
+                                   std::vector<double> *world_coords) = 0;
     // Convert from world coords to map coords
-    virtual std::vector<int> convertWorldToMap(std::vector<double> world_coords) = 0;
+    virtual void convertWorldToMap(const std::vector<double> &world_coords,
+                                   std::vector<int> *map_coords) = 0;
     // Test to see if the given map coords lie within the absolute map bounds.
     virtual bool isValid(std::vector<int> coords) = 0;
     virtual std::vector<int> getSize() = 0;
