@@ -485,8 +485,7 @@ Node::planarScanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan)
 
   // Where was the robot when this scan was taken?
   PFVector pose;
-  if(!getOdomPose(latest_odom_pose_, pose.v[0], pose.v[1], pose.v[2],
-                  planar_scan->header.stamp, base_frame_id_))
+  if(!getOdomPose(planar_scan->header.stamp, base_frame_id_, &latest_odom_pose_, &pose))
   {
     ROS_ERROR("Couldn't determine robot's pose associated with planar scan");
     return;

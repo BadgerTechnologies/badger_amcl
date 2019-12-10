@@ -837,9 +837,8 @@ Node::integrateOdom(const nav_msgs::OdometryConstPtr& msg)
 }
 
 bool
-Node::getOdomPose(tf::Stamped<tf::Pose>& odom_pose,
-                      double& x, double& y, double& yaw,
-                      const ros::Time& t, const std::string& f)
+Node::getOdomPose(const ros::Time& t, const std::string& f,
+                  tf::Stamped<tf::Pose> *odom_pose, PFVector *map_pose)
 {
   // Get the robot's pose
   tf::Stamped<tf::Pose> ident (tf::Transform(tf::createIdentityQuaternion(),
@@ -847,18 +846,18 @@ Node::getOdomPose(tf::Stamped<tf::Pose>& odom_pose,
   try
   {
     this->tf_->waitForTransform(f, odom_frame_id_, ros::Time::now(), ros::Duration(0.5));
-    this->tf_->transformPose(odom_frame_id_, ident, odom_pose);
+    this->tf_->transformPose(odom_frame_id_, ident, *odom_pose);
   }
   catch(tf::TransformException e)
   {
     ROS_DEBUG("Failed to compute odom pose, skipping scan (%s)", e.what());
     return false;
   }
-  x = odom_pose.getOrigin().x();
-  y = odom_pose.getOrigin().y();
-  double pitch,roll;
-  odom_pose.getBasis().getEulerYPR(yaw, pitch, roll);
-
+  map_pose->v[0] = odom_pose->getOrigin().x();
+  map_pose->v[1] = odom_pose->getOrigin().y();
+  double pitch, roll, yaw;
+  odom_pose->getBasis().getEulerYPR(yaw, pitch, roll);
+  map_pose->v[2] = yaw;
   return true;
 }
 

@@ -75,7 +75,7 @@ OctoMap::updateCSpace()
   }
 
   // Enqueue all the obstacle cells
-  CellData cell = CellData(this);
+  CellData cell = CellData(*this);
   std::vector<double> world_coords(3);
   std::vector<int> map_coords(3);
 
@@ -181,7 +181,7 @@ OctoMap::enqueue(int i, int j, int k, int src_i, int src_j, int src_k,
 
   setOccDist(i, j, k, distance * scale_);
 
-  CellData cell = CellData(this);
+  CellData cell = CellData(*this);
   cell.i_ = i;
   cell.j_ = j;
   cell.k_ = k;

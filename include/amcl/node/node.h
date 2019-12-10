@@ -173,9 +173,8 @@ class Node
     void resetOdomIntegrator();
 
     // Helper to get odometric pose from transform system
-    bool getOdomPose(tf::Stamped<tf::Pose>& pose,
-                     double& x, double& y, double& yaw,
-                     const ros::Time& t, const std::string& f);
+    bool getOdomPose(const ros::Time& t, const std::string& f,
+                     tf::Stamped<tf::Pose> *odom_pose, PFVector *map_pose);
 
     void reconfigureCB(amcl::AMCLConfig &config, uint32_t level);
     void reconfigure2D(amcl::AMCLConfig &config);
