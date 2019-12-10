@@ -148,7 +148,7 @@ Node::convertMap(const octomap_msgs::Octomap& map_msg)
       octree_ = dynamic_cast<octomap::OcTree*>(absoctree);
     }
     octomap->setScale(scale);
-    octomap->initFromOctree(octree_, point_cloud_scanner_height_);
+    octomap->initFromOctree(*octree_, point_cloud_scanner_height_);
     return octomap;
 }
 
@@ -322,7 +322,7 @@ Node::update3DFreeSpaceIndices()
   // Must be calculated after the occ_dist is setup by the laser model
   free_space_indices_.resize(0);
   std::vector<int> min_cells(3), max_cells(3);
-  octomap_->getMinMaxCells(min_cells, max_cells);
+  octomap_->getMinMaxCells(&min_cells, &max_cells);
   for(int i = min_cells[0]; i < max_cells[0]; i++)
     for(int j = min_cells[1]; j < max_cells[1]; j++)
       free_space_indices_.push_back(std::make_pair(i,j));
@@ -402,8 +402,7 @@ Node::pointCloudReceived(const sensor_msgs::PointCloud2ConstPtr& point_cloud_sca
 
   // Where was the robot when this scan was taken?
   PFVector pose;
-  if(!getOdomPose(latest_odom_pose_, pose.v[0], pose.v[1], pose.v[2],
-                  point_cloud_scan->header.stamp, base_frame_id_))
+  if(!getOdomPose(point_cloud_scan->header.stamp, base_frame_id_, &latest_odom_pose_, &pose))
   {
     ROS_DEBUG("Couldn't determine robot's pose associated with point cloud scan");
     return;

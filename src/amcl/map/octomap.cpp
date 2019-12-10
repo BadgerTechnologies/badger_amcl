@@ -52,9 +52,9 @@ OctoMap::~OctoMap()
 
 // initialize octomap from octree
 void
-OctoMap::initFromOctree(octomap::OcTree* octree, double lidar_height)
+OctoMap::initFromOctree(octomap::OcTree &octree, double lidar_height)
 {
-  octree_ = octree;
+  octree_ = &octree;
   lidar_height_ = lidar_height;
   // set size
   double x_meters, y_meters, z_meters;
@@ -93,10 +93,10 @@ OctoMap::getSize()
 }
 
 void
-OctoMap::getMinMaxCells(std::vector<int> &min_cells, std::vector<int> &max_cells)
+OctoMap::getMinMaxCells(std::vector<int> *min_cells, std::vector<int> *max_cells)
 {
-  min_cells = cropped_min_cells_;
-  max_cells = cropped_max_cells_;
+  (*min_cells) = cropped_min_cells_;
+  (*max_cells) = cropped_max_cells_;
 }
 
 // converts map voxel coordinates to global coordinates in meters

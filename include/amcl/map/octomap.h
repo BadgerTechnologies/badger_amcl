@@ -50,14 +50,14 @@ class OctoMap : public Map
     // Test to see if the given map coords lie within the absolute map bounds.
     bool isValid(std::vector<int> coords);
     std::vector<int> getSize();
-    void getMinMaxCells(std::vector<int> &min_cells, std::vector<int> &max_cells);
+    void getMinMaxCells(std::vector<int> *min_cells, std::vector<int> *max_cells);
     std::vector<double> getOrigin();
     void setOrigin(std::vector<double> origin);
     void setMapBounds(std::vector<double> map_min, std::vector<double> map_max);
     // Update the cspace distance values
     void updateCSpace();
     void updateMaxOccDist(double max_occ_dist);
-    void initFromOctree(octomap::OcTree* octree, double lidar_height);
+    void initFromOctree(octomap::OcTree &octree, double lidar_height);
     double getOccDist(int i, int j, int k);
     double getOccDist(int i, int j);
     double getMaxOccDist();
@@ -66,7 +66,7 @@ class OctoMap : public Map
     const double EPSILON_DOUBLE = std::numeric_limits<double>::epsilon();
     struct CellData {
       OctoMap* octoMap;
-      CellData(OctoMap* _octoMap) : octoMap(_octoMap){}
+      CellData(OctoMap& _octoMap) : octoMap(&_octoMap){}
       int i_, j_, k_;
       int src_i_, src_j_, src_k_;
     };
