@@ -48,7 +48,7 @@ PointCloudScanner::PointCloudScanner(size_t max_beams, OctoMap* map, double poin
   this->non_free_space_radius_ = 0.0;
 
   if(this->map_vec_.size() != 3)
-    this->map_vec_.reserve(3);
+    this->map_vec_ = {0, 0, 0};
 }
 
 PointCloudScanner::~PointCloudScanner()

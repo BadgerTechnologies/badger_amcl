@@ -130,26 +130,26 @@ Node::checkPointCloudScanReceived(const ros::TimerEvent& event)
 OctoMap*
 Node::convertMap(const octomap_msgs::Octomap& map_msg)
 {
-    OctoMap* octomap = new OctoMap(wait_for_occupancy_map_);
-    ROS_ASSERT(octomap);
-    octomap::AbstractOcTree* absoctree;
-    double scale = map_msg.resolution;
-    bool binary = map_msg.binary;
-    if(binary)
-    {
-      absoctree = octomap_msgs::binaryMsgToMap(map_msg);
-    }
-    else
-    {
-      absoctree = octomap_msgs::fullMsgToMap(map_msg);
-    }
-    if(absoctree)
-    {
-      octree_ = dynamic_cast<octomap::OcTree*>(absoctree);
-    }
-    octomap->setScale(scale);
-    octomap->initFromOctree(*octree_, point_cloud_scanner_height_);
-    return octomap;
+  OctoMap* octomap = new OctoMap(wait_for_occupancy_map_);
+  ROS_ASSERT(octomap);
+  octomap::AbstractOcTree* absoctree;
+  double scale = map_msg.resolution;
+  bool binary = map_msg.binary;
+  if(binary)
+  {
+    absoctree = octomap_msgs::binaryMsgToMap(map_msg);
+  }
+  else
+  {
+    absoctree = octomap_msgs::fullMsgToMap(map_msg);
+  }
+  if(absoctree)
+  {
+    octree_ = dynamic_cast<octomap::OcTree*>(absoctree);
+  }
+  octomap->setScale(scale);
+  octomap->initFromOctree(*octree_, point_cloud_scanner_height_);
+  return octomap;
 }
 
 double

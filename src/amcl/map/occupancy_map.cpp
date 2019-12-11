@@ -29,6 +29,8 @@
 #include <queue>
 #include <stdint.h>
 
+#include "ros/ros.h"
+
 using namespace amcl;
 
 // Create a new map
@@ -47,7 +49,6 @@ OccupancyMap::OccupancyMap()
   // Allocate storage for main map
   cells_ = nullptr;
   distances_ = nullptr;
-
   cdm_ = nullptr;
 }
 

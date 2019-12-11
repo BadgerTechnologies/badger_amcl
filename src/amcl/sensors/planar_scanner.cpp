@@ -50,7 +50,7 @@ PlanarScanner::PlanarScanner(size_t max_beams, OccupancyMap* map) : Sensor(),
   this->non_free_space_radius_ = 0.0;
 
   if(this->map_vec_.size() != 2)
-    this->map_vec_.reserve(2);
+    this->map_vec_ = {0, 0};
 }
 
 PlanarScanner::~PlanarScanner()

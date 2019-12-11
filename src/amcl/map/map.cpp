@@ -25,6 +25,7 @@
 **************************************************************************/
 
 #include "map.h"
+#include "ros/ros.h"
 
 using namespace amcl;
 
@@ -32,6 +33,7 @@ using namespace amcl;
 Map::Map()
 {
   scale_ = 0;
+  cspace_created_ = false;
 }
 
 // Destroy a map
@@ -49,4 +51,10 @@ void
 Map::setScale(double scale)
 {
   scale_ = scale;
+}
+
+bool
+Map::isCSpaceCreated()
+{
+  return cspace_created_;
 }

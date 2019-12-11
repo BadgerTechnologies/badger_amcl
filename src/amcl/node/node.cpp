@@ -474,7 +474,8 @@ Node::loadPoseFromServer()
   {
     init_cov_[2] = tmp_pos;
   }
-  ROS_INFO("initial pose loaded: (%f, %f, %f)", init_pose_[0], init_pose_[1], init_pose_[2]);
+  ROS_DEBUG("Successfully loaded initial pose from server.");
+  ROS_DEBUG("Pose loaded: (%.3f, %.3f)", init_pose_[0], init_pose_[1]);
   return true;
 }
 
