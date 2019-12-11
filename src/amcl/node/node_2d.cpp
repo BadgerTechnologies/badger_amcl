@@ -822,10 +822,6 @@ Node::globalLocalizationCallback2D()
 void
 Node::freeOccupancyMapDependentMemory()
 {
-  if( occupancy_map_ != NULL ) {
-    delete occupancy_map_;
-    occupancy_map_ = NULL;
-  }
   delete planar_scanner_;
   planar_scanner_ = NULL;
 }

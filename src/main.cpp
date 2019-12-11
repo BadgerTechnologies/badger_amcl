@@ -56,6 +56,10 @@ main(int argc, char** argv)
   // Make our node available to sigintHandler
   amcl_node_ptr.reset(new Node());
 
+  // Uncomment for single threaded
+  //ros::spin();
+
+  // Uncomment for multithreaded
   ros::MultiThreadedSpinner spinner(4);
   spinner.spin();
 

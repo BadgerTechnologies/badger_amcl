@@ -61,7 +61,6 @@ class OctoMap : public Map
     double getOccDist(int i, int j, int k);
     double getOccDist(int i, int j);
     double getMaxOccDist();
-    bool isCSpaceCreated();
   private:
     const double EPSILON_DOUBLE = std::numeric_limits<double>::epsilon();
     struct CellData {

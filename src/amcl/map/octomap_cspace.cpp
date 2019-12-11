@@ -162,6 +162,7 @@ OctoMap::updateCSpace()
     }
     Q.pop();
   }
+  cspace_created_ = true;
   ROS_INFO("Done updating OctoMap CSpace");
 }
 
@@ -227,10 +228,4 @@ OctoMap::getOccDist(int i, int j)
     distance = std::min(distance, getOccDist(i, j, k));
   }
   return distance;
-}
-
-bool
-OctoMap::isCSpaceCreated()
-{
-  return distances_ != nullptr;
 }

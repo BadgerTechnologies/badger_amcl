@@ -28,6 +28,7 @@
 #define AMCL_MAP_H
 
 #include <vector>
+#include <atomic>
 
 namespace amcl
 {
@@ -48,7 +49,7 @@ class Map
     virtual std::vector<int> getSize() = 0;
     virtual std::vector<double> getOrigin() = 0;
     virtual void setOrigin(std::vector<double> _origin) = 0;
-    virtual bool isCSpaceCreated() = 0;
+    bool isCSpaceCreated();
     double getScale();
     void setScale(double _scale);
   protected:
@@ -56,6 +57,7 @@ class Map
     // Max distance at which we care about obstacles, for constructing
     // likelihood field
     double max_occ_dist_;
+    std::atomic<bool> cspace_created_;
 };
 
 }

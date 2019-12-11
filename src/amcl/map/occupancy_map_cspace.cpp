@@ -67,7 +67,9 @@ OccupancyMap::updateCSpace(double max_occ_dist)
   std::priority_queue<CellData> Q;
 
   if (distances_)
+  {
     free(distances_);
+  }
   distances_ = new float[unsigned(size_x_)*size_y_];
 
   std::vector<bool> marked(unsigned(size_x_) * size_y_, false);
@@ -135,6 +137,7 @@ OccupancyMap::updateCSpace(double max_occ_dist)
     }
     Q.pop();
   }
+  cspace_created_ = true;
   ROS_INFO("Done updating Occupancy Map CSpace");
 }
 
@@ -145,10 +148,4 @@ OccupancyMap::setMapOccDist(int i, int j, float d)
   {
     distances_[computeCellIndex(i, j)] = d;
   }
-}
-
-bool
-OccupancyMap::isCSpaceCreated()
-{
-  return distances_ != nullptr;
 }
