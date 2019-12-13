@@ -53,7 +53,6 @@ PointCloudScanner::PointCloudScanner(size_t max_beams, OctoMap* map, double poin
 
 PointCloudScanner::~PointCloudScanner()
 {
-  delete map_;
 }
 
 void

@@ -717,11 +717,9 @@ Node::initFromNewMap()
 void
 Node::freeMapDependentMemory()
 {
-  if( pf_ != NULL )
-  {
-    pf_->~ParticleFilter();
-    pf_ = NULL;
-  }
+  delete pf_;
+  pf_ = NULL;
+
   delete odom_;
   odom_ = NULL;
   if(map_type_ == 2)

@@ -47,7 +47,8 @@ OctoMap::OctoMap(bool wait_for_occupancy_map)
 
 OctoMap::~OctoMap()
 {
-  delete octree_;
+  // octree_ points to octomap::OcTree object also pointed to
+  // in the Node class. It will be deleted in the Node object.
 }
 
 // initialize octomap from octree

@@ -314,11 +314,9 @@ Node::occupancyMapMsgReceived(const nav_msgs::OccupancyGridConstPtr& msg)
            msg->info.height,
            msg->info.resolution);
 
-  if( occupancy_map_ != NULL )
-  {
-    delete occupancy_map_;
-    occupancy_map_ = NULL;
-  }
+  delete occupancy_map_;
+  occupancy_map_ = NULL;
+
   occupancy_map_ = convertMap(*msg);
   first_occupancy_map_received_ = true;
 
@@ -340,11 +338,9 @@ Node::occupancyMapMsgReceived(const nav_msgs::OccupancyGridConstPtr& msg)
     return;
   }
 
-  if( map_ != NULL )
-  {
-    delete map_;
-    map_ = NULL;
-  }
+  delete map_;
+  map_ = NULL;
+
   map_ = occupancy_map_;
   freeMapDependentMemory();
   // Clear queued planar scanner objects because they hold pointers to the existing map
