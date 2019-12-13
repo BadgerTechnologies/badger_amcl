@@ -244,19 +244,11 @@ Node::octomapMsgReceived(const octomap_msgs::OctomapConstPtr& msg)
   boost::recursive_mutex::scoped_lock cfl(configuration_mutex_);
   ROS_INFO("Received a new Octomap");
 
-  if( map_ != NULL )
-  {
-    delete map_;
-    map_ = NULL;
-  }
-  if( octomap_ != NULL )
-  {
-    delete octomap_;
-    octomap_ = NULL;
-    delete octree_;
-    octree_ = NULL;
-  }
-
+  delete octree_;
+  octree_ = nullptr;
+  delete octomap_;
+  octomap_ = nullptr;
+  map_ = nullptr;
   octomap_ = convertMap(*msg);
   first_octomap_received_ = true;
 

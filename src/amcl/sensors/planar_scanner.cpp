@@ -59,11 +59,11 @@ PlanarScanner::~PlanarScanner()
 	for(int k=0; k < max_samples_; k++){
 	  delete [] temp_obs_[k];
 	}
-	delete []temp_obs_; 
+	delete []temp_obs_;
   }
 }
 
-void 
+void
 PlanarScanner::setModelBeam(double z_hit,
                             double z_short,
                             double z_max,
