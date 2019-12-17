@@ -27,8 +27,8 @@
 #ifndef AMCL_PARTICLE_FILTER_H
 #define AMCL_PARTICLE_FILTER_H
 
-#include "pf_vector.h"
-#include "pf_kdtree.h"
+#include "pf/pf_kdtree.h"
+#include "pf/pf_vector.h"
 
 namespace amcl
 {

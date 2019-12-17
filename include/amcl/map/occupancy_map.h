@@ -27,11 +27,13 @@
 #ifndef AMCL_OCCUPANCY_MAP_H
 #define AMCL_OCCUPANCY_MAP_H
 
-#include <cstdint>
-#include <vector>
-#include <queue>
+#include "map/map.h"
+
 #include <math.h>
-#include "map.h"
+
+#include <cstdint>
+#include <queue>
+#include <vector>
 
 namespace amcl
 {
@@ -55,11 +57,11 @@ class OccupancyMap : public Map
     // Test to see if the given map coords lie within the absolute map bounds.
     bool isValid(std::vector<int> coords);
     std::vector<double> getOrigin();
-    void setOrigin(std::vector<double> _origin);
+    void setOrigin(std::vector<double> origin);
     std::vector<int> getSize();
-    void setSize(std::vector<int> _size_x);
+    void setSize(std::vector<int> size_vec);
     // Update the cspace distance values
-    void updateCSpace(double max_occ_dist_);
+    void updateCSpace(double max_occ_dist);
     // Extract a single range reading from the map
     double calcRange(double ox, double oy, double oa, double max_range);
     // Find the distance to nearest occupied cell

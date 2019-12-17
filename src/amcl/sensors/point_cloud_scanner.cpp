@@ -25,15 +25,14 @@
 ///////////////////////////////////////////////////////////////////////////
 
 
-#include "point_cloud_scanner.h"
-#include "ros/ros.h"
-#include <tf2_ros/transform_listener.h>
-#include <geometry_msgs/TransformStamped.h>
-#include <eigen_conversions/eigen_msg.h>
-#include <pcl/common/transforms.h>
+#include "sensors/point_cloud_scanner.h"
+
+#include <math.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl_ros/transforms.h>
-
+#include <ros/assert.h>
+#include <ros/console.h>
+#include <tf/exceptions.h>
 
 using namespace amcl;
 
@@ -191,8 +190,8 @@ PointCloudScanner::calcPointCloudModel(PointCloudData *data, PFSampleSet* set)
       z = self->map_->getOccDist(self->map_vec_[0], self->map_vec_[1], self->map_vec_[2]);
       pz = self->z_hit_ * exp(-(z*z) / z_hit_denom);
       pz += self->z_rand_ * z_rand_mult;
-      assert(pz <= 1.0);
-      assert(pz >= 0.0);
+      ROS_ASSERT(pz <= 1.0);
+      ROS_ASSERT(pz >= 0.0);
       p += pz*pz*pz;
     }
     sample->weight *= p;

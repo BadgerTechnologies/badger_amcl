@@ -27,7 +27,7 @@
 #ifndef AMCL_PDF_GAUSSIAN_H
 #define AMCL_PDF_GAUSSIAN_H
 
-#include "pf_vector.h"
+#include "pf/pf_vector.h"
 
 /**************************************************************************
  * Gaussian

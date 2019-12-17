@@ -26,14 +26,12 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 
-#include <sys/types.h> // required by Darwin
-#include <math.h>
-#include <stdlib.h>
-#include <assert.h>
-#include <unistd.h>
-#include "ros/ros.h"
+#include "sensors/planar_scanner.h"
 
-#include "planar_scanner.h"
+#include <math.h>
+#include <ros/assert.h>
+#include <ros/console.h>
+#include <stdlib.h>
 
 using namespace amcl;
 
@@ -267,8 +265,8 @@ PlanarScanner::calcBeamModel(PlanarData *data, PFSampleSet* set)
       obs_bearing = data->ranges_[i][1];
 
       // Compute the range according to the map
-      map_range = self->map_->calcRange(pose.v[0], pose.v[1],
-                                 pose.v[2] + obs_bearing, data->range_max_);
+      map_range = self->map_->calcRange(pose.v[0], pose.v[1], pose.v[2] + obs_bearing,
+                                        data->range_max_);
       pz = 0.0;
 
       // Part 1: good, but noisy, hit
@@ -289,8 +287,8 @@ PlanarScanner::calcBeamModel(PlanarData *data, PFSampleSet* set)
 
       // TODO: outlier rejection for short readings
 
-      assert(pz <= 1.0);
-      assert(pz >= 0.0);
+      ROS_ASSERT(pz <= 1.0);
+      ROS_ASSERT(pz >= 0.0);
       //      p *= pz;
       // here we have an ad-hoc weighting scheme for combining beam probs
       // works well, though...
@@ -381,8 +379,8 @@ PlanarScanner::calcLikelihoodFieldModel(PlanarData *data, PFSampleSet* set)
 
       // TODO: outlier rejection for short readings
 
-      assert(pz <= 1.0);
-      assert(pz >= 0.0);
+      ROS_ASSERT(pz <= 1.0);
+      ROS_ASSERT(pz >= 0.0);
       //      p *= pz;
       // here we have an ad-hoc weighting scheme for combining beam probs
       // works well, though...
@@ -461,7 +459,7 @@ PlanarScanner::calcLikelihoodFieldModelProb(PlanarData *data, PFSampleSet* set)
 
     if(realloc){
       self->reallocTempData(set->sample_count, self->max_beams_);
-      fprintf(stderr, "Reallocing temp weights %d - %d\n", self->max_samples_, self->max_obs_);
+      ROS_DEBUG("Reallocing temp weights %d - %d", self->max_samples_, self->max_obs_);
     }
   }
 
@@ -525,8 +523,8 @@ PlanarScanner::calcLikelihoodFieldModelProb(PlanarData *data, PFSampleSet* set)
       // Part 2: random measurements
       pz += self->z_rand_ * z_rand_mult;
 
-      assert(pz <= 1.0); 
-      assert(pz >= 0.0);
+      ROS_ASSERT(pz <= 1.0); 
+      ROS_ASSERT(pz >= 0.0);
 
       // TODO: outlier rejection for short readings
 
@@ -562,8 +560,9 @@ PlanarScanner::calcLikelihoodFieldModelProb(PlanarData *data, PFSampleSet* set)
     bool error = false; 
 
     if(skipped_beam_count >= (beam_ind * self->beam_skip_error_threshold_)){
-      fprintf(stderr, "Over %f%% of the observations were not in the map - pf may have converged to "
-              "wrong pose - integrating all observations\n", (100 * self->beam_skip_error_threshold_));
+      ROS_DEBUG("Over %f%% of the observations were not in the map - pf may have converged to "
+                "wrong pose - integrating all observations",
+                (100 * self->beam_skip_error_threshold_));
       error = true; 
     }
 

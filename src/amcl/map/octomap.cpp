@@ -18,15 +18,11 @@
  * Author: Tyler Buchman (tyler_buchman@jabil.com)
 **************************************************************************/
 
-#include <vector>
-#include <octomap/octomap.h>
-#include <octomap/OcTree.h>
-#include <octomap/OcTreeDistance.h>
-#include <math.h>
-#include "map.h"
-#include "octomap.h"
+#include "map/octomap.h"
 
-#include "ros/ros.h"
+#include <math.h>
+
+#include <algorithm>
 
 using namespace amcl;
 

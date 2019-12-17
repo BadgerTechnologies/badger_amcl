@@ -26,12 +26,13 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 
-#include <algorithm>
+#include "sensors/odom.h"
 
-#include <sys/types.h> // required by Darwin
 #include <math.h>
 
-#include "odom.h"
+#include <algorithm>
+
+#include "pf/pdf_gaussian.h"
 
 using namespace amcl;
 
@@ -43,9 +44,9 @@ Odom::Odom() : Sensor()
 
 void
 Odom::setModelDiff(double alpha1, 
-                     double alpha2, 
-                     double alpha3, 
-                     double alpha4)
+                   double alpha2, 
+                   double alpha3, 
+                   double alpha4)
 {
   this->model_type_ = ODOM_MODEL_DIFF;
   this->alpha1_ = alpha1;
@@ -56,10 +57,10 @@ Odom::setModelDiff(double alpha1,
 
 void
 Odom::setModelOmni(double alpha1, 
-                     double alpha2, 
-                     double alpha3, 
-                     double alpha4,
-                     double alpha5)
+                   double alpha2, 
+                   double alpha3, 
+                   double alpha4,
+                   double alpha5)
 {
   this->model_type_ = ODOM_MODEL_OMNI;
   this->alpha1_ = alpha1;
@@ -71,10 +72,10 @@ Odom::setModelOmni(double alpha1,
 
 void
 Odom::setModelGaussian(double alpha1,
-                         double alpha2,
-                         double alpha3,
-                         double alpha4,
-                         double alpha5)
+                       double alpha2,
+                       double alpha3,
+                       double alpha4,
+                       double alpha5)
 {
   this->model_type_ = ODOM_MODEL_GAUSSIAN;
   this->alpha1_ = alpha1;
@@ -85,12 +86,12 @@ Odom::setModelGaussian(double alpha1,
 }
 
 void
-Odom::setModel( OdomModelType type,
-                    double alpha1,
-                    double alpha2,
-                    double alpha3,
-                    double alpha4,
-                    double alpha5 )
+Odom::setModel(OdomModelType type,
+               double alpha1,
+               double alpha2,
+               double alpha3,
+               double alpha4,
+               double alpha5 )
 {
   this->model_type_ = type;
   this->alpha1_ = alpha1;
@@ -135,7 +136,7 @@ bool Odom::updateAction(ParticleFilter *pf, SensorData *data)
       PFSample* sample = set->samples + i;
 
       delta_bearing = angleDiff(atan2(ndata->delta.v[1], ndata->delta.v[0]),
-                                 old_pose.v[2]) + sample->pose.v[2];
+                                old_pose.v[2]) + sample->pose.v[2];
       double cs_bearing = cos(delta_bearing);
       double sn_bearing = sin(delta_bearing);
 

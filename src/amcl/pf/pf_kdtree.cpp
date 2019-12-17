@@ -24,17 +24,16 @@
  * Maintainer: Tyler Buchman (tyler_buchman@jabil.com)
  *************************************************************************/
 
-#include <assert.h>
+#include "pf/pf_kdtree.h"
+
 #include <math.h>
+#include <ros/assert.h>
 #include <stdlib.h>
-#include <string.h>
+
+#include <string>
 #include <vector>
 
-#include "pf_vector.h"
-#include "pf_kdtree.h"
-
 using namespace amcl;
-
 
 ///////////////////////////////////////////////////////////////////////////////
 // Create a tree
@@ -123,7 +122,7 @@ PFKDTree::insertNode(PFKDTreeNode *parent,
   // If the node doesnt exist yet...
   if (node == NULL)
   {
-    assert(node_count_ < node_max_count_);
+    ROS_ASSERT(node_count_ < node_max_count_);
     node = nodes_ + node_count_++;
     memset(node, 0, sizeof(PFKDTreeNode));
 
@@ -166,7 +165,7 @@ PFKDTree::insertNode(PFKDTreeNode *parent,
           node->pivot_dim = i;
         }
       }
-      assert(node->pivot_dim >= 0);
+      ROS_ASSERT(node->pivot_dim >= 0);
 
       node->pivot_value = (key[node->pivot_dim] + node->key[node->pivot_dim]) / 2.0;
 
@@ -189,8 +188,8 @@ PFKDTree::insertNode(PFKDTreeNode *parent,
   // If the node exists, and it has children...
   else
   {
-    assert(node->children[0] != NULL);
-    assert(node->children[1] != NULL);
+    ROS_ASSERT(node->children[0] != NULL);
+    ROS_ASSERT(node->children[1] != NULL);
 
     if (key[node->pivot_dim] < node->pivot_value)
       insertNode(node, node->children[0], key, value);
@@ -218,8 +217,8 @@ PFKDTree::findNode(PFKDTreeNode *node, int key[])
   }
   else
   {
-    assert(node->children[0] != NULL);
-    assert(node->children[1] != NULL);
+    ROS_ASSERT(node->children[0] != NULL);
+    ROS_ASSERT(node->children[1] != NULL);
 
     // If the keys are different...
     if (key[node->pivot_dim] < node->pivot_value)
@@ -248,12 +247,12 @@ PFKDTree::cluster()
     if (node->leaf)
     {
       node->cluster = -1;
-      assert(queue_count < node_count_);
+      ROS_ASSERT(queue_count < node_count_);
       queue.push_back(node);
       queue_count++;
 
       // TESTING; remove
-      assert(node == findNode(root_, node->key));
+      ROS_ASSERT(node == findNode(root_, node->key));
     }
   }
 
@@ -295,13 +294,13 @@ PFKDTree::clusterNode(PFKDTreeNode *node, int depth)
     if (nnode == NULL)
       continue;
 
-    assert(nnode->leaf);
+    ROS_ASSERT(nnode->leaf);
 
     // This node already has a label; skip it.  The label should be
     // consistent, however.
     if (nnode->cluster >= 0)
     {
-      assert(nnode->cluster == node->cluster);
+      ROS_ASSERT(nnode->cluster == node->cluster);
       continue;
     }
 

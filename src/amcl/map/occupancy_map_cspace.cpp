@@ -24,14 +24,12 @@
  * Maintainter: Tyler Buchman (tyler_buchman@jabil.com)
 **************************************************************************/
 
+#include "map/occupancy_map.h"
 
-#include <queue>
+#include <ros/console.h>
 #include <stdlib.h>
-#include <string.h>
-#include "map.h"
-#include "occupancy_map.h"
 
-#include "ros/ros.h"
+#include <string>
 
 using namespace amcl;
 

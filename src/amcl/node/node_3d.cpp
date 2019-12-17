@@ -21,25 +21,25 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 
-#include "map.h"
-#include "octomap.h"
-#include "odom.h"
-#include "node.h"
-#include "amcl/AMCLConfig.h"
+#include "node/node.h"
 
-// roscpp
-#include "ros/ros.h"
-#include "ros/assert.h"
-
-#include "octomap_msgs/Octomap.h"
-#include "octomap_msgs/conversions.h"
 #include <boost/bind.hpp>
-
-#include <pcl_conversions/pcl_conversions.h>
-#include <pcl/point_types.h>
-#include <pcl/PCLPointCloud2.h>
+#include <geometry_msgs/PoseArray.h>
+#include <geometry_msgs/Pose2D.h>
 #include <pcl/conversions.h>
-#include <pcl_ros/transforms.h>
+#include <pcl/PCLPointCloud2.h>
+#include <pcl/impl/point_types.hpp>
+#include <pcl_conversions/pcl_conversions.h>
+#include <pcl/common/projection_matrix.h>
+#include <octomap/AbstractOcTree.h>
+#include <octomap/OcTree.h>
+#include <octomap_msgs/conversions.h>
+#include <octomap_msgs/Octomap.h>
+#include <ros/assert.h>
+#include <ros/console.h>
+#include <ros/names.h>
+#include <tf/exceptions.h>
+#include <tf/transform_datatypes.h>
 
 using namespace amcl;
 

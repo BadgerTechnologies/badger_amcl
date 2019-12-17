@@ -27,6 +27,8 @@
 #ifndef PF_KDTREE_H
 #define PF_KDTREE_H
 
+#include "pf/pf_vector.h"
+
 namespace amcl
 {
 

@@ -18,19 +18,16 @@
  * Author: Tyler Buchman (tyler_buchman@jabil.com)
 **************************************************************************/
 
-#include <queue>
-#include <stdlib.h>
-#include <string.h>
-#include <vector>
-#include <octomap/octomap.h>
-#include <octomap/OcTree.h>
-#include <octomap/OcTreeDistance.h>
+#include "map/octomap.h"
+
+#include <math.h>
 #include <octomap/OcTreeKey.h>
 #include <octomap/OcTreeDataNode.h>
-#include "map.h"
-#include "octomap.h"
+#include <octomap/OcTreeNode.h>
+#include <ros/console.h>
+#include <stdlib.h>
 
-#include "ros/ros.h"
+#include <algorithm>
 
 using namespace amcl;
 

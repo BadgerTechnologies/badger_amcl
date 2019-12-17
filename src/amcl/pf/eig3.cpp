@@ -6,13 +6,12 @@
 /* Eigen decomposition code for symmetric 3x3 matrices, copied from the public
    domain Java Matrix library JAMA. */
 
+#include "pf/eig3.h"
+
 #include <math.h>
-#include <stdlib.h>
-#include <vector>
 
-#include "ros/ros.h"
-
-#include "eig3.h"
+#include <algorithm>
+#include <cmath>
 
 using namespace amcl;
 

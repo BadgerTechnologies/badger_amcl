@@ -24,8 +24,7 @@
  * Maintainter: Tyler Buchman (tyler_buchman@jabil.com)
 **************************************************************************/
 
-#include "map.h"
-#include "ros/ros.h"
+#include "map/map.h"
 
 using namespace amcl;
 

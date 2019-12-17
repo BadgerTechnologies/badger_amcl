@@ -27,8 +27,6 @@
 #ifndef AMCL_PF_VECTOR_H
 #define AMCL_PF_VECTOR_H
 
-#include <stdio.h>
-
 namespace amcl
 {
   
