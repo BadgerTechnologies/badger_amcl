@@ -24,12 +24,7 @@
  * Maintainter: Tyler Buchman (tyler_buchman@jabil.com)
 **************************************************************************/
 
-#include "map.h"
-#include "occupancy_map.h"
-#include <queue>
-#include <stdint.h>
-
-#include "ros/ros.h"
+#include "map/occupancy_map.h"
 
 using namespace amcl;
 
@@ -79,10 +74,10 @@ OccupancyMap::getSize()
 }
 
 void
-OccupancyMap::setSize(std::vector<int> size)
+OccupancyMap::setSize(std::vector<int> size_vec)
 {
-  size_x_ = size[0];
-  size_y_ = size[1];
+  size_x_ = size_vec[0];
+  size_y_ = size_vec[1];
 }
 
 double

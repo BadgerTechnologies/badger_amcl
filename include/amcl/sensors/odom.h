@@ -28,8 +28,10 @@
 #ifndef AMCL_ODOM_DATA_H
 #define AMCL_ODOM_DATA_H
 
-#include "sensor.h"
-#include "../pf/pdf_gaussian.h"
+#include "sensors/sensor.h"
+
+#include "pf/particle_filter.h"
+#include "pf/pf_vector.h"
 
 namespace amcl
 {
@@ -64,28 +66,28 @@ class Odom : public Sensor
     Odom();
 
     void setModelDiff(double alpha1, 
-                        double alpha2, 
-                        double alpha3, 
-                        double alpha4);
+                      double alpha2, 
+                      double alpha3, 
+                      double alpha4);
 
     void setModelOmni(double alpha1, 
-                        double alpha2, 
-                        double alpha3, 
-                        double alpha4,
-                        double alpha5);
+                      double alpha2, 
+                      double alpha3, 
+                      double alpha4,
+                      double alpha5);
 
     void setModelGaussian(double alpha1,
-                            double alpha2,
-                            double alpha3,
-                            double alpha4,
-                            double alpha5);
+                          double alpha2,
+                          double alpha3,
+                          double alpha4,
+                          double alpha5);
 
     void setModel(OdomModelType type,
-                   double alpha1,
-                   double alpha2,
-                   double alpha3,
-                   double alpha4,
-                   double alpha5 = 0);
+                  double alpha1,
+                  double alpha2,
+                  double alpha3,
+                  double alpha4,
+                  double alpha5 = 0);
 
     // Update the filter based on the action model.  Returns true if the filter
     // has been updated.

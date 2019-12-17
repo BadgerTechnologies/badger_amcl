@@ -24,13 +24,12 @@
  * Maintainer: Tyler Buchman (tyler_buchman@jabil.com)
  *************************************************************************/
 
+#include "pf/pf_vector.h"
+
 #include <math.h>
 #include <vector>
 
-#include "ros/ros.h"
-
-#include "pf_vector.h"
-#include "eig3.h"
+#include "pf/eig3.h"
 
 using namespace amcl;
 
@@ -48,7 +47,7 @@ PFVector::isFinite()
 {
   int i;
   for (i = 0; i < 3; i++)
-    if (!finite(v[i]))
+    if (!isfinite(v[i]))
       return 0;
   return 1;
 }
@@ -117,7 +116,7 @@ PFMatrix::isFinite()
 
   for (i = 0; i < 3; i++)
     for (j = 0; j < 3; j++)
-      if (!finite(m[i][j]))
+      if (!isfinite(m[i][j]))
         return false;
   return true;
 }

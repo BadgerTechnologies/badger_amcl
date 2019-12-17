@@ -26,7 +26,7 @@
 #ifndef AMCL_SENSOR_H
 #define AMCL_SENSOR_H
 
-#include "../pf/particle_filter.h"
+#include "pf/particle_filter.h"
 
 namespace amcl
 {

@@ -26,14 +26,14 @@
 #ifndef AMCL_OCTOMAP_H
 #define AMCL_OCTOMAP_H
 
-#include <vector>
-#include <octomap/octomap.h>
+#include "map/map.h"
+
 #include <octomap/OcTree.h>
 #include <octomap/OcTreeDistance.h>
-#include <octomap/OcTreeKey.h>
-#include <octomap/OcTreeDataNode.h>
+
 #include <queue>
-#include "map.h"
+#include <vector>
+#include <limits>
 
 namespace amcl
 {

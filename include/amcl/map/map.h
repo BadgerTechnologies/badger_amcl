@@ -27,8 +27,8 @@
 #ifndef AMCL_MAP_H
 #define AMCL_MAP_H
 
-#include <vector>
 #include <atomic>
+#include <vector>
 
 namespace amcl
 {

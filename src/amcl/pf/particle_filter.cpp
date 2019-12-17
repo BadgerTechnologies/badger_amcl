@@ -24,19 +24,17 @@
  * Maintainter: Tyler Buchman (tyler_buchman@jabil.com)
  *************************************************************************/
 
-#include <assert.h>
+#include "pf/particle_filter.h"
+
 #include <math.h>
+#include <ros/assert.h>
+#include <stddef.h>
 #include <stdlib.h>
 #include <time.h>
+
 #include <cstdlib>
-#include <float.h>
 
-#include "ros/ros.h"
-
-#include "particle_filter.h"
-#include "pdf_gaussian.h"
-#include "pf_kdtree.h"
-
+#include "pf/pdf_gaussian.h"
 
 using namespace amcl;
 
@@ -428,11 +426,11 @@ ParticleFilter::resampleMultinomial(double w_diff)
         if((c[i] <= r) && (r < c[i+1]))
           break;
       }
-      assert(i<set_a->sample_count);
+      ROS_ASSERT(i<set_a->sample_count);
 
       sample_a = set_a->samples + i;
 
-      assert(sample_a->weight > 0);
+      ROS_ASSERT(sample_a->weight > 0);
 
       // Add sample to list
       sample_b->pose = sample_a->pose;
@@ -590,7 +588,7 @@ ParticleFilter::clusterStats(PFSampleSet *set)
 
     // Get the cluster label for this sample
     cidx = set->kdtree->getCluster(sample->pose);
-    assert(cidx >= 0);
+    ROS_ASSERT(cidx >= 0);
     if (cidx >= set->cluster_max_count)
       continue;
     if (cidx + 1 > set->cluster_count)

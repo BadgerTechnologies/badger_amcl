@@ -20,18 +20,15 @@
  *
  */
 
-#include "node/node.h"
-#include "ros/ros.h"
-
-#include <boost/bind.hpp>
+#include <boost/shared_ptr.hpp>
+#include <ros/init.h>
+#include <ros/node_handle.h>
+#include <ros/spinner.h>
 #include <signal.h>
-#include <stdio.h>
+
+#include "node/node.h"
 
 using namespace amcl;
-
-std::vector<std::pair<int,int> > Node::free_space_indices_;
-
-#define USAGE "USAGE: amcl"
 
 boost::shared_ptr<Node> amcl_node_ptr;
 bool sigFlag = false;

@@ -22,57 +22,25 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 
-#include <algorithm>
-#include <vector>
-#include <map>
-#include <cmath>
-
-#include <boost/bind.hpp>
-#include <boost/thread/mutex.hpp>
-
-// Signal handling
-#include <signal.h>
-
-#include "map.h"
-#include "particle_filter.h"
-#include "pf_vector.h"
-#include "odom.h"
-#include "node.h"
-
-#include "ros/assert.h"
-
-// roscpp
-#include "ros/ros.h"
-
-// Messages that I need
-#include "geometry_msgs/PoseWithCovarianceStamped.h"
-#include "geometry_msgs/PoseArray.h"
-#include "geometry_msgs/Pose.h"
-#include "geometry_msgs/Pose2D.h"
-#include "nav_msgs/Odometry.h"
-#include "nav_msgs/GetMap.h"
-#include "nav_msgs/SetMap.h"
-#include "std_srvs/Empty.h"
-
-// For transform support
-#include "tf/transform_broadcaster.h"
-#include "tf/transform_listener.h"
-#include "tf/message_filter.h"
-#include "tf/tf.h"
-#include "message_filters/subscriber.h"
-
-// Dynamic_reconfigure
-#include "dynamic_reconfigure/server.h"
-#include "amcl/AMCLConfig.h"
-
-#include "yaml-cpp/yaml.h"
-#include <stdio.h>
-#include <exception>
+#include "node/node.h"
 
 #include <badger_file_lib/atomic_ofstream.h>
+#include <boost/bind.hpp>
+#include <geometry_msgs/PoseArray.h>
+#include <geometry_msgs/Pose.h>
+#include <geometry_msgs/Pose2D.h>
+#include <geometry_msgs/Quaternion.h>
+#include <geometry_msgs/Vector3.h>
+#include <ros/assert.h>
+#include <ros/console.h>
+#include <tf/exceptions.h>
+#include <tf/transform_datatypes.h>
 
+#include <cstdlib>
 
 using namespace amcl;
+
+std::vector<std::pair<int,int> > Node::free_space_indices_;
 
 Node::Node() :
         sent_first_transform_(false),

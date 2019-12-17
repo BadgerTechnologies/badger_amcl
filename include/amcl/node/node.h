@@ -26,59 +26,46 @@
 #ifndef AMCL_NODE_H
 #define AMCL_NODE_H
 
-#include <algorithm>
-#include <vector>
-#include <map>
-#include <cmath>
-
-#include <boost/bind.hpp>
 #include <boost/thread/mutex.hpp>
-
-// Signal handling
-#include <signal.h>
-
-#include "map.h"
-#include "occupancy_map.h"
-#include "octomap.h"
-#include "particle_filter.h"
-#include "odom.h"
-#include "planar_scanner.h"
-#include "point_cloud_scanner.h"
-
-#include "ros/assert.h"
-
-// roscpp
-#include "ros/ros.h"
-
-// Messages that I need
-#include "sensor_msgs/LaserScan.h"
-#include "sensor_msgs/PointCloud2.h"
-#include "geometry_msgs/PoseWithCovarianceStamped.h"
-#include "geometry_msgs/PoseArray.h"
-#include "geometry_msgs/Pose.h"
-#include "geometry_msgs/Pose2D.h"
-#include "nav_msgs/Odometry.h"
-#include "nav_msgs/GetMap.h"
-#include "nav_msgs/SetMap.h"
-#include "std_srvs/Empty.h"
+#include <dynamic_reconfigure/server.h>
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include <message_filters/subscriber.h>
+#include <nav_msgs/Odometry.h>
+#include <nav_msgs/OccupancyGrid.h>
 #include <octomap_msgs/Octomap.h>
+#include <ros/duration.h>
+#include <ros/forwards.h>
+#include <ros/node_handle.h>
+#include <ros/publisher.h>
+#include <ros/service_server.h>
+#include <ros/single_subscriber_publisher.h>
+#include <ros/subscriber.h>
+#include <ros/time.h>
+#include <ros/timer.h>
+#include <sensor_msgs/LaserScan.h>
+#include <sensor_msgs/PointCloud2.h>
+#include <std_srvs/Empty.h>
+#include <tf/message_filter.h>
+#include <tf/transform_broadcaster.h>
+#include <tf/transform_listener.h>
+#include <tf2_ros/buffer.h>
+#include <yaml-cpp/yaml.h>
 
-// For transform support
-#include "tf/transform_broadcaster.h"
-#include "tf/transform_listener.h"
-#include "tf/message_filter.h"
-#include "tf/tf.h"
-#include "message_filters/subscriber.h"
-
-// Dynamic_reconfigure
-#include "dynamic_reconfigure/server.h"
-#include "amcl/AMCLConfig.h"
-
-#include "yaml-cpp/yaml.h"
-#include <stdio.h>
+#include <algorithm>
+#include <cmath>
 #include <exception>
+#include <string>
+#include <utility>
+#include <vector>
 
-#include <badger_file_lib/atomic_ofstream.h>
+#include "amcl/AMCLConfig.h"
+#include "map/occupancy_map.h"
+#include "map/octomap.h"
+#include "pf/particle_filter.h"
+#include "pf/pf_vector.h"
+#include "sensors/odom.h"
+#include "sensors/planar_scanner.h"
+#include "sensors/point_cloud_scanner.h"
 
 namespace amcl
 {
@@ -171,7 +158,6 @@ class Node
     void integrateOdom(const nav_msgs::OdometryConstPtr& msg);
     void initOdomIntegrator();
     void resetOdomIntegrator();
-
     // Helper to get odometric pose from transform system
     bool getOdomPose(const ros::Time& t, const std::string& f,
                      tf::Stamped<tf::Pose> *odom_pose, PFVector *map_pose);

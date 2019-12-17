@@ -24,14 +24,10 @@
  * Maintainer: Tyler Buchman (tyler_buchman@jabil.com)
  *************************************************************************/
 
-#include <assert.h>
+#include "pf/pdf_gaussian.h"
+
 #include <math.h>
 #include <stdlib.h>
-#include <string.h>
-
-#include "ros/ros.h"
-
-#include "pdf_gaussian.h"
 
 // Random number generator seed value
 

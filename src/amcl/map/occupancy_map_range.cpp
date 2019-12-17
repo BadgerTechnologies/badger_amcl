@@ -24,13 +24,9 @@
  * Maintainter: Tyler Buchman (tyler_buchman@jabil.com)
 **************************************************************************/
 
-#include <assert.h>
-#include <math.h>
-#include <string.h>
-#include <stdlib.h>
+#include "map/occupancy_map.h"
 
-#include "map.h"
-#include "occupancy_map.h"
+#include <stdlib.h>
 
 using namespace amcl;
 
