@@ -30,6 +30,8 @@
 
 #include "sensors/sensor.h"
 
+#include <memory>
+
 #include "pf/particle_filter.h"
 #include "pf/pf_vector.h"
 
@@ -65,14 +67,14 @@ class Odom : public Sensor
   public:
     Odom();
 
-    void setModelDiff(double alpha1, 
-                      double alpha2, 
-                      double alpha3, 
+    void setModelDiff(double alpha1,
+                      double alpha2,
+                      double alpha3,
                       double alpha4);
 
-    void setModelOmni(double alpha1, 
-                      double alpha2, 
-                      double alpha3, 
+    void setModelOmni(double alpha1,
+                      double alpha2,
+                      double alpha3,
                       double alpha4,
                       double alpha5);
 
@@ -91,7 +93,8 @@ class Odom : public Sensor
 
     // Update the filter based on the action model.  Returns true if the filter
     // has been updated.
-    virtual bool updateAction(ParticleFilter *pf, SensorData *data);
+    virtual bool updateAction(std::shared_ptr<ParticleFilter> pf,
+                              std::shared_ptr<SensorData> data);
 
   private:
     double normalize(double z);

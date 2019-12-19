@@ -32,6 +32,7 @@
 #include <math.h>
 
 #include <cstdint>
+#include <memory>
 #include <queue>
 #include <vector>
 
@@ -49,7 +50,7 @@ class OccupancyMap : public Map
 {
   public:
     OccupancyMap();
-    ~OccupancyMap();
+    ~OccupancyMap() {};
     // Convert from map index to world coords
     void convertMapToWorld(const std::vector<int> &map_coords, std::vector<double> *world_coords);
     // Convert from world coords to map coords
@@ -70,7 +71,6 @@ class OccupancyMap : public Map
     unsigned int computeCellIndex(int i, int j);
     int8_t getOccState(int i, int j);
     double getMaxOccDist();
-    MapCell* getCells();
     void initCells(int num);
     void setCellOccState(int index, int8_t state);
 
@@ -130,12 +130,12 @@ class OccupancyMap : public Map
     int size_x_, size_y_;
 
     // The map occupancy data, stored as a grid
-    MapCell *cells_;
+    std::vector<MapCell> cells_;
 
     // The map distance data, stored as a grid
-    float *distances_;
+    std::vector<float> distances_;
 
-    CachedDistanceMap* cdm_;
+    std::unique_ptr<CachedDistanceMap> cdm_;
 };
 
 inline bool operator<(const OccupancyMap::CellData& a,

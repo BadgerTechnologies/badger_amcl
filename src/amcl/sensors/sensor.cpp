@@ -43,7 +43,8 @@ Sensor::~Sensor()
 
 ////////////////////////////////////////////////////////////////////////////////
 // Apply the action model
-bool Sensor::updateAction(ParticleFilter *pf, SensorData *data)
+bool Sensor::updateAction(std::shared_ptr<ParticleFilter> pf,
+                          std::shared_ptr<SensorData> data)
 {
   return false;
 }
@@ -51,14 +52,16 @@ bool Sensor::updateAction(ParticleFilter *pf, SensorData *data)
 
 ////////////////////////////////////////////////////////////////////////////////
 // Initialize the filter
-bool Sensor::initSensor(ParticleFilter *pf, SensorData *data)
+bool Sensor::initSensor(std::shared_ptr<ParticleFilter> pf,
+                        std::shared_ptr<SensorData> data)
 {
   return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Apply the sensor model
-bool Sensor::updateSensor(ParticleFilter *pf, SensorData *data)
+bool Sensor::updateSensor(std::shared_ptr<ParticleFilter> pf,
+                          std::shared_ptr<SensorData> data)
 {
   return false;
 }

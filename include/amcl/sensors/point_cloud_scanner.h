@@ -34,6 +34,8 @@
 #include <pcl/point_cloud.h>
 #include <tf/transform_broadcaster.h>
 
+#include <memory>
+
 #include "map/octomap.h"
 #include "pf/particle_filter.h"
 #include "pf/pf_vector.h"
@@ -60,8 +62,10 @@ class PointCloudData : public SensorData
 class PointCloudScanner : public Sensor
 {
   public:
-    PointCloudScanner(size_t max_beams, OctoMap* map, double lidar_height);
-    ~PointCloudScanner();
+    PointCloudScanner();
+    ~PointCloudScanner() {};
+
+    void init(size_t max_beams, std::shared_ptr<OctoMap> map, double lidar_height);
 
     void setPointCloudModel(double z_hit, double z_rand, double sigma_hit, double max_occ_dist);
     void setPointCloudModelGompertz(double z_hit, double z_rand, double sigma_hit, double max_occ_dist,
@@ -70,11 +74,12 @@ class PointCloudScanner : public Sensor
 
     // Update the filter based on the sensor model.  Returns true if the
     // filter has been updated.
-    bool updateSensor(ParticleFilter *pf, SensorData *data);
+    bool updateSensor(std::shared_ptr<ParticleFilter> pf, std::shared_ptr<SensorData> data);
 
     // Update a sample set based on the sensor model.
     // Returns total weights of particles, or 0.0 on failure.
-    static double applyModelToSampleSet(SensorData *data, PFSampleSet *set);
+    static double applyModelToSampleSet(std::shared_ptr<SensorData> data,
+                                        std::shared_ptr<PFSampleSet> set);
 
     void setMapFactors(double off_map_factor,
                        double non_free_space_factor,
@@ -91,12 +96,15 @@ class PointCloudScanner : public Sensor
 
   private:
     // Determine the probability for the given pose
-    static double calcPointCloudModel(PointCloudData *data, PFSampleSet *set);
-    static double calcPointCloudModelGompertz(PointCloudData *data, PFSampleSet *set);
-    static bool getMapCloud(PointCloudScanner *self, PointCloudData *data, PFVector pose,
-                            pcl::PointCloud<pcl::PointXYZ>& map_cloud);
+    static double calcPointCloudModel(std::shared_ptr<PointCloudData> data,
+                                      std::shared_ptr<PFSampleSet> set);
+    static double calcPointCloudModelGompertz(std::shared_ptr<PointCloudData> data,
+                                              std::shared_ptr<PFSampleSet> set);
+    static bool getMapCloud(std::shared_ptr<PointCloudScanner> self,
+                            std::shared_ptr<PointCloudData> data,
+                            PFVector pose, pcl::PointCloud<pcl::PointXYZ>& map_cloud);
 
-    OctoMap *map_;
+    std::shared_ptr<OctoMap> map_;
     PFVector point_cloud_scanner_pose_;
     PointCloudModelType model_type_;
 

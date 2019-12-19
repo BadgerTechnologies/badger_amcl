@@ -46,9 +46,7 @@ Node::Node() :
         sent_first_transform_(false),
         latest_tf_valid_(false),
         map_(NULL),
-        pf_(NULL),
         resample_count_(0),
-        odom_(NULL),
 	    private_nh_("~"),
         initial_pose_hyp_(NULL),
         first_reconfigure_call_(true),
@@ -151,9 +149,6 @@ Node::Node() :
   initial_pose_sub_ = nh_.subscribe("initialpose", 2, &Node::initialPoseReceived, this);
   initial_pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>(
                         "initialpose", 1, boost::bind(&Node::newInitialPoseSubscriber, this, _1));
-
-  tfb_ = new tf::TransformBroadcaster();
-  tf_ = new TransformListenerWrapper();
 
   pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("amcl_pose", 2, true);
   particlecloud_pub_ = nh_.advertise<geometry_msgs::PoseArray>("particlecloud", 2, true);
@@ -279,8 +274,8 @@ Node::reconfigureCB(AMCLConfig &config, uint32_t level)
   beam_skip_distance_ = config.beam_skip_distance;
   beam_skip_threshold_ = config.beam_skip_threshold;
 
-  pf_ = new ParticleFilter(min_particles_, max_particles_, alpha_slow_, alpha_fast_,
-                           (PFInitModelFnPtr)Node::uniformPoseGenerator, (void *)this);
+  pf_ = std::make_shared<ParticleFilter>(min_particles_, max_particles_, alpha_slow_, alpha_fast_,
+                                         (PFInitModelFnPtr)Node::uniformPoseGenerator, this);
   pf_err_ = config.kld_err;
   pf_z_ = config.kld_z;
   pf_->setPopulationSizeParameters(pf_err_, pf_z_);
@@ -300,10 +295,7 @@ Node::reconfigureCB(AMCLConfig &config, uint32_t level)
 
   // Instantiate the sensor objects
   // Odometry
-  delete odom_;
-  odom_ = new Odom();
-  ROS_ASSERT(odom_);
-  odom_->setModel( odom_model_type_, alpha1_, alpha2_, alpha3_, alpha4_, alpha5_ );
+  odom_.setModel( odom_model_type_, alpha1_, alpha2_, alpha3_, alpha4_, alpha5_ );
   odom_frame_id_ = config.odom_frame_id;
   base_frame_id_ = config.base_frame_id;
   global_frame_id_ = config.global_frame_id;
@@ -646,8 +638,8 @@ void
 Node::initFromNewMap()
 {
   // Create the particle filter
-  pf_ = new ParticleFilter(min_particles_, max_particles_, alpha_slow_, alpha_fast_,
-                           (PFInitModelFnPtr)Node::uniformPoseGenerator, (void *)this);
+  pf_ = std::make_shared<ParticleFilter>(min_particles_, max_particles_, alpha_slow_, alpha_fast_,
+                                         (PFInitModelFnPtr)Node::uniformPoseGenerator, this);
   pf_->setPopulationSizeParameters(pf_err_, pf_z_);
   pf_->setResampleModel(resample_model_type_);
 
@@ -664,10 +656,7 @@ Node::initFromNewMap()
 
   // Instantiate the sensor objects
   // Odometry
-  delete odom_;
-  odom_ = new Odom();
-  ROS_ASSERT(odom_);
-  odom_->setModel( odom_model_type_, alpha1_, alpha2_, alpha3_, alpha4_, alpha5_ );
+  odom_.setModel( odom_model_type_, alpha1_, alpha2_, alpha3_, alpha4_, alpha5_ );
 
   if(map_type_ == 2)
   {
@@ -682,46 +671,10 @@ Node::initFromNewMap()
   publishInitialPose();
 }
 
-void
-Node::freeMapDependentMemory()
-{
-  delete pf_;
-  pf_ = NULL;
-
-  delete odom_;
-  odom_ = NULL;
-  if(map_type_ == 2)
-  {
-    freeOccupancyMapDependentMemory();
-  }
-  else if(map_type_ == 3)
-  {
-    freeOctoMapDependentMemory();
-  }
-}
-
 Node::~Node()
 {
   delete dsrv_;
-  if( map_ != NULL )
-  {
-    delete map_;
-    map_ = NULL;
-  }
-  if( occupancy_map_ != NULL )
-  {
-    delete occupancy_map_;
-    occupancy_map_ = NULL;
-  }
-  if( octomap_ != NULL )
-  {
-    delete octomap_;
-    octomap_ = NULL;
-    delete octree_;
-    octree_ = NULL;
-  }
 
-  freeMapDependentMemory();
   deleteNode2D();
   if(map_type_ == 2)
   {
@@ -731,9 +684,6 @@ Node::~Node()
   {
     deleteNode3D();
   }
-
-  delete tfb_;
-  delete tf_;
 }
 
 void
@@ -812,8 +762,8 @@ Node::getOdomPose(const ros::Time& t, const std::string& f,
                                            tf::Vector3(0,0,0)), t, f);
   try
   {
-    this->tf_->waitForTransform(f, odom_frame_id_, ros::Time::now(), ros::Duration(0.5));
-    this->tf_->transformPose(odom_frame_id_, ident, *odom_pose);
+    this->tf_.waitForTransform(f, odom_frame_id_, ros::Time::now(), ros::Duration(0.5));
+    this->tf_.transformPose(odom_frame_id_, ident, *odom_pose);
   }
   catch(tf::TransformException e)
   {
@@ -868,13 +818,11 @@ Node::scorePose(const PFVector &p)
 }
 
 PFVector
-Node::uniformPoseGenerator(void* arg)
+Node::uniformPoseGenerator(Node *self)
 {
-  Node *self = (Node*)arg;
   double good_weight = self->uniform_pose_starting_weight_threshold_;
   const double deweight_multiplier = self->uniform_pose_deweight_multiplier_;
   PFVector p;
-
   p = self->randomFreeSpacePose();
 
   // Check and see how "good" this pose is.
@@ -890,7 +838,6 @@ Node::uniformPoseGenerator(void* arg)
       good_weight *= deweight_multiplier;
     }
   }
-
   return p;
 }
 
@@ -912,8 +859,7 @@ Node::globalLocalizationCallback(std_srvs::Empty::Request& req,
   {
     globalLocalizationCallback3D();
   }
-
-  pf_->initModel((PFInitModelFnPtr)Node::uniformPoseGenerator, (void *)this);
+  pf_->initModel((PFInitModelFnPtr)Node::uniformPoseGenerator, this);
   pf_init_ = false;
   return true;
 }
@@ -953,7 +899,7 @@ Node::publishTransform(const ros::TimerEvent& event)
     odom.pose.pose.orientation = quaternion;
     map_odom_transform_pub_.publish(odom);
 
-    this->tfb_->sendTransform(tmp_tf_stamped);
+    this->tfb_.sendTransform(tmp_tf_stamped);
     sent_first_transform_ = true;
   }
 }
@@ -980,7 +926,7 @@ Node::handleInitialPoseMessage(const geometry_msgs::PoseWithCovarianceStamped& o
   // Rewrite to our global frame if received in the alt frame.
   // This allows us to run with multiple localizers using tf_reverse and pose them all at once.
   // And it is much cheaper to rewrite here than to run a separate topic tool transformer.
-  if(tf_->resolve(msg.header.frame_id) == tf_->resolve(global_alt_frame_id_))
+  if(tf_.resolve(msg.header.frame_id) == tf_.resolve(global_alt_frame_id_))
   {
     msg.header.frame_id = global_frame_id_;
   }
@@ -990,7 +936,7 @@ Node::handleInitialPoseMessage(const geometry_msgs::PoseWithCovarianceStamped& o
     ROS_WARN("Received initial pose with empty frame_id.  You should always supply a frame_id.");
   }
   // We only accept initial pose estimates in the global frame, #5148.
-  else if(tf_->resolve(msg.header.frame_id) != tf_->resolve(global_frame_id_))
+  else if(tf_.resolve(msg.header.frame_id) != tf_.resolve(global_frame_id_))
   {
     ROS_WARN("Ignoring initial pose in frame \"%s\"; initial poses must be in the global frame, \"%s\"",
              msg.header.frame_id.c_str(),
@@ -1034,12 +980,12 @@ Node::handleInitialPoseMessage(const geometry_msgs::PoseWithCovarianceStamped& o
   {
     ros::Time now = ros::Time::now();
     // wait a little for the latest tf to become available
-    tf_->waitForTransform(base_frame_id_, msg.header.stamp,
+    tf_.waitForTransform(base_frame_id_, msg.header.stamp,
                          base_frame_id_, now,
                          odom_frame_id_, ros::Duration(0.5));
-    tf_->lookupTransform(base_frame_id_, msg.header.stamp,
-                         base_frame_id_, now,
-                         odom_frame_id_, tx_odom);
+    tf_.lookupTransform(base_frame_id_, msg.header.stamp,
+                        base_frame_id_, now,
+                        odom_frame_id_, tx_odom);
   }
   catch(tf::TransformException e)
   {

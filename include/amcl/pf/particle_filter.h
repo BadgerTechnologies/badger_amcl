@@ -27,6 +27,9 @@
 #ifndef AMCL_PARTICLE_FILTER_H
 #define AMCL_PARTICLE_FILTER_H
 
+#include <memory>
+#include <vector>
+
 #include "pf/pf_kdtree.h"
 #include "pf/pf_vector.h"
 
@@ -47,7 +50,7 @@ typedef struct
 
   // Weight for this pose
   double weight;
-  
+
 } PFSample;
 
 // Information for a cluster of samples
@@ -65,7 +68,7 @@ typedef struct
 
   // Workspace
   double m[4], c[2][2];
-  
+
 } PFCluster;
 
 // Information for a set of samples
@@ -73,43 +76,41 @@ typedef struct
 {
   // The samples
   int sample_count;
-  PFSample *samples;
+  std::vector<PFSample> samples;
 
   // A kdtree encoding the histogram
-  PFKDTree *kdtree;
+  std::shared_ptr<PFKDTree> kdtree;
 
   // Clusters
   int cluster_count, cluster_max_count;
-  PFCluster *clusters;
+  std::vector<PFCluster> clusters;
 
   // Filter statistics
   PFVector mean;
   PFMatrix cov;
-  int converged; 
+  int converged;
 } PFSampleSet;
+
+class Node;
+class SensorData;
 
 // Function prototype for the initialization model; generates a sample pose from
 // an appropriate distribution.
-typedef PFVector (*PFInitModelFnPtr) (void *init_data);
-
-// Function prototype for the action model; generates a sample pose from
-// an appropriate distribution
-typedef void (*PFActionModelFnPtr) (void *action_data, PFSampleSet* set);
+typedef PFVector (*PFInitModelFnPtr) (Node *init_data);
 
 // Function prototype for the sensor model; determines the probability
 // for the given set of sample poses.
-typedef double (*PFSensorModelFnPtr) (void *sensor_data, PFSampleSet* set);
+typedef double (*PFSensorModelFnPtr) (std::shared_ptr<SensorData> sensor_data,
+                                      std::shared_ptr<PFSampleSet> set);
 
 // Information for an entire filter
 class ParticleFilter
 {
   public:
     // Create a new filter
-    ParticleFilter(int min_samples, int max_samples, double alpha_slow, double alpha_fast,
-         PFInitModelFnPtr random_pose_fn, void *random_pose_data);
-
-    // Free an existing filter
-    ~ParticleFilter();
+    ParticleFilter(int min_samples, int max_samples, double alpha_slow,
+                   double alpha_fast, PFInitModelFnPtr random_pose_fn,
+                   Node *random_pose_data);
 
     // Set the resample model
     void setResampleModel(PFResampleModelType resample_model);
@@ -122,13 +123,10 @@ class ParticleFilter
     void init(PFVector mean, PFMatrix cov);
 
     // Initialize the filter using some model
-    void initModel(PFInitModelFnPtr init_fn, void *init_data);
-
-    // Update the filter with some new action
-    void updateAction(PFActionModelFnPtr action_fn, void *action_data);
+    void initModel(PFInitModelFnPtr init_fn, Node *init_data);
 
     // Update the filter with some new sensor observation
-    void updateSensor(PFSensorModelFnPtr sensor_fn, void *sensor_data);
+    void updateSensor(PFSensorModelFnPtr sensor_fn, std::shared_ptr<SensorData> sensor_data);
 
     // Resample the distribution
     void updateResample();
@@ -140,8 +138,8 @@ class ParticleFilter
     // there is no such cluster.
     bool getClusterStats(int cluster, double *weight, PFVector *mean, PFMatrix *cov);
 
-    //calculate if the particle filter has converged - 
-    //and sets the converged flag in the current set and the pf 
+    //calculate if the particle filter has converged -
+    //and sets the converged flag in the current set and the pf
     bool updateConverged();
 
     //sets the current set and pf converged values to zero
@@ -154,7 +152,7 @@ class ParticleFilter
     void setDecayRates(double alpha_slow, double alpha_fast);
 
     // gets pointer to current sample set
-    PFSampleSet* getCurrentSet();
+    std::shared_ptr<PFSampleSet> getCurrentSet();
 
     // getter and setter for whether the particle filter has converged
     bool isConverged();
@@ -166,7 +164,7 @@ class ParticleFilter
     int resampleLimit(int k);
 
     // Re-compute the cluster statistics for a sample set
-    void clusterStats(PFSampleSet *sample_set);
+    void clusterStats(std::shared_ptr<PFSampleSet> sample_set);
 
     PFResampleModelType resample_model_;
 
@@ -178,7 +176,7 @@ class ParticleFilter
 
     // Function used to draw random pose samples
     PFInitModelFnPtr random_pose_fn_;
-    void *random_pose_data_;
+    Node *random_pose_data_;
 
     double dist_threshold_; //distance threshold in each axis over which the pf is considered to not be converged
 
@@ -191,7 +189,7 @@ class ParticleFilter
     // The sample sets.  We keep two sets and use [current_set]
     // to identify the active set.
     int current_set_;
-    PFSampleSet sets_[2];
+    std::vector<std::shared_ptr<PFSampleSet>> sets_;
 
     bool converged_;
 };

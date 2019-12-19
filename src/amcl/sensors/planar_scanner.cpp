@@ -37,11 +37,10 @@ using namespace amcl;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Default constructor
-PlanarScanner::PlanarScanner(size_t max_beams, OccupancyMap* map) : Sensor(),
-                             max_samples_(0), max_obs_(0), temp_obs_(NULL)
+PlanarScanner::PlanarScanner() : Sensor(),
+                             max_beams_(0), max_samples_(0), max_obs_(0), temp_obs_(NULL)
 {
-  this->max_beams_ = max_beams;
-  this->map_ = map;
+  this->map_ = nullptr;
 
   this->off_map_factor_ = 1.0;
   this->non_free_space_factor_ = 1.0;
@@ -62,6 +61,13 @@ PlanarScanner::~PlanarScanner()
 }
 
 void
+PlanarScanner::init(size_t max_beams, std::shared_ptr<OccupancyMap> map)
+{
+  this->max_beams_ = max_beams;
+  this->map_ = map;
+}
+
+void
 PlanarScanner::setModelBeam(double z_hit,
                             double z_short,
                             double z_max,
@@ -78,7 +84,7 @@ PlanarScanner::setModelBeam(double z_hit,
   this->lambda_short_ = lambda_short;
 }
 
-void 
+void
 PlanarScanner::setModelLikelihoodField(double z_hit,
                                        double z_rand,
                                        double sigma_hit,
@@ -91,7 +97,7 @@ PlanarScanner::setModelLikelihoodField(double z_hit,
   this->map_->updateCSpace(max_occ_dist);
 }
 
-void 
+void
 PlanarScanner::setModelLikelihoodFieldProb(double z_hit,
                                            double z_rand,
 				                           double sigma_hit,
@@ -151,7 +157,8 @@ PlanarScanner::setMapFactors(double off_map_factor, double non_free_space_factor
 ////////////////////////////////////////////////////////////////////////////////
 // Apply the planar sensor model
 bool
-PlanarScanner::updateSensor(ParticleFilter *pf, SensorData *data)
+PlanarScanner::updateSensor(std::shared_ptr<ParticleFilter> pf,
+                            std::shared_ptr<SensorData> data)
 {
   if (this->max_beams_ < 2)
     return false;
@@ -165,29 +172,30 @@ PlanarScanner::updateSensor(ParticleFilter *pf, SensorData *data)
 ////////////////////////////////////////////////////////////////////////////////
 // Apply the planar sensor model to a sample set
 double
-PlanarScanner::applyModelToSampleSet(SensorData *data, PFSampleSet *set)
+PlanarScanner::applyModelToSampleSet(std::shared_ptr<SensorData> data,
+                                     std::shared_ptr<PFSampleSet> set)
 {
-  PlanarScanner *self;
+  std::shared_ptr<PlanarScanner> self;
   double rv = 0.0;
   int j;
   PFSample *sample;
   PFVector pose;
   int mi, mj;
 
-  self = (PlanarScanner*) data->sensor_;
+  self = std::dynamic_pointer_cast<PlanarScanner>(data->sensor_);
 
   if (self->max_beams_ < 2)
     return 0.0;
 
   // Apply the planar sensor model
   if(self->model_type_ == PLANAR_MODEL_BEAM)
-    rv = calcBeamModel((PlanarData*)data, set);
+    rv = calcBeamModel(std::dynamic_pointer_cast<PlanarData>(data), set);
   else if(self->model_type_ == PLANAR_MODEL_LIKELIHOOD_FIELD)
-    rv = calcLikelihoodFieldModel((PlanarData*)data, set);
+    rv = calcLikelihoodFieldModel(std::dynamic_pointer_cast<PlanarData>(data), set);
   else if(self->model_type_ == PLANAR_MODEL_LIKELIHOOD_FIELD_PROB)
-    rv = calcLikelihoodFieldModelProb((PlanarData*)data, set);
+    rv = calcLikelihoodFieldModelProb(std::dynamic_pointer_cast<PlanarData>(data), set);
   else if(self->model_type_ == PLANAR_MODEL_LIKELIHOOD_FIELD_GOMPERTZ)
-    rv = calcLikelihoodFieldModelGompertz((PlanarData*)data, set);
+    rv = calcLikelihoodFieldModelGompertz(std::dynamic_pointer_cast<PlanarData>(data), set);
 
   // Apply the any configured correction factors from map
   if (rv > 0.0)
@@ -196,7 +204,7 @@ PlanarScanner::applyModelToSampleSet(SensorData *data, PFSampleSet *set)
     rv = 0.0;
     for (j = 0; j < set->sample_count; j++)
     {
-      sample = set->samples + j;
+      sample = &(set->samples[j]);
       pose = sample->pose;
 
       // Convert to map grid coords.
@@ -231,9 +239,10 @@ PlanarScanner::applyModelToSampleSet(SensorData *data, PFSampleSet *set)
 ////////////////////////////////////////////////////////////////////////////////
 // Determine the probability for the given pose
 double
-PlanarScanner::calcBeamModel(PlanarData *data, PFSampleSet* set)
+PlanarScanner::calcBeamModel(std::shared_ptr<PlanarData> data,
+                             std::shared_ptr<PFSampleSet> set)
 {
-  PlanarScanner *self;
+  std::shared_ptr<PlanarScanner> self;
   int i, j, step;
   double z, pz;
   double p;
@@ -243,14 +252,14 @@ PlanarScanner::calcBeamModel(PlanarData *data, PFSampleSet* set)
   PFSample *sample;
   PFVector pose;
 
-  self = (PlanarScanner*) data->sensor_;
+  self = std::dynamic_pointer_cast<PlanarScanner>(data->sensor_);
 
   total_weight = 0.0;
 
   // Compute the sample weights
   for (j = 0; j < set->sample_count; j++)
   {
-    sample = set->samples + j;
+    sample = &(set->samples[j]);
     pose = sample->pose;
 
     // Take account of the planar scanner pose relative to the robot
@@ -261,8 +270,8 @@ PlanarScanner::calcBeamModel(PlanarData *data, PFSampleSet* set)
     step = (data->range_count_ - 1) / (self->max_beams_ - 1);
     for (i = 0; i < data->range_count_; i += step)
     {
-      obs_range = data->ranges_[i][0];
-      obs_bearing = data->ranges_[i][1];
+      obs_range = data->ranges_[i];
+      obs_bearing = data->angles_[i];
 
       // Compute the range according to the map
       map_range = self->map_->calcRange(pose.v[0], pose.v[1], pose.v[2] + obs_bearing,
@@ -303,9 +312,10 @@ PlanarScanner::calcBeamModel(PlanarData *data, PFSampleSet* set)
 }
 
 double
-PlanarScanner::calcLikelihoodFieldModel(PlanarData *data, PFSampleSet* set)
+PlanarScanner::calcLikelihoodFieldModel(std::shared_ptr<PlanarData> data,
+                                        std::shared_ptr<PFSampleSet> set)
 {
-  PlanarScanner *self;
+  std::shared_ptr<PlanarScanner> self;
   int i, j, step;
   double z, pz;
   double p;
@@ -315,14 +325,14 @@ PlanarScanner::calcLikelihoodFieldModel(PlanarData *data, PFSampleSet* set)
   PFVector pose;
   PFVector hit;
 
-  self = (PlanarScanner*) data->sensor_;
+  self = std::dynamic_pointer_cast<PlanarScanner>(data->sensor_);
 
   total_weight = 0.0;
 
   // Compute the sample weights
   for (j = 0; j < set->sample_count; j++)
   {
-    sample = set->samples + j;
+    sample = &(set->samples[j]);
     pose = sample->pose;
 
     // Take account of the planar scanner pose relative to the robot
@@ -342,8 +352,8 @@ PlanarScanner::calcLikelihoodFieldModel(PlanarData *data, PFSampleSet* set)
 
     for (i = 0; i < data->range_count_; i += step)
     {
-      obs_range = data->ranges_[i][0];
-      obs_bearing = data->ranges_[i][1];
+      obs_range = data->ranges_[i];
+      obs_bearing = data->angles_[i];
 
       // This model ignores max range readings
       if(obs_range >= data->range_max_)
@@ -396,9 +406,10 @@ PlanarScanner::calcLikelihoodFieldModel(PlanarData *data, PFSampleSet* set)
 }
 
 double
-PlanarScanner::calcLikelihoodFieldModelProb(PlanarData *data, PFSampleSet* set)
+PlanarScanner::calcLikelihoodFieldModelProb(std::shared_ptr<PlanarData> data,
+                                            std::shared_ptr<PFSampleSet> set)
 {
-  PlanarScanner *self;
+  std::shared_ptr<PlanarScanner> self;
   int i, j, step;
   double z, pz;
   double log_p;
@@ -408,7 +419,7 @@ PlanarScanner::calcLikelihoodFieldModelProb(PlanarData *data, PFSampleSet* set)
   PFVector pose;
   PFVector hit;
 
-  self = (PlanarScanner*) data->sensor_;
+  self = std::dynamic_pointer_cast<PlanarScanner>(data->sensor_);
 
   total_weight = 0.0;
 
@@ -466,7 +477,7 @@ PlanarScanner::calcLikelihoodFieldModelProb(PlanarData *data, PFSampleSet* set)
   // Compute the sample weights
   for (j = 0; j < set->sample_count; j++)
   {
-    sample = set->samples + j;
+    sample = &(set->samples[j]);
     pose = sample->pose;
 
     // Take account of the planar scanner pose relative to the robot
@@ -478,8 +489,8 @@ PlanarScanner::calcLikelihoodFieldModelProb(PlanarData *data, PFSampleSet* set)
 
     for (i = 0; i < data->range_count_; i += step, beam_ind++)
     {
-      obs_range = data->ranges_[i][0];
-      obs_bearing = data->ranges_[i][1];
+      obs_range = data->ranges_[i];
+      obs_bearing = data->angles_[i];
 
       // This model ignores max range readings
       if(obs_range >= data->range_max_){
@@ -523,7 +534,7 @@ PlanarScanner::calcLikelihoodFieldModelProb(PlanarData *data, PFSampleSet* set)
       // Part 2: random measurements
       pz += self->z_rand_ * z_rand_mult;
 
-      ROS_ASSERT(pz <= 1.0); 
+      ROS_ASSERT(pz <= 1.0);
       ROS_ASSERT(pz >= 0.0);
 
       // TODO: outlier rejection for short readings
@@ -540,35 +551,35 @@ PlanarScanner::calcLikelihoodFieldModelProb(PlanarData *data, PFSampleSet* set)
       total_weight += sample->weight;
     }
   }
-  
+
   if(do_beamskip){
-    int skipped_beam_count = 0; 
+    int skipped_beam_count = 0;
     for (beam_ind = 0; beam_ind < self->max_beams_; beam_ind++){
       if((obs_count[beam_ind] / static_cast<double>(set->sample_count)) > beam_skip_threshold){
 	obs_mask[beam_ind] = true;
       }
       else{
 	obs_mask[beam_ind] = false;
-	skipped_beam_count++; 
+	skipped_beam_count++;
       }
     }
 
-    //we check if there is at least a critical number of beams that agreed with the map 
+    //we check if there is at least a critical number of beams that agreed with the map
     //otherwise it probably indicates that the filter converged to a wrong solution
-    //if that's the case we integrate all the beams and hope the filter might converge to 
+    //if that's the case we integrate all the beams and hope the filter might converge to
     //the right solution
-    bool error = false; 
+    bool error = false;
 
     if(skipped_beam_count >= (beam_ind * self->beam_skip_error_threshold_)){
       ROS_DEBUG("Over %f%% of the observations were not in the map - pf may have converged to "
                 "wrong pose - integrating all observations",
                 (100 * self->beam_skip_error_threshold_));
-      error = true; 
+      error = true;
     }
 
     for (j = 0; j < set->sample_count; j++)
       {
-	sample = set->samples + j;
+	sample = &(set->samples[j]);
 	pose = sample->pose;
 
 	log_p = 0;
@@ -578,14 +589,13 @@ PlanarScanner::calcLikelihoodFieldModelProb(PlanarData *data, PFSampleSet* set)
 	    log_p += log(self->temp_obs_[j][beam_ind]);
 	  }
 	}
-	
+
 	sample->weight *= exp(log_p);
-	
 	total_weight += sample->weight;
-      }      
+      }
   }
 
-  delete [] obs_count; 
+  delete [] obs_count;
   delete [] obs_mask;
   return(total_weight);
 }
@@ -604,9 +614,10 @@ PlanarScanner::applyGompertz( double p )
 }
 
 double
-PlanarScanner::calcLikelihoodFieldModelGompertz(PlanarData *data, PFSampleSet* set)
+PlanarScanner::calcLikelihoodFieldModelGompertz(std::shared_ptr<PlanarData> data,
+                                                std::shared_ptr<PFSampleSet> set)
 {
-  PlanarScanner *self;
+  std::shared_ptr<PlanarScanner> self;
   int i, j, step;
   double z, pz;
   double p;
@@ -616,14 +627,14 @@ PlanarScanner::calcLikelihoodFieldModelGompertz(PlanarData *data, PFSampleSet* s
   PFVector pose;
   PFVector hit;
 
-  self = (PlanarScanner*) data->sensor_;
+  self = std::dynamic_pointer_cast<PlanarScanner>(data->sensor_);
 
   total_weight = 0.0;
 
   // Compute the sample weights
   for (j = 0; j < set->sample_count; j++)
   {
-    sample = set->samples + j;
+    sample = &(set->samples[j]);
     pose = sample->pose;
 
     // Take account of the planar scanner pose relative to the robot
@@ -642,8 +653,8 @@ PlanarScanner::calcLikelihoodFieldModelGompertz(PlanarData *data, PFSampleSet* s
     double sum_pz = 0.0;
     for (i = 0; i < data->range_count_; i += step)
     {
-      obs_range = data->ranges_[i][0];
-      obs_bearing = data->ranges_[i][1];
+      obs_range = data->ranges_[i];
+      obs_bearing = data->angles_[i];
 
       // This model ignores max range readings
       if(obs_range >= data->range_max_)
@@ -703,10 +714,10 @@ PlanarScanner::reallocTempData(int new_max_samples, int new_max_obs){
     for(int k=0; k < max_samples_; k++){
       delete [] temp_obs_[k];
     }
-    delete []temp_obs_; 
+    delete []temp_obs_;
   }
-  max_obs_ = new_max_obs; 
-  max_samples_ = fmax(max_samples_, new_max_samples); 
+  max_obs_ = new_max_obs;
+  max_samples_ = fmax(max_samples_, new_max_samples);
 
   temp_obs_ = new double*[max_samples_]();
   for(int k=0; k < max_samples_; k++){

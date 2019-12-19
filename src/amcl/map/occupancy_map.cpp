@@ -42,16 +42,7 @@ OccupancyMap::OccupancyMap()
   max_occ_dist_ = 0;
 
   // Allocate storage for main map
-  cells_ = nullptr;
-  distances_ = nullptr;
   cdm_ = nullptr;
-}
-
-// Destroy a map
-OccupancyMap::~OccupancyMap()
-{
-  delete[] distances_;
-  delete[] cells_;
 }
 
 std::vector<double>
@@ -86,18 +77,10 @@ OccupancyMap::getMaxOccDist()
   return max_occ_dist_;
 }
 
-MapCell*
-OccupancyMap::getCells()
-{
-  return cells_;
-}
-
 void
 OccupancyMap::initCells(int num)
 {
-  if(cells_)
-      delete[] cells_;
-  cells_ = new MapCell[num];
+  cells_.resize(num);
 }
 
 void

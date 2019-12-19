@@ -32,6 +32,7 @@
 
 #include <stddef.h>
 
+#include <memory>
 #include <vector>
 
 #include "map/occupancy_map.h"
@@ -53,12 +54,13 @@ typedef enum
 class PlanarData : public SensorData
 {
   public:
-    PlanarData () {ranges_=NULL;};
-    virtual ~PlanarData() {delete [] ranges_;};
+    PlanarData () {};
+    virtual ~PlanarData() {};
     // Planar range data (range, bearing tuples)
     int range_count_;
     double range_max_;
-    double (*ranges_)[2];
+    std::vector<double> ranges_;
+    std::vector<double> angles_;
 };
 
 // Planar sensor model
@@ -66,8 +68,10 @@ class PlanarScanner : public Sensor
 {
   // Default constructor
   public:
-    PlanarScanner(size_t max_beams, OccupancyMap* map);
+    PlanarScanner();
     ~PlanarScanner();
+
+    void init(size_t max_beams, std::shared_ptr<OccupancyMap> map);
 
     void setModelBeam(double z_hit,
                       double z_short,
@@ -85,10 +89,10 @@ class PlanarScanner : public Sensor
     void setModelLikelihoodFieldProb(double z_hit,
 					                 double z_rand,
 					                 double sigma_hit,
-					                 double max_occ_dist, 
-					                 bool do_beamskip, 
-					                 double beam_skip_distance, 
-					                 double beam_skip_threshold, 
+					                 double max_occ_dist,
+					                 bool do_beamskip,
+					                 double beam_skip_distance,
+					                 double beam_skip_threshold,
 					                 double beam_skip_error_threshold);
 
     void setModelLikelihoodFieldGompertz(double z_hit,
@@ -113,11 +117,13 @@ class PlanarScanner : public Sensor
 
     // Update the filter based on the sensor model.  Returns true if the
     // filter has been updated.
-    virtual bool updateSensor(ParticleFilter *pf, SensorData *data);
+    virtual bool updateSensor(std::shared_ptr<ParticleFilter> pf,
+                              std::shared_ptr<SensorData> data);
 
     // Update a sample set based on the sensor model.
     // Returns total weights of particles, or 0.0 on failure.
-    static double applyModelToSampleSet(SensorData *data, PFSampleSet *set);
+    static double applyModelToSampleSet(std::shared_ptr<SensorData> data,
+                                        std::shared_ptr<PFSampleSet> set);
 
     // Set the scanner's pose after construction
     void setPlanarScannerPose(PFVector& scanner_pose) {
@@ -130,23 +136,27 @@ class PlanarScanner : public Sensor
 
   private:
     // Determine the probability for the given pose
-    static double calcBeamModel(PlanarData *data, PFSampleSet* set);
+    static double calcBeamModel(std::shared_ptr<PlanarData> data,
+                                std::shared_ptr<PFSampleSet> set);
 
     // Determine the probability for the given pose
-    static double calcLikelihoodFieldModel(PlanarData *data, PFSampleSet* set);
+    static double calcLikelihoodFieldModel(std::shared_ptr<PlanarData> data,
+                                           std::shared_ptr<PFSampleSet> set);
 
-    // Determine the probability for the given pose - more probablistic model 
-    static double calcLikelihoodFieldModelProb(PlanarData *data, PFSampleSet* set);
+    // Determine the probability for the given pose - more probablistic model
+    static double calcLikelihoodFieldModelProb(std::shared_ptr<PlanarData> data,
+                                               std::shared_ptr<PFSampleSet> set);
 
     // Determine the probability for the given pose and apply a Gompertz function
-    static double calcLikelihoodFieldModelGompertz(PlanarData *data, PFSampleSet* set);
+    static double calcLikelihoodFieldModelGompertz(std::shared_ptr<PlanarData> data,
+                                                   std::shared_ptr<PFSampleSet> set);
 
     void reallocTempData(int max_samples, int max_obs);
 
     PlanarModelType model_type_;
 
     // The occupancy map
-    OccupancyMap *map_;
+    std::shared_ptr<OccupancyMap> map_;
 
     // Planar scanner offset relative to robot
     PFVector planar_scanner_pose_;
@@ -155,11 +165,11 @@ class PlanarScanner : public Sensor
     int max_beams_;
 
     // Beam skipping parameters (used by LikelihoodFieldModelProb model)
-    bool do_beamskip_; 
-    double beam_skip_distance_; 
-    double beam_skip_threshold_; 
-    //threshold for the ratio of invalid beams - at which all beams are integrated to the likelihoods 
-    //this would be an error condition 
+    bool do_beamskip_;
+    double beam_skip_distance_;
+    double beam_skip_threshold_;
+    //threshold for the ratio of invalid beams - at which all beams are integrated to the likelihoods
+    //this would be an error condition
     double beam_skip_error_threshold_;
 
     //temp data that is kept before observations are integrated to each particle (requried for beam skipping)

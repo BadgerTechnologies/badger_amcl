@@ -31,9 +31,10 @@
 #include <octomap/OcTree.h>
 #include <octomap/OcTreeDistance.h>
 
+#include <limits>
+#include <memory>
 #include <queue>
 #include <vector>
-#include <limits>
 
 namespace amcl
 {
@@ -42,7 +43,7 @@ class OctoMap : public Map
 {
   public:
     OctoMap(bool wait_for_occupancy_map);
-    ~OctoMap();
+    ~OctoMap(){};
     // Convert from map index to world coords
     void convertMapToWorld(const std::vector<int> &map_coords, std::vector<double> *world_coords);
     // Convert from world coords to map coords
@@ -57,7 +58,7 @@ class OctoMap : public Map
     // Update the cspace distance values
     void updateCSpace();
     void updateMaxOccDist(double max_occ_dist);
-    void initFromOctree(octomap::OcTree &octree, double lidar_height);
+    void initFromOctree(std::shared_ptr<octomap::OcTree> octree, double lidar_height);
     double getOccDist(int i, int j, int k);
     double getOccDist(int i, int j);
     double getMaxOccDist();
@@ -121,8 +122,8 @@ class OctoMap : public Map
 
     friend bool operator<(const OctoMap::CellData& a, const OctoMap::CellData& b);
 
-    octomap::OcTree* octree_;
-    octomap::OcTreeDistance* distances_;
+    std::shared_ptr<octomap::OcTree> octree_;
+    std::unique_ptr<octomap::OcTreeDistance> distances_;
     // Map origin; the map is a viewport onto a conceptual larger map.
     std::vector<double> origin_;
     // Map dimensions (number of cells)
@@ -130,7 +131,7 @@ class OctoMap : public Map
     std::vector<int> cropped_min_cells_, cropped_max_cells_, full_cells_;
     double lidar_height_;
     bool wait_for_occupancy_map_;
-    CachedDistanceMap* cdm_;
+    std::unique_ptr<CachedDistanceMap> cdm_;
 };
 
 inline bool operator<(const OctoMap::CellData& a, const OctoMap::CellData& b)

@@ -26,6 +26,8 @@
 #include <ros/spinner.h>
 #include <signal.h>
 
+#include <iostream>
+
 #include "node/node.h"
 
 using namespace amcl;
