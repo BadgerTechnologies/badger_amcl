@@ -36,22 +36,16 @@ OctoMap::OctoMap(bool wait_for_occupancy_map)
   map_min_bounds_ = std::vector<double>(2);
   map_max_bounds_ = std::vector<double>(2);
   max_occ_dist_ = 0.0;
-  octree_ = new octomap::OcTree(scale_);
+  octree_ = std::make_shared<octomap::OcTree>(scale_);
   distances_ = nullptr;
   cdm_ = nullptr;
 }
 
-OctoMap::~OctoMap()
-{
-  // octree_ points to octomap::OcTree object also pointed to
-  // in the Node class. It will be deleted in the Node object.
-}
-
 // initialize octomap from octree
 void
-OctoMap::initFromOctree(octomap::OcTree &octree, double lidar_height)
+OctoMap::initFromOctree(std::shared_ptr<octomap::OcTree> octree, double lidar_height)
 {
-  octree_ = &octree;
+  octree_ = octree;
   lidar_height_ = lidar_height;
   // set size
   double x_meters, y_meters, z_meters;

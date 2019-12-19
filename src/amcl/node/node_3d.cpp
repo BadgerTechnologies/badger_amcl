@@ -46,10 +46,10 @@ using namespace amcl;
 void
 Node::init3D()
 {
-  octomap_ = NULL;
-  octree_ = NULL;
-  point_cloud_scanner_ = NULL;
+  octomap_ = nullptr;
+  octree_ = nullptr;
   last_point_cloud_data_ = NULL;
+  fake_sample_set_ = std::make_shared<PFSampleSet>();
   private_nh_.param("point_cloud_scanner_max_beams", max_beams_, 256);
   private_nh_.param("point_cloud_scanner_z_hit", z_hit_, 0.95);
   private_nh_.param("point_cloud_scanner_z_rand", z_rand_, 0.05);
@@ -91,7 +91,7 @@ Node::init3D()
   {
     point_cloud_scan_sub_ = new message_filters::Subscriber<sensor_msgs::PointCloud2>(nh_, point_cloud_scan_topic_, 1);
     point_cloud_scan_filter_ =
-            new tf::MessageFilter<sensor_msgs::PointCloud2>(*point_cloud_scan_sub_, *tf_, odom_frame_id_, 1);
+            new tf::MessageFilter<sensor_msgs::PointCloud2>(*point_cloud_scan_sub_, tf_, odom_frame_id_, 1);
     point_cloud_scan_filter_->registerCallback(boost::bind(&Node::pointCloudReceived, this, _1));
     // 15s timer to warn on lack of receipt of point cloud scans, #5209
     point_cloud_scanner_check_interval_ = ros::Duration(15.0);
@@ -101,8 +101,8 @@ Node::init3D()
 
   try
   {
-    this->tf_->waitForTransform("base_footprint", "top_laser", ros::Time::now(), ros::Duration(5.0));
-    this->tf_->lookupTransform("base_footprint", "top_laser", ros::Time::now(), point_cloud_scanner_to_footprint_tf_);
+    this->tf_.waitForTransform("base_footprint", "top_laser", ros::Time::now(), ros::Duration(5.0));
+    this->tf_.lookupTransform("base_footprint", "top_laser", ros::Time::now(), point_cloud_scanner_to_footprint_tf_);
   }
   catch(tf::TransformException& e)
   {
@@ -127,10 +127,10 @@ Node::checkPointCloudScanReceived(const ros::TimerEvent& event)
  * Convert a octomap message into the internal
  * representation.  This allocates an OctoMap and returns it.
  */
-OctoMap*
+std::shared_ptr<OctoMap>
 Node::convertMap(const octomap_msgs::Octomap& map_msg)
 {
-  OctoMap* octomap = new OctoMap(wait_for_occupancy_map_);
+  std::shared_ptr<OctoMap> octomap = std::make_shared<OctoMap>(wait_for_occupancy_map_);
   ROS_ASSERT(octomap);
   octomap::AbstractOcTree* absoctree;
   double scale = map_msg.resolution;
@@ -145,10 +145,10 @@ Node::convertMap(const octomap_msgs::Octomap& map_msg)
   }
   if(absoctree)
   {
-    octree_ = dynamic_cast<octomap::OcTree*>(absoctree);
+    octree_ = std::shared_ptr<octomap::OcTree>(dynamic_cast<octomap::OcTree*>(absoctree));
   }
   octomap->setScale(scale);
-  octomap->initFromOctree(*octree_, point_cloud_scanner_height_);
+  octomap->initFromOctree(octree_, point_cloud_scanner_height_);
   return octomap;
 }
 
@@ -161,17 +161,15 @@ Node::scorePose3D(const PFVector &p)
     return 1.0;
   }
   // Create a fake "sample set" of just this pose to score it.
-  PFSample fake_sample;
-  fake_sample.pose.v[0] = p.v[0];
-  fake_sample.pose.v[1] = p.v[1];
-  fake_sample.pose.v[2] = p.v[2];
-  fake_sample.weight = 1.0;
-  PFSampleSet fake_sample_set;
-  fake_sample_set.sample_count = 1;
-  fake_sample_set.samples = &fake_sample;
-  fake_sample_set.converged = 0;
-  PointCloudScanner::applyModelToSampleSet(this->last_point_cloud_data_, &fake_sample_set);
-  return fake_sample.weight;
+  fake_sample_.pose.v[0] = p.v[0];
+  fake_sample_.pose.v[1] = p.v[1];
+  fake_sample_.pose.v[2] = p.v[2];
+  fake_sample_.weight = 1.0;
+  fake_sample_set_->sample_count = 1;
+  fake_sample_set_->samples = {fake_sample_};
+  fake_sample_set_->converged = 0;
+  PointCloudScanner::applyModelToSampleSet(this->last_point_cloud_data_, fake_sample_set_);
+  return fake_sample_.weight;
 }
 
 void
@@ -201,35 +199,33 @@ Node::reconfigure3D(amcl::AMCLConfig &config)
   {
     point_cloud_model_type_ = POINT_CLOUD_MODEL_GOMPERTZ;
   }
-  delete point_cloud_scanner_;
-  point_cloud_scanner_ = new PointCloudScanner(max_beams_, octomap_, point_cloud_scanner_height_);
-  ROS_ASSERT(point_cloud_scanner_);
+  point_cloud_scanner_.init(max_beams_, octomap_, point_cloud_scanner_height_);
   if(point_cloud_model_type_ == POINT_CLOUD_MODEL)
   {
     ROS_WARN("setting point cloud model type from reconfigure 3d");
-    point_cloud_scanner_->setPointCloudModel(z_hit_, z_rand_, sigma_hit_, sensor_likelihood_max_dist_);
+    point_cloud_scanner_.setPointCloudModel(z_hit_, z_rand_, sigma_hit_, sensor_likelihood_max_dist_);
     octomap_->updateCSpace();
   }
   else if(point_cloud_model_type_ == POINT_CLOUD_MODEL_GOMPERTZ){
     ROS_INFO("Initializing likelihood field (gompertz) model; this can take some time on large maps...");
-    point_cloud_scanner_->setPointCloudModelGompertz(z_hit_, z_rand_, sigma_hit_, sensor_likelihood_max_dist_,
+    point_cloud_scanner_.setPointCloudModelGompertz(z_hit_, z_rand_, sigma_hit_, sensor_likelihood_max_dist_,
                                                      point_cloud_gompertz_a_, point_cloud_gompertz_b_,
                                                      point_cloud_gompertz_c_, point_cloud_gompertz_input_shift_,
                                                      point_cloud_gompertz_input_scale_,
                                                      point_cloud_gompertz_output_shift_);
     ROS_INFO("Gompertz key points by total planar scan match: "
         "0.0: %f, 0.25: %f, 0.5: %f, 0.75: %f, 1.0: %f",
-        point_cloud_scanner_->applyGompertz(z_rand_),
-        point_cloud_scanner_->applyGompertz(z_rand_ + z_hit_ * .25),
-        point_cloud_scanner_->applyGompertz(z_rand_ + z_hit_ * .5),
-        point_cloud_scanner_->applyGompertz(z_rand_ + z_hit_ * .75),
-        point_cloud_scanner_->applyGompertz(z_rand_ + z_hit_));
+        point_cloud_scanner_.applyGompertz(z_rand_),
+        point_cloud_scanner_.applyGompertz(z_rand_ + z_hit_ * .25),
+        point_cloud_scanner_.applyGompertz(z_rand_ + z_hit_ * .5),
+        point_cloud_scanner_.applyGompertz(z_rand_ + z_hit_ * .75),
+        point_cloud_scanner_.applyGompertz(z_rand_ + z_hit_));
     ROS_INFO("Done initializing likelihood (gompertz) field model.");
   }
 
-  point_cloud_scanner_->setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
+  point_cloud_scanner_.setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
   delete point_cloud_scan_filter_;
-  point_cloud_scan_filter_ = new tf::MessageFilter<sensor_msgs::PointCloud2>(*point_cloud_scan_sub_, *tf_,
+  point_cloud_scan_filter_ = new tf::MessageFilter<sensor_msgs::PointCloud2>(*point_cloud_scan_sub_, tf_,
                                                                              odom_frame_id_, 100);
   point_cloud_scan_filter_->registerCallback(boost::bind(&Node::pointCloudReceived, this, _1));
 }
@@ -244,11 +240,6 @@ Node::octomapMsgReceived(const octomap_msgs::OctomapConstPtr& msg)
   boost::recursive_mutex::scoped_lock cfl(configuration_mutex_);
   ROS_INFO("Received a new Octomap");
 
-  delete octree_;
-  octree_ = nullptr;
-  delete octomap_;
-  octomap_ = nullptr;
-  map_ = nullptr;
   octomap_ = convertMap(*msg);
   first_octomap_received_ = true;
 
@@ -257,12 +248,10 @@ Node::octomapMsgReceived(const octomap_msgs::OctomapConstPtr& msg)
     return;
 
   map_ = octomap_;
-  freeMapDependentMemory();
   // Clear queued point cloud objects because they hold pointers to the existing map
   point_cloud_scanners_.clear();
   point_cloud_scanners_update_.clear();
   frame_to_point_cloud_scanner_.clear();
-  delete last_point_cloud_data_;
   last_point_cloud_data_ = NULL;
   initFromNewMap();
 }
@@ -270,31 +259,28 @@ Node::octomapMsgReceived(const octomap_msgs::OctomapConstPtr& msg)
 void
 Node::initFromNewOctomap()
 {
-  delete point_cloud_scanner_;
-  point_cloud_scanner_ = new PointCloudScanner(max_beams_, octomap_, point_cloud_scanner_height_);
-  ROS_ASSERT(point_cloud_scanner_);
+  point_cloud_scanner_.init(max_beams_, octomap_, point_cloud_scanner_height_);
   if(point_cloud_model_type_ == POINT_CLOUD_MODEL)
   {
-    point_cloud_scanner_->setPointCloudModel(z_hit_, z_rand_, sigma_hit_, sensor_likelihood_max_dist_);
+    point_cloud_scanner_.setPointCloudModel(z_hit_, z_rand_, sigma_hit_, sensor_likelihood_max_dist_);
   }
   else if(point_cloud_model_type_ == POINT_CLOUD_MODEL_GOMPERTZ){
     ROS_INFO("Initializing likelihood field (gompertz) model; this can take some time on large maps...");
-    point_cloud_scanner_->setPointCloudModelGompertz(z_hit_, z_rand_, sigma_hit_, sensor_likelihood_max_dist_,
+    point_cloud_scanner_.setPointCloudModelGompertz(z_hit_, z_rand_, sigma_hit_, sensor_likelihood_max_dist_,
                                                      point_cloud_gompertz_a_, point_cloud_gompertz_b_,
                                                      point_cloud_gompertz_c_, point_cloud_gompertz_input_shift_,
                                                      point_cloud_gompertz_input_scale_,
                                                      point_cloud_gompertz_output_shift_);
     ROS_INFO("Gompertz key points by total planar scan match: "
         "0.0: %f, 0.25: %f, 0.5: %f, 0.75: %f, 1.0: %f",
-        point_cloud_scanner_->applyGompertz(z_rand_),
-        point_cloud_scanner_->applyGompertz(z_rand_ + z_hit_ * .25),
-        point_cloud_scanner_->applyGompertz(z_rand_ + z_hit_ * .5),
-        point_cloud_scanner_->applyGompertz(z_rand_ + z_hit_ * .75),
-        point_cloud_scanner_->applyGompertz(z_rand_ + z_hit_));
+        point_cloud_scanner_.applyGompertz(z_rand_),
+        point_cloud_scanner_.applyGompertz(z_rand_ + z_hit_ * .25),
+        point_cloud_scanner_.applyGompertz(z_rand_ + z_hit_ * .5),
+        point_cloud_scanner_.applyGompertz(z_rand_ + z_hit_ * .75),
+        point_cloud_scanner_.applyGompertz(z_rand_ + z_hit_));
     ROS_INFO("Done initializing likelihood (gompertz) field model.");
   }
-  point_cloud_scanner_->setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
-
+  point_cloud_scanner_.setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
   // if we are using both maps as bounds
   // and the occupancy map has already arrived
   if(wait_for_occupancy_map_ and first_occupancy_map_received_)
@@ -325,7 +311,7 @@ Node::pointCloudReceived(const sensor_msgs::PointCloud2ConstPtr& point_cloud_sca
 {
   last_point_cloud_scan_received_ts_ = ros::Time::now();
   if(map_ == NULL) {
-    ROS_DEBUG("map is null");
+    ROS_DEBUG("Map is null");
     return;
   }
   if(not octomap_->isCSpaceCreated())
@@ -343,7 +329,7 @@ Node::pointCloudReceived(const sensor_msgs::PointCloud2ConstPtr& point_cloud_sca
   if(!global_localization_active_)
   {
     pf_->setDecayRates(alpha_slow_, alpha_fast_);
-    point_cloud_scanner_->setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
+    point_cloud_scanner_.setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
     for (auto& l : point_cloud_scanners_)
     {
       l->setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
@@ -353,7 +339,7 @@ Node::pointCloudReceived(const sensor_msgs::PointCloud2ConstPtr& point_cloud_sca
   // Do we have the base->base_lidar Tx yet?
   if(frame_to_point_cloud_scanner_.find(point_cloud_scan->header.frame_id) == frame_to_point_cloud_scanner_.end())
   {
-    point_cloud_scanners_.push_back(new PointCloudScanner(*point_cloud_scanner_));
+    point_cloud_scanners_.push_back(std::make_shared<PointCloudScanner>(point_cloud_scanner_));
     point_cloud_scanners_update_.push_back(true);
     scanner_index = frame_to_point_cloud_scanner_.size();
 
@@ -363,7 +349,7 @@ Node::pointCloudReceived(const sensor_msgs::PointCloud2ConstPtr& point_cloud_sca
     tf::Stamped<tf::Pose> point_cloud_scanner_pose;
     try
     {
-      this->tf_->transformPose(base_frame_id_, ident, point_cloud_scanner_pose);
+      this->tf_.transformPose(base_frame_id_, ident, point_cloud_scanner_pose);
     }
     catch(tf::TransformException& e)
     {
@@ -450,24 +436,24 @@ Node::pointCloudReceived(const sensor_msgs::PointCloud2ConstPtr& point_cloud_sca
   }
   else if(pf_init_ && point_cloud_scanners_update_[scanner_index])
   {
-    OdomData odata;
-    odata.pose = pose;
+    std::shared_ptr<OdomData> odata = std::make_shared<OdomData>();
+    odata->pose = pose;
     // HACK
     // Modify the delta in the action data so the filter gets
     // updated correctly
-    odata.delta = delta;
-    odata.absolute_motion = odom_integrator_absolute_motion_;
+    odata->delta = delta;
+    odata->absolute_motion = odom_integrator_absolute_motion_;
     if (odom_integrator_topic_.size())
     {
       geometry_msgs::Pose2D p;
-      p.x = odata.absolute_motion.v[0];
-      p.y = odata.absolute_motion.v[1];
-      p.theta = odata.absolute_motion.v[2];
+      p.x = odata->absolute_motion.v[0];
+      p.y = odata->absolute_motion.v[1];
+      p.theta = odata->absolute_motion.v[2];
       absolute_motion_pub_.publish(p);
     }
 
     // Use the action data to update the filter
-    odom_->updateAction(pf_, (SensorData*)&odata);
+    odom_.updateAction(pf_, std::dynamic_pointer_cast<SensorData>(odata));
 
     resetOdomIntegrator();
   }
@@ -476,11 +462,9 @@ Node::pointCloudReceived(const sensor_msgs::PointCloud2ConstPtr& point_cloud_sca
   // If the robot has moved, update the filter
   if(point_cloud_scanners_update_[scanner_index])
   {
-    delete last_point_cloud_data_;
-    last_point_cloud_data_ = new PointCloudData;
-    PointCloudData &ldata = *last_point_cloud_data_;
-    ldata.sensor_ = point_cloud_scanners_[scanner_index];
-    ldata.frame_id_ = point_cloud_scan->header.frame_id;
+    last_point_cloud_data_ = std::make_shared<PointCloudData>();
+    last_point_cloud_data_->sensor_ = point_cloud_scanners_[scanner_index];
+    last_point_cloud_data_->frame_id_ = point_cloud_scan->header.frame_id;
     pcl::PCLPointCloud2 pc2;
     pcl_conversions::toPCL(*point_cloud_scan, pc2);
     pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud(new pcl::PointCloud<pcl::PointXYZ>);
@@ -495,10 +479,11 @@ Node::pointCloudReceived(const sensor_msgs::PointCloud2ConstPtr& point_cloud_sca
     for(int i=0; i<data_count; i+=step)
     {
       pcl::PointXYZ point = point_cloud->at(i);
-      ldata.points_.push_back(point);
+      last_point_cloud_data_->points_.push_back(point);
     }
-    ldata.points_.header = point_cloud->header;
-    point_cloud_scanners_[scanner_index]->updateSensor(pf_, (SensorData*)&ldata);
+    last_point_cloud_data_->points_.header = point_cloud->header;
+    point_cloud_scanners_[scanner_index]->updateSensor(
+            pf_, std::dynamic_pointer_cast<SensorData>(last_point_cloud_data_));
     point_cloud_scanners_update_[scanner_index] = false;
     pf_odom_pose_ = pose;
     // Resample the particles
@@ -513,7 +498,7 @@ Node::pointCloudReceived(const sensor_msgs::PointCloud2ConstPtr& point_cloud_sca
       }
     }
 
-    PFSampleSet* set = pf_->getCurrentSet();
+    std::shared_ptr<PFSampleSet> set = pf_->getCurrentSet();
     // Publish the resulting cloud
     // TODO: set maximum rate for publishing
     if (!m_force_update) {
@@ -525,7 +510,7 @@ Node::pointCloudReceived(const sensor_msgs::PointCloud2ConstPtr& point_cloud_sca
       {
         tf::poseTFToMsg(tf::Pose(tf::createQuaternionFromYaw(set->samples[i].pose.v[2]),
                                  tf::Vector3(set->samples[i].pose.v[0],
-                                           set->samples[i].pose.v[1], 0)),
+                                             set->samples[i].pose.v[1], 0)),
                         cloud_msg.poses[i]);
       }
       particlecloud_pub_.publish(cloud_msg);
@@ -543,13 +528,14 @@ Node::pointCloudReceived(const sensor_msgs::PointCloud2ConstPtr& point_cloud_sca
     // Read out the current hypotheses
     double max_weight = 0.0;
     int max_weight_hyp = -1;
+    int cluster_count = pf_->getCurrentSet()->cluster_count;
     std::vector<AMCLHyp> hyps;
-    hyps.resize(pf_->getCurrentSet()->cluster_count);
+    hyps.resize(cluster_count);
     double weight;
     PFVector pose_mean;
     PFMatrix pose_cov;
     for(int hyp_count = 0;
-        hyp_count < pf_->getCurrentSet()->cluster_count; hyp_count++)
+        hyp_count < cluster_count; hyp_count++)
     {
       if (!pf_->getClusterStats(hyp_count, &weight, &pose_mean, &pose_cov))
       {
@@ -580,7 +566,7 @@ Node::pointCloudReceived(const sensor_msgs::PointCloud2ConstPtr& point_cloud_sca
       tf::quaternionTFToMsg(tf::createQuaternionFromYaw(hyps[max_weight_hyp].pf_pose_mean.v[2]),
                             p.pose.pose.orientation);
       // Copy in the covariance, converting from 3-D to 6-D
-      PFSampleSet* set = pf_->getCurrentSet();
+      std::shared_ptr<PFSampleSet> set = pf_->getCurrentSet();
       for(int i=0; i<2; i++)
       {
         for(int j=0; j<2; j++)
@@ -614,11 +600,11 @@ Node::pointCloudReceived(const sensor_msgs::PointCloud2ConstPtr& point_cloud_sca
         tf::Stamped<tf::Pose> tmp_tf_stamped (tmp_tf.inverse(),
                                               point_cloud_scan->header.stamp,
                                               base_frame_id_);
-        this->tf_->waitForTransform(base_frame_id_, odom_frame_id_,
+        this->tf_.waitForTransform(base_frame_id_, odom_frame_id_,
                                     point_cloud_scan->header.stamp, ros::Duration(1.0));
-        this->tf_->transformPose(odom_frame_id_,
-                                 tmp_tf_stamped,
-                                 odom_to_map);
+        this->tf_.transformPose(odom_frame_id_,
+                                tmp_tf_stamped,
+                                odom_to_map);
       }
       catch(tf::TransformException e)
       {
@@ -668,7 +654,7 @@ Node::pointCloudReceived(const sensor_msgs::PointCloud2ConstPtr& point_cloud_sca
 void
 Node::globalLocalizationCallback3D()
 {
-  point_cloud_scanner_->setMapFactors(global_localization_off_map_factor_,
+  point_cloud_scanner_.setMapFactors(global_localization_off_map_factor_,
                         global_localization_non_free_space_factor_,
                         non_free_space_radius_);
   for (auto& l : point_cloud_scanners_)
@@ -677,13 +663,6 @@ Node::globalLocalizationCallback3D()
                      global_localization_non_free_space_factor_,
                      non_free_space_radius_);
   }
-}
-
-void
-Node::freeOctoMapDependentMemory()
-{
-  delete point_cloud_scanner_;
-  point_cloud_scanner_ = NULL;
 }
 
 void

@@ -51,24 +51,15 @@ OctoMap::updateCSpace()
   }
 
   ROS_INFO("Updating OctoMap CSpace");
-  if(distances_)
-  {
-    distances_->clear();
-  }
   std::priority_queue<CellData> Q;
   octomap::OcTree* marked = new octomap::OcTree(scale_);
 
-  distances_ = new octomap::OcTreeDistance(scale_, max_occ_dist_);
+  distances_ = std::unique_ptr<octomap::OcTreeDistance>(new octomap::OcTreeDistance(scale_, max_occ_dist_));
 
   if(!cdm_ || (cdm_->scale_ != scale_)
      || (std::fabs(cdm_->max_dist_ - max_occ_dist_) > EPSILON_DOUBLE))
   {
-    if(cdm_)
-    {
-      ROS_DEBUG("Deleting existing cdm");
-      delete cdm_;
-    }
-    cdm_ = new CachedDistanceMap(scale_, max_occ_dist_);
+    cdm_ = std::unique_ptr<CachedDistanceMap>(new CachedDistanceMap(scale_, max_occ_dist_));
   }
 
   // Enqueue all the obstacle cells

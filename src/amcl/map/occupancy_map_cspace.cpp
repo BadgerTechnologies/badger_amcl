@@ -64,11 +64,7 @@ OccupancyMap::updateCSpace(double max_occ_dist)
   ROS_INFO("Updating Occupancy Map CSpace");
   std::priority_queue<CellData> Q;
 
-  if (distances_)
-  {
-    free(distances_);
-  }
-  distances_ = new float[unsigned(size_x_)*size_y_];
+  distances_.resize(unsigned(size_x_)*size_y_);
 
   std::vector<bool> marked(unsigned(size_x_) * size_y_, false);
 
@@ -76,9 +72,7 @@ OccupancyMap::updateCSpace(double max_occ_dist)
 
   if(!cdm_ || (cdm_->scale_ != scale_) || (cdm_->max_dist_ != max_occ_dist_))
   {
-    if(cdm_)
-      delete cdm_;
-    cdm_ = new CachedDistanceMap(scale_, max_occ_dist_);
+    cdm_ = std::unique_ptr<CachedDistanceMap>(new CachedDistanceMap(scale_, max_occ_dist_));
   }
 
   // Enqueue all the obstacle cells

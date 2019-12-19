@@ -37,8 +37,7 @@ using namespace amcl;
 void
 Node::init2D()
 {
-  occupancy_map_ = NULL;
-  planar_scanner_ = NULL;
+  occupancy_map_ = nullptr;
   last_planar_data_ = NULL;
   private_nh_.param("planar_scanner_min_range", sensor_min_range_, -1.0);
   private_nh_.param("planar_scanner_max_range", sensor_max_range_, -1.0);
@@ -90,7 +89,7 @@ Node::init2D()
   {
     planar_scan_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, planar_scan_topic_, 100);
     planar_scan_filter_ =
-        new tf::MessageFilter<sensor_msgs::LaserScan>(*planar_scan_sub_, *tf_, odom_frame_id_, 100);
+        new tf::MessageFilter<sensor_msgs::LaserScan>(*planar_scan_sub_, tf_, odom_frame_id_, 100);
     planar_scan_filter_->registerCallback(boost::bind(&Node::planarScanReceived, this, _1));
 
     // 15s timer to warn on lack of receipt of planar scans, #5209
@@ -116,10 +115,10 @@ Node::checkPlanarScanReceived(const ros::TimerEvent& event)
  * Convert an OccupancyGrid map message into the internal
  * representation.  This allocates an OccupancyMap and returns it.
  */
-OccupancyMap*
+std::shared_ptr<OccupancyMap>
 Node::convertMap( const nav_msgs::OccupancyGrid& map_msg )
 {
-  OccupancyMap* occupancy_map = new OccupancyMap();
+  std::shared_ptr<OccupancyMap> occupancy_map = std::make_shared<OccupancyMap>();
   ROS_ASSERT(occupancy_map);
   std::vector<int> size_vec;
   double scale = map_msg.info.resolution / map_scale_up_factor_;
@@ -132,7 +131,6 @@ Node::convertMap( const nav_msgs::OccupancyGrid& map_msg )
   origin.push_back(map_msg.info.origin.position.y + (size_vec[1] / 2) * scale);
   occupancy_map->setOrigin(origin);
   occupancy_map->initCells(size_vec[0]*size_vec[1]);
-  ROS_ASSERT(occupancy_map->getCells());
   for(int y=0;y<size_vec[1];y++)
   {
     int i=y*size_vec[0];
@@ -162,17 +160,15 @@ Node::scorePose2D(const PFVector &p)
     return 1.0;
   }
   // Create a fake "sample set" of just this pose to score it.
-  PFSample fake_sample;
-  fake_sample.pose.v[0] = p.v[0];
-  fake_sample.pose.v[1] = p.v[1];
-  fake_sample.pose.v[2] = p.v[2];
-  fake_sample.weight = 1.0;
-  PFSampleSet fake_sample_set;
-  fake_sample_set.sample_count = 1;
-  fake_sample_set.samples = &fake_sample;
-  fake_sample_set.converged = 0;
-  PlanarScanner::applyModelToSampleSet(this->last_planar_data_, &fake_sample_set);
-  return fake_sample.weight;
+  fake_sample_.pose.v[0] = p.v[0];
+  fake_sample_.pose.v[1] = p.v[1];
+  fake_sample_.pose.v[2] = p.v[2];
+  fake_sample_.weight = 1.0;
+  fake_sample_set_->sample_count = 1;
+  fake_sample_set_->samples = {fake_sample_};
+  fake_sample_set_->converged = 0;
+  PlanarScanner::applyModelToSampleSet(this->last_planar_data_, fake_sample_set_);
+  return fake_sample_.weight;
 }
 
 void
@@ -208,15 +204,13 @@ Node::reconfigure2D(AMCLConfig &config)
     planar_model_type_ = PLANAR_MODEL_LIKELIHOOD_FIELD_PROB;
   else if(config.planar_model_type == "likelihood_field_gompertz")
     planar_model_type_ = PLANAR_MODEL_LIKELIHOOD_FIELD_GOMPERTZ;
-  delete planar_scanner_;
-  planar_scanner_ = new PlanarScanner(max_beams_, occupancy_map_);
-  ROS_ASSERT(planar_scanner_);
+  planar_scanner_.init(max_beams_, occupancy_map_);
   if(planar_model_type_ == PLANAR_MODEL_BEAM)
-    planar_scanner_->setModelBeam(z_hit_, z_short_, z_max_, z_rand_,
+    planar_scanner_.setModelBeam(z_hit_, z_short_, z_max_, z_rand_,
                          sigma_hit_, lambda_short_);
   else if(planar_model_type_ == PLANAR_MODEL_LIKELIHOOD_FIELD_PROB){
     ROS_INFO("Initializing likelihood field model; this can take some time on large maps...");
-    planar_scanner_->setModelLikelihoodFieldProb(z_hit_, z_rand_, sigma_hit_,
+    planar_scanner_.setModelLikelihoodFieldProb(z_hit_, z_rand_, sigma_hit_,
 					sensor_likelihood_max_dist_,
 					do_beamskip_, beam_skip_distance_,
 					beam_skip_threshold_, beam_skip_error_threshold_);
@@ -224,13 +218,13 @@ Node::reconfigure2D(AMCLConfig &config)
   }
   else if(planar_model_type_ == PLANAR_MODEL_LIKELIHOOD_FIELD){
     ROS_INFO("Initializing likelihood field model; this can take some time on large maps...");
-    planar_scanner_->setModelLikelihoodField(z_hit_, z_rand_, sigma_hit_,
+    planar_scanner_.setModelLikelihoodField(z_hit_, z_rand_, sigma_hit_,
                                     sensor_likelihood_max_dist_);
     ROS_INFO("Done initializing likelihood field model.");
   }
   else if(planar_model_type_ == PLANAR_MODEL_LIKELIHOOD_FIELD_GOMPERTZ){
     ROS_INFO("Initializing likelihood field (gompertz) model; this can take some time on large maps...");
-    planar_scanner_->setModelLikelihoodFieldGompertz(z_hit_, z_rand_, sigma_hit_,
+    planar_scanner_.setModelLikelihoodFieldGompertz(z_hit_, z_rand_, sigma_hit_,
                                             sensor_likelihood_max_dist_,
                                             planar_gompertz_a_,
                                             planar_gompertz_b_,
@@ -240,20 +234,17 @@ Node::reconfigure2D(AMCLConfig &config)
                                             planar_gompertz_output_shift_);
     ROS_INFO("Gompertz key points by total planar scan match: "
         "0.0: %f, 0.25: %f, 0.5: %f, 0.75: %f, 1.0: %f",
-        planar_scanner_->applyGompertz(z_rand_),
-        planar_scanner_->applyGompertz(z_rand_ + z_hit_ * .25),
-        planar_scanner_->applyGompertz(z_rand_ + z_hit_ * .5),
-        planar_scanner_->applyGompertz(z_rand_ + z_hit_ * .75),
-        planar_scanner_->applyGompertz(z_rand_ + z_hit_));
+        planar_scanner_.applyGompertz(z_rand_),
+        planar_scanner_.applyGompertz(z_rand_ + z_hit_ * .25),
+        planar_scanner_.applyGompertz(z_rand_ + z_hit_ * .5),
+        planar_scanner_.applyGompertz(z_rand_ + z_hit_ * .75),
+        planar_scanner_.applyGompertz(z_rand_ + z_hit_));
     ROS_INFO("Done initializing likelihood (gompertz) field model.");
   }
-  planar_scanner_->setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
+  planar_scanner_.setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
   delete planar_scan_filter_;
-  planar_scan_filter_ =
-          new tf::MessageFilter<sensor_msgs::LaserScan>(*planar_scan_sub_,
-                                                        *tf_,
-                                                        odom_frame_id_,
-                                                        100);
+  planar_scan_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(*planar_scan_sub_, tf_,
+                                                                      odom_frame_id_, 100);
   planar_scan_filter_->registerCallback(boost::bind(&Node::planarScanReceived,
                                                    this, _1));
 }
@@ -273,9 +264,6 @@ Node::occupancyMapMsgReceived(const nav_msgs::OccupancyGridConstPtr& msg)
            msg->info.height,
            msg->info.resolution);
 
-  delete occupancy_map_;
-  occupancy_map_ = NULL;
-
   occupancy_map_ = convertMap(*msg);
   first_occupancy_map_received_ = true;
 
@@ -290,23 +278,18 @@ Node::occupancyMapMsgReceived(const nav_msgs::OccupancyGridConstPtr& msg)
       octomap_->setMapBounds(map_min, map_max);
       update3DFreeSpaceIndices();
     }
-    return;
   }
-  else if(map_type_ != 2)
+
+  if(map_type_ != 2)
   {
     return;
   }
 
-  delete map_;
-  map_ = NULL;
-
   map_ = occupancy_map_;
-  freeMapDependentMemory();
   // Clear queued planar scanner objects because they hold pointers to the existing map
   planar_scanners_.clear();
   planar_scanners_update_.clear();
   frame_to_planar_scanner_.clear();
-  delete last_planar_data_;
   last_planar_data_ = NULL;
   initFromNewMap();
 }
@@ -314,15 +297,13 @@ Node::occupancyMapMsgReceived(const nav_msgs::OccupancyGridConstPtr& msg)
 void
 Node::initFromNewOccupancyMap()
 {
-  delete planar_scanner_;
-  planar_scanner_ = new PlanarScanner(max_beams_, occupancy_map_);
-  ROS_ASSERT(planar_scanner_);
+  planar_scanner_.init(max_beams_, occupancy_map_);
   if(planar_model_type_ == PLANAR_MODEL_BEAM)
-    planar_scanner_->setModelBeam(z_hit_, z_short_, z_max_, z_rand_,
+    planar_scanner_.setModelBeam(z_hit_, z_short_, z_max_, z_rand_,
                          sigma_hit_, lambda_short_);
   else if(planar_model_type_ == PLANAR_MODEL_LIKELIHOOD_FIELD_PROB){
     ROS_INFO("Initializing likelihood field model; this can take some time on large maps...");
-    planar_scanner_->setModelLikelihoodFieldProb(z_hit_, z_rand_, sigma_hit_,
+    planar_scanner_.setModelLikelihoodFieldProb(z_hit_, z_rand_, sigma_hit_,
 					sensor_likelihood_max_dist_,
 					do_beamskip_, beam_skip_distance_,
 					beam_skip_threshold_, beam_skip_error_threshold_);
@@ -330,7 +311,7 @@ Node::initFromNewOccupancyMap()
   }
   else if(planar_model_type_ == PLANAR_MODEL_LIKELIHOOD_FIELD_GOMPERTZ){
     ROS_INFO("Initializing likelihood field (gompertz) model; this can take some time on large maps...");
-    planar_scanner_->setModelLikelihoodFieldGompertz(z_hit_, z_rand_, sigma_hit_,
+    planar_scanner_.setModelLikelihoodFieldGompertz(z_hit_, z_rand_, sigma_hit_,
                                             sensor_likelihood_max_dist_,
                                             planar_gompertz_a_,
                                             planar_gompertz_b_,
@@ -340,21 +321,21 @@ Node::initFromNewOccupancyMap()
                                             planar_gompertz_output_shift_);
     ROS_INFO("Gompertz key points by total planar scan match: "
         "0.0: %f, 0.25: %f, 0.5: %f, 0.75: %f, 1.0: %f",
-        planar_scanner_->applyGompertz(z_rand_),
-        planar_scanner_->applyGompertz(z_rand_ + z_hit_ * .25),
-        planar_scanner_->applyGompertz(z_rand_ + z_hit_ * .5),
-        planar_scanner_->applyGompertz(z_rand_ + z_hit_ * .75),
-        planar_scanner_->applyGompertz(z_rand_ + z_hit_));
+        planar_scanner_.applyGompertz(z_rand_),
+        planar_scanner_.applyGompertz(z_rand_ + z_hit_ * .25),
+        planar_scanner_.applyGompertz(z_rand_ + z_hit_ * .5),
+        planar_scanner_.applyGompertz(z_rand_ + z_hit_ * .75),
+        planar_scanner_.applyGompertz(z_rand_ + z_hit_));
     ROS_INFO("Done initializing likelihood (gompertz) field model.");
   }
   else
   {
     ROS_INFO("Initializing likelihood field model; this can take some time on large maps...");
-    planar_scanner_->setModelLikelihoodField(z_hit_, z_rand_, sigma_hit_,
+    planar_scanner_.setModelLikelihoodField(z_hit_, z_rand_, sigma_hit_,
                                     sensor_likelihood_max_dist_);
     ROS_INFO("Done initializing likelihood field model.");
   }
-  planar_scanner_->setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
+  planar_scanner_.setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
 
   // Index of free space
   // Must be calculated after the occ_dist is setup by the planar model
@@ -362,8 +343,8 @@ Node::initFromNewOccupancyMap()
   std::vector<int> size_vec = map_->getSize();
   for(int i = 0; i < size_vec[0]; i++)
     for(int j = 0; j < size_vec[1]; j++)
-      if(((OccupancyMap*)map_)->getOccState(i,j) == -1)
-        if(((OccupancyMap*)map_)->getOccDist(i,j) > non_free_space_radius_)
+      if(occupancy_map_->getOccState(i,j) == -1)
+        if(occupancy_map_->getOccDist(i,j) > non_free_space_radius_)
           free_space_indices_.push_back(std::make_pair(i,j));
 }
 
@@ -389,7 +370,7 @@ Node::planarScanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan)
   if(!global_localization_active_)
   {
     pf_->setDecayRates(alpha_slow_, alpha_fast_);
-    planar_scanner_->setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
+    planar_scanner_.setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
     for (auto& l : planar_scanners_)
     {
       l->setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
@@ -400,7 +381,7 @@ Node::planarScanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan)
   if(frame_to_planar_scanner_.find(planar_scan->header.frame_id) == frame_to_planar_scanner_.end())
   {
     ROS_DEBUG("Setting up planar_scanner %d (frame_id=%s)\n", (int)frame_to_planar_scanner_.size(), planar_scan->header.frame_id.c_str());
-    planar_scanners_.push_back(new PlanarScanner(*planar_scanner_));
+    planar_scanners_.push_back(std::make_shared<PlanarScanner>(planar_scanner_));
     planar_scanners_update_.push_back(true);
     scanner_index = frame_to_planar_scanner_.size();
 
@@ -410,7 +391,7 @@ Node::planarScanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan)
     tf::Stamped<tf::Pose> planar_scanner_pose;
     try
     {
-      this->tf_->transformPose(base_frame_id_, ident, planar_scanner_pose);
+      this->tf_.transformPose(base_frame_id_, ident, planar_scanner_pose);
     }
     catch(tf::TransformException& e)
     {
@@ -498,24 +479,24 @@ Node::planarScanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan)
   // If the robot has moved, update the filter
   else if(pf_init_ && planar_scanners_update_[scanner_index])
   {
-    OdomData odata;
-    odata.pose = pose;
+    std::shared_ptr<OdomData> odata = std::make_shared<OdomData>();
+    odata->pose = pose;
     // HACK
     // Modify the delta in the action data so the filter gets
     // updated correctly
-    odata.delta = delta;
-    odata.absolute_motion = odom_integrator_absolute_motion_;
+    odata->delta = delta;
+    odata->absolute_motion = odom_integrator_absolute_motion_;
     if (odom_integrator_topic_.size())
     {
       geometry_msgs::Pose2D p;
-      p.x = odata.absolute_motion.v[0];
-      p.y = odata.absolute_motion.v[1];
-      p.theta = odata.absolute_motion.v[2];
+      p.x = odata->absolute_motion.v[0];
+      p.y = odata->absolute_motion.v[1];
+      p.theta = odata->absolute_motion.v[2];
       absolute_motion_pub_.publish(p);
     }
 
     // Use the action data to update the filter
-    odom_->updateAction(pf_, (SensorData*)&odata);
+    odom_.updateAction(pf_, std::dynamic_pointer_cast<SensorData>(odata));
 
     resetOdomIntegrator();
   }
@@ -524,11 +505,9 @@ Node::planarScanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan)
   // If the robot has moved, update the filter
   if(planar_scanners_update_[scanner_index])
   {
-    delete last_planar_data_;
-    last_planar_data_ = new PlanarData;
-    PlanarData &ldata = *last_planar_data_;
-    ldata.sensor_ = planar_scanners_[scanner_index];
-    ldata.range_count_ = planar_scan->ranges.size();
+    last_planar_data_ = std::make_shared<PlanarData>();
+    last_planar_data_->sensor_ = planar_scanners_[scanner_index];
+    last_planar_data_->range_count_ = planar_scan->ranges.size();
 
     // To account for the planar scanners that are mounted upside-down, we determine the
     // min, max, and increment angles of the scanner in the base frame.
@@ -543,8 +522,8 @@ Node::planarScanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan)
                                       planar_scan->header.frame_id);
     try
     {
-      tf_->transformQuaternion(base_frame_id_, min_q, min_q);
-      tf_->transformQuaternion(base_frame_id_, inc_q, inc_q);
+      tf_.transformQuaternion(base_frame_id_, min_q, min_q);
+      tf_.transformQuaternion(base_frame_id_, inc_q, inc_q);
     }
     catch(tf::TransformException& e)
     {
@@ -563,31 +542,31 @@ Node::planarScanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan)
 
     // Apply range min/max thresholds, if the user supplied them
     if(sensor_max_range_ > 0.0)
-      ldata.range_max_ = std::min(planar_scan->range_max, (float)sensor_max_range_);
+      last_planar_data_->range_max_ = std::min(planar_scan->range_max, (float)sensor_max_range_);
     else
-      ldata.range_max_ = planar_scan->range_max;
+      last_planar_data_->range_max_ = planar_scan->range_max;
     double range_min;
     if(sensor_min_range_ > 0.0)
       range_min = std::max(planar_scan->range_min, (float)sensor_min_range_);
     else
       range_min = planar_scan->range_min;
     // The PlanarData destructor will free this memory
-    ldata.ranges_ = new double[ldata.range_count_][2];
-    ROS_ASSERT(ldata.ranges_);
-    for(int i=0;i<ldata.range_count_;i++)
+    last_planar_data_->ranges_.resize(last_planar_data_->range_count_);
+    last_planar_data_->angles_.resize(last_planar_data_->range_count_);
+    for(int i=0;i <last_planar_data_->range_count_; i++)
     {
       // amcl doesn't (yet) have a concept of min range.  So we'll map short
       // readings to max range.
       if(planar_scan->ranges[i] <= range_min)
-        ldata.ranges_[i][0] = ldata.range_max_;
+        last_planar_data_->ranges_[i] = last_planar_data_->range_max_;
       else
-        ldata.ranges_[i][0] = planar_scan->ranges[i];
+        last_planar_data_->ranges_[i] = planar_scan->ranges[i];
       // Compute bearing
-      ldata.ranges_[i][1] = angle_min +
-              (i * angle_increment);
+      last_planar_data_->angles_[i] = angle_min + (i * angle_increment);
     }
 
-    planar_scanners_[scanner_index]->updateSensor(pf_, (SensorData*)&ldata);
+    planar_scanners_[scanner_index]->updateSensor(
+            pf_, std::dynamic_pointer_cast<SensorData>(last_planar_data_));
 
     planar_scanners_update_[scanner_index] = false;
 
@@ -605,7 +584,7 @@ Node::planarScanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan)
       }
     }
 
-    PFSampleSet* set = pf_->getCurrentSet();
+    std::shared_ptr<PFSampleSet> set = pf_->getCurrentSet();
     ROS_DEBUG("Num samples: %d\n", set->sample_count);
 
     // Publish the resulting cloud
@@ -636,10 +615,11 @@ Node::planarScanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan)
     // Read out the current hypotheses
     double max_weight = 0.0;
     int max_weight_hyp = -1;
+    int cluster_count = pf_->getCurrentSet()->cluster_count;
     std::vector<AMCLHyp> hyps;
-    hyps.resize(pf_->getCurrentSet()->cluster_count);
+    hyps.resize(cluster_count);
     for(int hyp_count = 0;
-        hyp_count < pf_->getCurrentSet()->cluster_count; hyp_count++)
+        hyp_count < cluster_count; hyp_count++)
     {
       double weight;
       PFVector pose_mean;
@@ -678,7 +658,7 @@ Node::planarScanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan)
       tf::quaternionTFToMsg(tf::createQuaternionFromYaw(hyps[max_weight_hyp].pf_pose_mean.v[2]),
                             p.pose.pose.orientation);
       // Copy in the covariance, converting from 3-D to 6-D
-      PFSampleSet* set = pf_->getCurrentSet();
+      std::shared_ptr<PFSampleSet> set = pf_->getCurrentSet();
       for(int i=0; i<2; i++)
       {
         for(int j=0; j<2; j++)
@@ -719,9 +699,9 @@ Node::planarScanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan)
         tf::Stamped<tf::Pose> tmp_tf_stamped (tmp_tf.inverse(),
                                               planar_scan->header.stamp,
                                               base_frame_id_);
-        this->tf_->transformPose(odom_frame_id_,
-                                 tmp_tf_stamped,
-                                 odom_to_map);
+        this->tf_.transformPose(odom_frame_id_,
+                                tmp_tf_stamped,
+                                odom_to_map);
       }
       catch(tf::TransformException)
       {
@@ -763,22 +743,15 @@ Node::planarScanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan)
 void
 Node::globalLocalizationCallback2D()
 {
-  planar_scanner_->setMapFactors(global_localization_off_map_factor_,
-                        global_localization_non_free_space_factor_,
-                        non_free_space_radius_);
+  planar_scanner_.setMapFactors(global_localization_off_map_factor_,
+                                 global_localization_non_free_space_factor_,
+                                 non_free_space_radius_);
   for (auto& l : planar_scanners_)
   {
     l->setMapFactors(global_localization_off_map_factor_,
                      global_localization_non_free_space_factor_,
                      non_free_space_radius_);
   }
-}
-
-void
-Node::freeOccupancyMapDependentMemory()
-{
-  delete planar_scanner_;
-  planar_scanner_ = NULL;
 }
 
 void

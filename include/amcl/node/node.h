@@ -54,6 +54,8 @@
 #include <algorithm>
 #include <cmath>
 #include <exception>
+#include <map>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -105,7 +107,7 @@ class Node
     const int INDEX_YY_ = 6*1+1;
     const int INDEX_AA_ = 6*5+5;
 
-    static PFVector uniformPoseGenerator(void* arg);
+    static PFVector uniformPoseGenerator(Node *arg);
     static std::vector<std::pair<int,int> > free_space_indices_;
 
     void init2D();
@@ -136,11 +138,8 @@ class Node
     void initFromNewMap();
     void initFromNewOccupancyMap();
     void initFromNewOctomap();
-    void freeMapDependentMemory();
-    void freeOccupancyMapDependentMemory();
-    void freeOctoMapDependentMemory();
-    OccupancyMap* convertMap( const nav_msgs::OccupancyGrid& map_msg );
-    OctoMap* convertMap( const octomap_msgs::Octomap& map_msg );
+    std::shared_ptr<OccupancyMap> convertMap( const nav_msgs::OccupancyGrid& map_msg );
+    std::shared_ptr<OctoMap> convertMap( const octomap_msgs::Octomap& map_msg );
 
     std::string makeFilepathFromName( const std::string filename );
     void loadPose();
@@ -177,9 +176,8 @@ class Node
     std::string planar_scan_topic_;
     std::string point_cloud_scan_topic_;
 
-    tf::TransformBroadcaster* tfb_;
-
-    TransformListenerWrapper* tf_;
+    tf::TransformBroadcaster tfb_;
+    tf::TransformListener tf_;
 
     // 2: 2d, 3: 3d, else: none
     int map_type_;
@@ -211,24 +209,24 @@ class Node
 
     geometry_msgs::PoseWithCovarianceStamped last_published_pose_;
 
-    OccupancyMap* occupancy_map_;
-    OctoMap* octomap_;
-    octomap::OcTree* octree_;
-    Map* map_;
+    std::shared_ptr<OccupancyMap> occupancy_map_;
+    std::shared_ptr<OctoMap> octomap_;
+    std::shared_ptr<octomap::OcTree> octree_;
+    std::shared_ptr<Map> map_;
 
     message_filters::Subscriber<sensor_msgs::LaserScan>* planar_scan_sub_;
     message_filters::Subscriber<sensor_msgs::PointCloud2>* point_cloud_scan_sub_;
     tf::MessageFilter<sensor_msgs::LaserScan>* planar_scan_filter_;
     tf::MessageFilter<sensor_msgs::PointCloud2>* point_cloud_scan_filter_;
-    std::vector< PlanarScanner* > planar_scanners_;
-    std::vector< PointCloudScanner* > point_cloud_scanners_;
+    std::vector< std::shared_ptr<PlanarScanner> > planar_scanners_;
+    std::vector< std::shared_ptr<PointCloudScanner> > point_cloud_scanners_;
     std::vector< bool > planar_scanners_update_;
     std::vector< bool > point_cloud_scanners_update_;
     std::map< std::string, int > frame_to_planar_scanner_;
     std::map< std::string, int > frame_to_point_cloud_scanner_;
 
     // Particle filter
-    ParticleFilter *pf_;
+    std::shared_ptr<ParticleFilter> pf_;
     double pf_err_, pf_z_;
     bool pf_init_;
     PFVector pf_odom_pose_;
@@ -248,9 +246,9 @@ class Node
     //Nomotion update control
     bool m_force_update;  // used to temporarily let amcl update samples even when no motion occurs...
 
-    Odom* odom_;
-    PlanarScanner* planar_scanner_;
-    PointCloudScanner* point_cloud_scanner_;
+    Odom odom_;
+    PlanarScanner planar_scanner_;
+    PointCloudScanner point_cloud_scanner_;
 
     //time for tolerance on the published transform,
     //basically defines how long a map->odom transform is good for
@@ -326,11 +324,14 @@ class Node
     bool tf_reverse_;
     double off_object_penalty_factor_;
 
+    PFSample fake_sample_;
+    std::shared_ptr<PFSampleSet> fake_sample_set_;
+
     bool save_pose_;
     std::string saved_pose_filepath_;
 
-    PlanarData *last_planar_data_;
-    PointCloudData *last_point_cloud_data_;
+    std::shared_ptr<PlanarData> last_planar_data_;
+    std::shared_ptr<PointCloudData> last_point_cloud_data_;
     ros::Time last_planar_scan_received_ts_, last_point_cloud_scan_received_ts_;
     ros::Duration planar_scanner_check_interval_, point_cloud_scanner_check_interval_;
 };

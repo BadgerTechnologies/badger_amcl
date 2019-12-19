@@ -28,6 +28,7 @@
 
 #include <math.h>
 #include <ros/assert.h>
+#include <ros/console.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <time.h>
@@ -35,15 +36,16 @@
 #include <cstdlib>
 
 #include "pf/pdf_gaussian.h"
+#include "sensors/sensor.h"
 
 using namespace amcl;
 
 // Create a new filter
 ParticleFilter::ParticleFilter(int min_samples, int max_samples, double alpha_slow, double alpha_fast,
-                               PFInitModelFnPtr random_pose_fn, void *random_pose_data)
+                               PFInitModelFnPtr random_pose_fn, Node *random_pose_data)
 {
   int i, j;
-  PFSampleSet *set;
+  std::shared_ptr<PFSampleSet> set;
   PFSample *sample;
 
   srand48(time(NULL));
@@ -64,17 +66,19 @@ ParticleFilter::ParticleFilter(int min_samples, int max_samples, double alpha_sl
   pop_z_ = 3;
   dist_threshold_ = 0.5;
 
+  sets_ = {std::make_shared<PFSampleSet>(), std::make_shared<PFSampleSet>()};
+
   current_set_ = 0;
   for (j = 0; j < 2; j++)
   {
-    set = sets_ + j;
+    set = sets_[j];
 
     set->sample_count = max_samples_;
-    set->samples = (PFSample*)std::calloc(max_samples_, sizeof(PFSample));
+    set->samples = std::vector<PFSample>(max_samples);
 
     for (i = 0; i < set->sample_count; i++)
     {
-      sample = set->samples + i;
+      sample = &(set->samples[i]);
       sample->pose.v[0] = 0.0;
       sample->pose.v[1] = 0.0;
       sample->pose.v[2] = 0.0;
@@ -82,11 +86,11 @@ ParticleFilter::ParticleFilter(int min_samples, int max_samples, double alpha_sl
     }
 
     // HACK: is 3 times max_samples_ enough?
-    set->kdtree = new PFKDTree(3 * max_samples_);
+    set->kdtree = std::make_shared<PFKDTree>(3 * max_samples_);
 
     set->cluster_count = 0;
     set->cluster_max_count = max_samples_;
-    set->clusters = (PFCluster*)std::calloc(set->cluster_max_count, sizeof(PFCluster));
+    set->clusters = std::vector<PFCluster>(set->cluster_max_count);
 
     set->mean = PFVector();
     set->cov = PFMatrix();
@@ -102,19 +106,6 @@ ParticleFilter::ParticleFilter(int min_samples, int max_samples, double alpha_sl
   initConverged();
 }
 
-// Free an existing filter
-ParticleFilter::~ParticleFilter()
-{
-  int i;
-
-  for (i = 0; i < 2; i++)
-  {
-    free(sets_[i].clusters);
-    sets_[i].kdtree->~PFKDTree();
-    free(sets_[i].samples);
-  }
-}
-
 void
 ParticleFilter::setResampleModel(PFResampleModelType resample_model)
 {
@@ -126,10 +117,10 @@ void
 ParticleFilter::init(PFVector mean, PFMatrix cov)
 {
   int i;
-  PFSampleSet *set;
+  std::shared_ptr<PFSampleSet> set;
   PFSample *sample;
 
-  set = sets_ + current_set_;
+  set = sets_[current_set_];
 
   // Create the kd tree for adaptive sampling
   set->kdtree->clearKDTree();
@@ -141,7 +132,7 @@ ParticleFilter::init(PFVector mean, PFMatrix cov)
   // Compute the new sample poses
   for (i = 0; i < set->sample_count; i++)
   {
-    sample = set->samples + i;
+    sample = &(set->samples[i]);
     sample->weight = 1.0 / max_samples_;
     sample->pose = pdf.sample();
 
@@ -160,32 +151,28 @@ ParticleFilter::init(PFVector mean, PFMatrix cov)
 
 // Initialize the filter using some model
 void
-ParticleFilter::initModel(PFInitModelFnPtr init_fn, void *init_data)
+ParticleFilter::initModel(PFInitModelFnPtr init_fn, Node *init_data)
 {
   int i;
-  PFSampleSet *set;
+  std::shared_ptr<PFSampleSet> set;
   PFSample *sample;
 
-  set = sets_ + current_set_;
+  set = sets_[current_set_];
 
   // Create the kd tree for adaptive sampling
   set->kdtree->clearKDTree();
-
   set->sample_count = max_samples_;
 
   // Compute the new sample poses
   for (i = 0; i < set->sample_count; i++)
   {
-    sample = set->samples + i;
+    sample = &(set->samples[i]);
     sample->weight = 1.0 / max_samples_;
     sample->pose = (*init_fn) (init_data);
-
     // Add sample to histogram
     set->kdtree->insertPose(sample->pose, sample->weight);
   }
-
   w_slow_ = w_fast_ = 0.0;
-
   // Re-compute cluster statistics
   clusterStats(set);
 
@@ -195,8 +182,8 @@ ParticleFilter::initModel(PFInitModelFnPtr init_fn, void *init_data)
 
 void
 ParticleFilter::initConverged(){
-  PFSampleSet *set;
-  set = sets_ + current_set_;
+  std::shared_ptr<PFSampleSet> set;
+  set = sets_[current_set_];
   set->converged = 0;
   converged_ = false;
 }
@@ -205,15 +192,15 @@ bool
 ParticleFilter::updateConverged()
 {
   int i;
-  PFSampleSet *set;
+  std::shared_ptr<PFSampleSet> set;
   PFSample *sample;
   double total;
 
-  set = sets_ + current_set_;
+  set = sets_[current_set_];
   double mean_x = 0, mean_y = 0;
 
   for (i = 0; i < set->sample_count; i++){
-    sample = set->samples + i;
+    sample = &(set->samples[i]);
 
     mean_x += sample->pose.v[0];
     mean_y += sample->pose.v[1];
@@ -222,7 +209,7 @@ ParticleFilter::updateConverged()
   mean_y /= set->sample_count;
 
   for (i = 0; i < set->sample_count; i++){
-    sample = set->samples + i;
+    sample = &(set->samples[i]);
     if(fabs(sample->pose.v[0] - mean_x) > dist_threshold_ ||
        fabs(sample->pose.v[1] - mean_y) > dist_threshold_){
       set->converged = 0;
@@ -235,45 +222,32 @@ ParticleFilter::updateConverged()
   return 1;
 }
 
-// Update the filter with some new action
-void
-ParticleFilter::updateAction(PFActionModelFnPtr action_fn, void *action_data)
-{
-  PFSampleSet *set;
-
-  set = sets_ + current_set_;
-
-  (*action_fn) (action_data, set);
-
-  return;
-}
-
 // Update the filter with some new sensor observation
 void
-ParticleFilter::updateSensor(PFSensorModelFnPtr sensor_fn, void *sensor_data)
+ParticleFilter::updateSensor(PFSensorModelFnPtr sensor_fn, std::shared_ptr<SensorData> sensor_data)
 {
   int i;
-  PFSampleSet *set;
-  PFSample *sample;
+  std::shared_ptr<PFSampleSet> update_set;
+  PFSample *update_sample;
   double total;
 
-  set = sets_ + current_set_;
+  update_set = sets_[current_set_];
 
   // Compute the sample weights
-  total = (*sensor_fn) (sensor_data, set);
+  total = (*sensor_fn) (sensor_data, update_set);
 
   if (total > 0.0)
   {
     // Normalize weights
     double w_avg=0.0;
-    for (i = 0; i < set->sample_count; i++)
+    for (i = 0; i < update_set->sample_count; i++)
     {
-      sample = set->samples + i;
-      w_avg += sample->weight;
-      sample->weight /= total;
+      update_sample = &(update_set->samples[i]);
+      w_avg += update_sample->weight;
+      update_sample->weight /= total;
     }
     // Update running averages of likelihood of samples (Prob Rob p258)
-    w_avg /= set->sample_count;
+    w_avg /= update_set->sample_count;
     if(w_slow_ == 0.0)
       w_slow_ = w_avg;
     else
@@ -286,10 +260,10 @@ ParticleFilter::updateSensor(PFSensorModelFnPtr sensor_fn, void *sensor_data)
   else
   {
     // Handle zero total
-    for (i = 0; i < set->sample_count; i++)
+    for (i = 0; i < update_set->sample_count; i++)
     {
-      sample = set->samples + i;
-      sample->weight = 1.0 / set->sample_count;
+      update_sample = &(update_set->samples[i]);
+      update_sample->weight = 1.0 / update_set->sample_count;
     }
   }
 }
@@ -299,16 +273,16 @@ ParticleFilter::resampleSystematic(double w_diff)
 {
   int i;
   double total;
-  PFSampleSet *set_a, *set_b;
+  std::shared_ptr<PFSampleSet> set_a, set_b;
   PFSample *sample_a, *sample_b;
 
-  double* c;
+  std::vector<double> c;
 
-  set_a = sets_ + current_set_;
-  set_b = sets_ + (current_set_ + 1) % 2;
+  set_a = sets_[current_set_];
+  set_b = sets_[(current_set_ + 1) % 2];
 
   // Build up cumulative probability table for resampling.
-  c = (double*)malloc(sizeof(double)*(set_a->sample_count+1));
+  c = std::vector<double>(set_a->sample_count+1);
   c[0] = 0.0;
   for(i=0;i<set_a->sample_count;i++)
   {
@@ -346,7 +320,7 @@ ParticleFilter::resampleSystematic(double w_diff)
   }
   for(i=0; i<n_rand; ++i)
   {
-    sample_b = set_b->samples + i;
+    sample_b = &(set_b->samples[i]);
     sample_b->pose = (random_pose_fn_)(random_pose_data_);
     sample_b->weight = 1.0;
     total += sample_b->weight;
@@ -369,8 +343,8 @@ ParticleFilter::resampleSystematic(double w_diff)
     {
       target = 0.0;
     }
-    sample_a = set_a->samples + c_i;
-    sample_b = set_b->samples + i;
+    sample_a = &(set_a->samples[c_i]);
+    sample_b = &(set_b->samples[i]);
     sample_b->pose = sample_a->pose;
 
     sample_b->weight = 1.0;
@@ -380,7 +354,6 @@ ParticleFilter::resampleSystematic(double w_diff)
     set_b->kdtree->insertPose(sample_b->pose, sample_b->weight);
   }
 
-  free(c);
   return total;
 }
 
@@ -389,19 +362,19 @@ ParticleFilter::resampleMultinomial(double w_diff)
 {
   int i;
   double total;
-  PFSampleSet *set_a, *set_b;
+  std::shared_ptr<PFSampleSet> set_a, set_b;
   PFSample *sample_a, *sample_b;
 
   //double count_inv;
-  double* c;
+  std::vector<double> c;
 
-  set_a = sets_ + current_set_;
-  set_b = sets_ + (current_set_ + 1) % 2;
+  set_a = sets_[current_set_];
+  set_b = sets_[(current_set_ + 1) % 2];
 
   // Build up cumulative probability table for resampling.
   // TODO: Replace this with a more efficient procedure
   // (e.g., http://www.network-theory.co.uk/docs/gslref/GeneralDiscreteDistributions.html)
-  c = (double*)malloc(sizeof(double)*(set_a->sample_count+1));
+  c = std::vector<double>(set_a->sample_count+1);
   c[0] = 0.0;
   for(i=0;i<set_a->sample_count;i++)
     c[i+1] = c[i]+set_a->samples[i].weight;
@@ -412,7 +385,7 @@ ParticleFilter::resampleMultinomial(double w_diff)
 
   while(set_b->sample_count < max_samples_)
   {
-    sample_b = set_b->samples + set_b->sample_count++;
+    sample_b = &(set_b->samples[set_b->sample_count++]);
 
     if(drand48() < w_diff)
       sample_b->pose = (random_pose_fn_)(random_pose_data_);
@@ -428,7 +401,7 @@ ParticleFilter::resampleMultinomial(double w_diff)
       }
       ROS_ASSERT(i<set_a->sample_count);
 
-      sample_a = set_a->samples + i;
+      sample_a = &(set_a->samples[i]);
 
       ROS_ASSERT(sample_a->weight > 0);
 
@@ -446,8 +419,6 @@ ParticleFilter::resampleMultinomial(double w_diff)
     if (set_b->sample_count > resampleLimit(set_b->kdtree->getLeafCount()))
       break;
   }
-
-  free(c);
   return total;
 }
 
@@ -457,13 +428,13 @@ ParticleFilter::updateResample()
 {
   int i;
   double total;
-  PFSampleSet *set_a, *set_b;
+  std::shared_ptr<PFSampleSet> set_a, set_b;
   PFSample *sample_a, *sample_b;
 
   double w_diff;
 
-  set_a = sets_ + current_set_;
-  set_b = sets_ + (current_set_ + 1) % 2;
+  set_a = sets_[current_set_];
+  set_b = sets_[(current_set_ + 1) % 2];
 
   // Create the kd tree for adaptive sampling
   set_b->kdtree->clearKDTree();
@@ -490,7 +461,7 @@ ParticleFilter::updateResample()
   // Normalize weights
   for (i = 0; i < set_b->sample_count; i++)
   {
-    sample_b = set_b->samples + i;
+    sample_b = &(set_b->samples[i]);
     sample_b->weight /= total;
   }
 
@@ -536,7 +507,7 @@ ParticleFilter::resampleLimit(int k)
 
 // Re-compute the cluster statistics for a sample set
 void
-ParticleFilter::clusterStats(PFSampleSet *set)
+ParticleFilter::clusterStats(std::shared_ptr<PFSampleSet> set)
 {
   int i, j, k, cidx;
   PFSample *sample;
@@ -555,7 +526,7 @@ ParticleFilter::clusterStats(PFSampleSet *set)
 
   for (i = 0; i < set->cluster_max_count; i++)
   {
-    cluster = set->clusters + i;
+    cluster = &(set->clusters[i]);
     cluster->count = 0;
     cluster->weight = 0;
     cluster->mean = PFVector();
@@ -582,9 +553,7 @@ ParticleFilter::clusterStats(PFSampleSet *set)
   // Compute cluster stats
   for (i = 0; i < set->sample_count; i++)
   {
-    sample = set->samples + i;
-
-    //printf("%d %f %f %f\n", i, sample->pose.v[0], sample->pose.v[1], sample->pose.v[2]);
+    sample = &(set->samples[i]);
 
     // Get the cluster label for this sample
     cidx = set->kdtree->getCluster(sample->pose);
@@ -594,7 +563,7 @@ ParticleFilter::clusterStats(PFSampleSet *set)
     if (cidx + 1 > set->cluster_count)
       set->cluster_count = cidx + 1;
 
-    cluster = set->clusters + cidx;
+    cluster = &(set->clusters[cidx]);
 
     cluster->count += 1;
     cluster->weight += sample->weight;
@@ -625,7 +594,7 @@ ParticleFilter::clusterStats(PFSampleSet *set)
   // Normalize
   for (i = 0; i < set->cluster_count; i++)
   {
-    cluster = set->clusters + i;
+    cluster = &(set->clusters[i]);
 
     cluster->mean.v[0] = cluster->m[0] / cluster->weight;
     cluster->mean.v[1] = cluster->m[1] / cluster->weight;
@@ -666,10 +635,10 @@ ParticleFilter::getCepStats(PFVector *mean, double *var)
 {
   int i;
   double mn, mx, my, mrr;
-  PFSampleSet *set;
+  std::shared_ptr<PFSampleSet> set;
   PFSample *sample;
 
-  set = sets_ + current_set_;
+  set = sets_[current_set_];
 
   mn = 0.0;
   mx = 0.0;
@@ -678,7 +647,7 @@ ParticleFilter::getCepStats(PFVector *mean, double *var)
 
   for (i = 0; i < set->sample_count; i++)
   {
-    sample = set->samples + i;
+    sample = &(set->samples[i]);
 
     mn += sample->weight;
     mx += sample->weight * sample->pose.v[0];
@@ -698,14 +667,14 @@ ParticleFilter::getCepStats(PFVector *mean, double *var)
 bool
 ParticleFilter::getClusterStats(int clabel, double *weight, PFVector *mean, PFMatrix *cov)
 {
-  PFSampleSet *set;
+  std::shared_ptr<PFSampleSet> set;
   PFCluster *cluster;
 
-  set = sets_ + current_set_;
+  set = sets_[current_set_];
 
   if (clabel >= set->cluster_count)
     return false;
-  cluster = set->clusters + clabel;
+  cluster = &(set->clusters[clabel]);
 
   *weight = cluster->weight;
   *mean = cluster->mean;
@@ -730,10 +699,10 @@ ParticleFilter::setDecayRates(double alpha_slow, double alpha_fast)
 }
 
 // gets pointer to current sample set
-PFSampleSet*
+std::shared_ptr<PFSampleSet>
 ParticleFilter::getCurrentSet()
 {
-  return sets_ + current_set_;
+  return sets_[current_set_];
 }
 
 // returns whether the particle filter has converged
