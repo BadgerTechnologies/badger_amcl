@@ -33,18 +33,16 @@ using namespace amcl;
 
 // This version also updates the max_occ_dist_ variable and
 // calls the base non-parameter updateCSpace
-void
-OctoMap::updateMaxOccDist(double max_occ_dist)
+void OctoMap::updateMaxOccDist(double max_occ_dist)
 {
   this->max_occ_dist_ = max_occ_dist;
 }
 
 // Creates the distances lookup object populated with the distance from
 // each voxel to the nearest object in the static map
-void
-OctoMap::updateCSpace()
+void OctoMap::updateCSpace()
 {
-  if(max_occ_dist_ == 0.0)
+  if (max_occ_dist_ == 0.0)
   {
     ROS_DEBUG("Failed to update cspace, max occ dist is 0");
     return;
@@ -56,8 +54,7 @@ OctoMap::updateCSpace()
 
   distances_ = std::unique_ptr<octomap::OcTreeDistance>(new octomap::OcTreeDistance(scale_, max_occ_dist_));
 
-  if(!cdm_ || (cdm_->scale_ != scale_)
-     || (std::fabs(cdm_->max_dist_ - max_occ_dist_) > EPSILON_DOUBLE))
+  if (!cdm_ || (cdm_->scale_ != scale_) || (std::fabs(cdm_->max_dist_ - max_occ_dist_) > EPSILON_DOUBLE))
   {
     cdm_ = std::unique_ptr<CachedDistanceMap>(new CachedDistanceMap(scale_, max_occ_dist_));
   }
@@ -67,10 +64,9 @@ OctoMap::updateCSpace()
   std::vector<double> world_coords(3);
   std::vector<int> map_coords(3);
 
-  for(octomap::OcTree::leaf_iterator it = octree_->begin_leafs(), end=octree_->end_leafs();
-      it != end; ++it)
+  for (octomap::OcTree::leaf_iterator it = octree_->begin_leafs(), end = octree_->end_leafs(); it != end; ++it)
   {
-    if(octree_->isNodeOccupied(*it))
+    if (octree_->isNodeOccupied(*it))
     {
       int i, j, k;
       world_coords[0] = it.getX();
@@ -97,55 +93,55 @@ OctoMap::updateCSpace()
 
   double occThresh = octree_->getOccupancyThres();
 
-  while(!Q.empty())
+  while (!Q.empty())
   {
     CellData current_cell = Q.top();
-    if(current_cell.i_ > cropped_min_cells_[0])
+    if (current_cell.i_ > cropped_min_cells_[0])
     {
-      int i = current_cell.i_-1, j = current_cell.j_, k = current_cell.k_;
+      int i = current_cell.i_ - 1, j = current_cell.j_, k = current_cell.k_;
       octomap::OcTreeKey key(i, j, k);
       octomap::OcTreeNode* node = marked->search(key);
-      if(node == nullptr or not node->getOccupancy() > occThresh)
+      if (node == nullptr or not node->getOccupancy() > occThresh)
         marked->updateNode(key, enqueue(i, j, k, current_cell.src_i_, current_cell.src_j_, current_cell.src_k_, Q));
     }
-    if(current_cell.j_ > cropped_min_cells_[1])
+    if (current_cell.j_ > cropped_min_cells_[1])
     {
-      int i = current_cell.i_, j = current_cell.j_-1, k = current_cell.k_;
+      int i = current_cell.i_, j = current_cell.j_ - 1, k = current_cell.k_;
       octomap::OcTreeKey key(i, j, k);
       octomap::OcTreeNode* node = marked->search(key);
-      if(node == nullptr or not node->getOccupancy() > occThresh)
+      if (node == nullptr or not node->getOccupancy() > occThresh)
         marked->updateNode(key, enqueue(i, j, k, current_cell.src_i_, current_cell.src_j_, current_cell.src_k_, Q));
     }
-    if(current_cell.k_ > cropped_min_cells_[2])
+    if (current_cell.k_ > cropped_min_cells_[2])
     {
-      int i = current_cell.i_, j = current_cell.j_, k = current_cell.k_-1;
+      int i = current_cell.i_, j = current_cell.j_, k = current_cell.k_ - 1;
       octomap::OcTreeKey key(i, j, k);
       octomap::OcTreeNode* node = marked->search(key);
-      if(node == nullptr or not node->getOccupancy() > occThresh)
+      if (node == nullptr or not node->getOccupancy() > occThresh)
         marked->updateNode(key, enqueue(i, j, k, current_cell.src_i_, current_cell.src_j_, current_cell.src_k_, Q));
     }
-    if((int)current_cell.i_ < cropped_max_cells_[0] - 1)
+    if ((int)current_cell.i_ < cropped_max_cells_[0] - 1)
     {
-      int i = current_cell.i_+1, j = current_cell.j_, k = current_cell.k_;
+      int i = current_cell.i_ + 1, j = current_cell.j_, k = current_cell.k_;
       octomap::OcTreeKey key(i, j, k);
       octomap::OcTreeNode* node = marked->search(key);
-      if(node == nullptr or not node->getOccupancy() > occThresh)
+      if (node == nullptr or not node->getOccupancy() > occThresh)
         marked->updateNode(key, enqueue(i, j, k, current_cell.src_i_, current_cell.src_j_, current_cell.src_k_, Q));
     }
-    if((int)current_cell.j_ < cropped_max_cells_[1] - 1)
+    if ((int)current_cell.j_ < cropped_max_cells_[1] - 1)
     {
-      int i = current_cell.i_, j = current_cell.j_+1, k = current_cell.k_;
+      int i = current_cell.i_, j = current_cell.j_ + 1, k = current_cell.k_;
       octomap::OcTreeKey key(i, j, k);
       octomap::OcTreeNode* node = marked->search(key);
-      if(node == nullptr or not node->getOccupancy() > occThresh)
+      if (node == nullptr or not node->getOccupancy() > occThresh)
         marked->updateNode(key, enqueue(i, j, k, current_cell.src_i_, current_cell.src_j_, current_cell.src_k_, Q));
     }
-    if((int)current_cell.k_ < cropped_max_cells_[2] - 1)
+    if ((int)current_cell.k_ < cropped_max_cells_[2] - 1)
     {
-      int i = current_cell.i_, j = current_cell.j_, k = current_cell.k_+1;
+      int i = current_cell.i_, j = current_cell.j_, k = current_cell.k_ + 1;
       octomap::OcTreeKey key(i, j, k);
       octomap::OcTreeNode* node = marked->search(key);
-      if(node == nullptr or not node->getOccupancy() > occThresh)
+      if (node == nullptr or not node->getOccupancy() > occThresh)
         marked->updateNode(key, enqueue(i, j, k, current_cell.src_i_, current_cell.src_j_, current_cell.src_k_, Q));
     }
     Q.pop();
@@ -156,16 +152,14 @@ OctoMap::updateCSpace()
 
 // Helper function for updateCSpace
 // Adds the voxel to the queue if the voxel is close enough to an object
-bool
-OctoMap::enqueue(int i, int j, int k, int src_i, int src_j, int src_k,
-                 std::priority_queue<CellData>& Q)
+bool OctoMap::enqueue(int i, int j, int k, int src_i, int src_j, int src_k, std::priority_queue<CellData>& Q)
 {
   int di = abs(i - src_i);
   int dj = abs(j - src_j);
   int dk = abs(k - src_k);
   double distance = cdm_->distances_[di][dj][dk];
 
-  if(distance > cdm_->cell_radius_)
+  if (distance > cdm_->cell_radius_)
     return false;
 
   setOccDist(i, j, k, distance * scale_);
@@ -185,33 +179,30 @@ OctoMap::enqueue(int i, int j, int k, int src_i, int src_j, int src_k,
 
 // Helper function for updateCSpace
 // Sets the distance from the voxel to the nearest object in the static map
-void
-OctoMap::setOccDist(int i, int j, int k, double d)
+void OctoMap::setOccDist(int i, int j, int k, double d)
 {
-  int index = floor(d*100);
+  int index = floor(d * 100);
   octomap::OcTreeKey key(i, j, k);
   distances_->setDistanceForKey(key, d);
 }
 
 // returns the distance from the 3d voxel to the nearest object in the static map
-double
-OctoMap::getOccDist(int i, int j, int k)
+double OctoMap::getOccDist(int i, int j, int k)
 {
   octomap::OcTreeKey key(i, j, k);
   octomap::OcTreeDataNode<double>* node = distances_->search(key);
-  if(node and node->getValue() < max_occ_dist_)
+  if (node and node->getValue() < max_occ_dist_)
   {
     return node->getValue();
   }
-  return 1*max_occ_dist_;
+  return 1 * max_occ_dist_;
 }
 
 // returns the distance from the 2d pose to the nearest object in a 2.5d view
-double
-OctoMap::getOccDist(int i, int j)
+double OctoMap::getOccDist(int i, int j)
 {
   double distance = max_occ_dist_;
-  for(int k = 0; k < lidar_height_ / scale_; k++)
+  for (int k = 0; k < lidar_height_ / scale_; k++)
   {
     distance = std::min(distance, getOccDist(i, j, k));
   }

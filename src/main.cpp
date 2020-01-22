@@ -42,8 +42,7 @@ void sigHandler(int sig)
   ros::shutdown();
 }
 
-int
-main(int argc, char** argv)
+int main(int argc, char** argv)
 {
   ros::init(argc, argv, "amcl", ros::init_options::NoSigintHandler);
   ros::NodeHandle nh;
@@ -56,7 +55,7 @@ main(int argc, char** argv)
   amcl_node_ptr.reset(new Node());
 
   // Uncomment for single threaded
-  //ros::spin();
+  // ros::spin();
 
   // Uncomment for multithreaded
   ros::MultiThreadedSpinner spinner(4);
@@ -68,5 +67,5 @@ main(int argc, char** argv)
   amcl_node_ptr.reset();
 
   // To quote Morgan, Hooray!
-  return(0);
+  return (0);
 }

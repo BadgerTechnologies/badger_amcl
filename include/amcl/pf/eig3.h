@@ -16,21 +16,18 @@
 
 namespace amcl
 {
-
 class EIG3
 {
-
 public:
-  static void eigenDecomposition(std::vector<std::vector<double>> A,
-                                  std::vector<std::vector<double>> V,
-                                  std::vector<double> d);
+  static void eigenDecomposition(std::vector<std::vector<double>> A, std::vector<std::vector<double>> V,
+                                 std::vector<double> d);
+
 private:
   static const int N = 3;
   static double hypot2(double x, double y);
   static void tred2(std::vector<std::vector<double>> V, std::vector<double> d, std::vector<double> e);
   static void tql2(std::vector<std::vector<double>> V, std::vector<double> d, std::vector<double> e);
 };
-
 }
 
 #endif

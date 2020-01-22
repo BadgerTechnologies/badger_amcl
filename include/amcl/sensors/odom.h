@@ -37,9 +37,7 @@
 
 namespace amcl
 {
-
-typedef enum
-{
+typedef enum {
   ODOM_MODEL_DIFF,
   ODOM_MODEL_OMNI,
   ODOM_MODEL_DIFF_CORRECTED,
@@ -50,62 +48,43 @@ typedef enum
 // Odometric sensor data
 class OdomData : public SensorData
 {
-  public:
-    // Odometric pose
-    PFVector pose;
-    // Change in odometric pose
-    PFVector delta;
-    // Total absolute motion (relative to base)
-    PFVector absolute_motion;
+public:
+  // Odometric pose
+  PFVector pose;
+  // Change in odometric pose
+  PFVector delta;
+  // Total absolute motion (relative to base)
+  PFVector absolute_motion;
 };
-
 
 // Odometric sensor model
 class Odom : public Sensor
 {
   // Default constructor
-  public:
-    Odom();
+public:
+  Odom();
 
-    void setModelDiff(double alpha1,
-                      double alpha2,
-                      double alpha3,
-                      double alpha4);
+  void setModelDiff(double alpha1, double alpha2, double alpha3, double alpha4);
 
-    void setModelOmni(double alpha1,
-                      double alpha2,
-                      double alpha3,
-                      double alpha4,
-                      double alpha5);
+  void setModelOmni(double alpha1, double alpha2, double alpha3, double alpha4, double alpha5);
 
-    void setModelGaussian(double alpha1,
-                          double alpha2,
-                          double alpha3,
-                          double alpha4,
-                          double alpha5);
+  void setModelGaussian(double alpha1, double alpha2, double alpha3, double alpha4, double alpha5);
 
-    void setModel(OdomModelType type,
-                  double alpha1,
-                  double alpha2,
-                  double alpha3,
-                  double alpha4,
-                  double alpha5 = 0);
+  void setModel(OdomModelType type, double alpha1, double alpha2, double alpha3, double alpha4, double alpha5 = 0);
 
-    // Update the filter based on the action model.  Returns true if the filter
-    // has been updated.
-    virtual bool updateAction(std::shared_ptr<ParticleFilter> pf,
-                              std::shared_ptr<SensorData> data);
+  // Update the filter based on the action model.  Returns true if the filter
+  // has been updated.
+  virtual bool updateAction(std::shared_ptr<ParticleFilter> pf, std::shared_ptr<SensorData> data);
 
-  private:
-    double normalize(double z);
-    double angleDiff(double a, double b);
-    // Model type
-    OdomModelType model_type_;
+private:
+  double normalize(double z);
+  double angleDiff(double a, double b);
+  // Model type
+  OdomModelType model_type_;
 
-    // Drift parameters
-    double alpha1_, alpha2_, alpha3_, alpha4_, alpha5_;
+  // Drift parameters
+  double alpha1_, alpha2_, alpha3_, alpha4_, alpha5_;
 };
-
 }
 
 #endif

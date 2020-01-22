@@ -31,7 +31,6 @@
 
 namespace amcl
 {
-
 // Info for a node in the tree
 typedef struct pf_kdtree_node
 {
@@ -52,63 +51,60 @@ typedef struct pf_kdtree_node
   int cluster;
 
   // Child nodes
-  struct pf_kdtree_node *children[2];
+  struct pf_kdtree_node* children[2];
 
 } PFKDTreeNode;
-
 
 // A kd tree
 class PFKDTree
 {
-  public:
-    // Create a tree
-    PFKDTree(int max_size);
+public:
+  // Create a tree
+  PFKDTree(int max_size);
 
-    // Destroy a tree
-    ~PFKDTree();
+  // Destroy a tree
+  ~PFKDTree();
 
-    // Clear all entries from the tree
-    void clearKDTree();
+  // Clear all entries from the tree
+  void clearKDTree();
 
-    // Insert a pose into the tree
-    void insertPose(PFVector pose, double value);
+  // Insert a pose into the tree
+  void insertPose(PFVector pose, double value);
 
-    // Cluster the leaves in the tree
-    void cluster();
+  // Cluster the leaves in the tree
+  void cluster();
 
-    // Determine the cluster label for the given pose
-    int getCluster(PFVector pose);
+  // Determine the cluster label for the given pose
+  int getCluster(PFVector pose);
 
-    int getLeafCount();
+  int getLeafCount();
 
-  private:
-    // Compare keys to see if they are equal
-    bool equals(int key_a[], int key_b[]);
+private:
+  // Compare keys to see if they are equal
+  bool equals(int key_a[], int key_b[]);
 
-    // Insert a node into the tree
-    PFKDTreeNode* insertNode(PFKDTreeNode *parent, PFKDTreeNode *node,
-                                 int key[], double value);
+  // Insert a node into the tree
+  PFKDTreeNode* insertNode(PFKDTreeNode* parent, PFKDTreeNode* node, int key[], double value);
 
-    // Recursive node search
-    PFKDTreeNode* findNode(PFKDTreeNode *node, int key[]);
+  // Recursive node search
+  PFKDTreeNode* findNode(PFKDTreeNode* node, int key[]);
 
-    // Recursively label nodes in this cluster
-    void clusterNode(PFKDTreeNode *node, int depth);
+  // Recursively label nodes in this cluster
+  void clusterNode(PFKDTreeNode* node, int depth);
 
-    // Cell size
-    double cell_size_[3];
+  // Cell size
+  double cell_size_[3];
 
-    // The root node of the tree
-    PFKDTreeNode *root_;
+  // The root node of the tree
+  PFKDTreeNode* root_;
 
-    // The number of nodes in the tree
-    int node_count_, node_max_count_;
-    PFKDTreeNode *nodes_;
+  // The number of nodes in the tree
+  int node_count_, node_max_count_;
+  PFKDTreeNode* nodes_;
 
-    // The number of leaf nodes in the tree
-    int leaf_count_;
+  // The number of leaf nodes in the tree
+  int leaf_count_;
 };
-
 }
 
 #endif

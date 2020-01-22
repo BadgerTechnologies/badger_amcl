@@ -35,33 +35,31 @@
 
 namespace amcl
 {
-
 // Gaussian PDF info
 class PDFGaussian
 {
-  public:
-    // Create a gaussian pdf
-    PDFGaussian(PFVector x, PFMatrix cx);
+public:
+  // Create a gaussian pdf
+  PDFGaussian(PFVector x, PFMatrix cx);
 
-    // Generate a sample from the the pdf.
-    PFVector sample();
+  // Generate a sample from the the pdf.
+  PFVector sample();
 
-    // Draw randomly from a zero-mean Gaussian distribution, with standard
-    // deviation sigma.
-    // We use the polar form of the Box-Muller transformation, explained here:
-    //   http://www.taygeta.com/random/gaussian.html
-    static double draw(double sigma);
+  // Draw randomly from a zero-mean Gaussian distribution, with standard
+  // deviation sigma.
+  // We use the polar form of the Box-Muller transformation, explained here:
+  //   http://www.taygeta.com/random/gaussian.html
+  static double draw(double sigma);
 
-  private:
-    // Mean, covariance and inverse covariance
-    PFVector x_;
-    PFMatrix cx_;
+private:
+  // Mean, covariance and inverse covariance
+  PFVector x_;
+  PFMatrix cx_;
 
-    // Decomposed covariance matrix (rotation * diagonal)
-    PFMatrix cr_;
-    PFVector cd_;
+  // Decomposed covariance matrix (rotation * diagonal)
+  PFMatrix cr_;
+  PFVector cd_;
 };
-
 }
 
 #endif
