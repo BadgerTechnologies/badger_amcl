@@ -67,5 +67,5 @@ int main(int argc, char** argv)
   amcl_node_ptr.reset();
 
   // To quote Morgan, Hooray!
-  return (0);
+  return 0;
 }

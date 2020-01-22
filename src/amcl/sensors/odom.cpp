@@ -315,7 +315,7 @@ double Odom::angleDiff(double a, double b)
   if (d1 > 0)
     d2 *= -1.0;
   if (fabs(d1) < fabs(d2))
-    return (d1);
+    return d1;
   else
-    return (d2);
+    return d2;
 }

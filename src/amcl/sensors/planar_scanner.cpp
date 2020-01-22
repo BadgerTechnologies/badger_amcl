@@ -276,7 +276,7 @@ double PlanarScanner::calcBeamModel(std::shared_ptr<PlanarData> data, std::share
     total_weight += sample->weight;
   }
 
-  return (total_weight);
+  return total_weight;
 }
 
 double PlanarScanner::calcLikelihoodFieldModel(std::shared_ptr<PlanarData> data, std::shared_ptr<PFSampleSet> set)
@@ -368,7 +368,7 @@ double PlanarScanner::calcLikelihoodFieldModel(std::shared_ptr<PlanarData> data,
     total_weight += sample->weight;
   }
 
-  return (total_weight);
+  return total_weight;
 }
 
 double PlanarScanner::calcLikelihoodFieldModelProb(std::shared_ptr<PlanarData> data, std::shared_ptr<PFSampleSet> set)
@@ -581,7 +581,7 @@ double PlanarScanner::calcLikelihoodFieldModelProb(std::shared_ptr<PlanarData> d
 
   delete[] obs_count;
   delete[] obs_mask;
-  return (total_weight);
+  return total_weight;
 }
 
 double PlanarScanner::applyGompertz(double p)
@@ -687,7 +687,7 @@ double PlanarScanner::calcLikelihoodFieldModelGompertz(std::shared_ptr<PlanarDat
     total_weight += sample->weight;
   }
 
-  return (total_weight);
+  return total_weight;
 }
 
 void PlanarScanner::reallocTempData(int new_max_samples, int new_max_obs)
