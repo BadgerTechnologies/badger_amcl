@@ -1,6 +1,6 @@
-<package>
+<package format="2">
     <name>amcl</name>
-    <version>1.14.0</version>
+    <version>1.0.0</version>
     <description>
         <p>
             amcl is a probabilistic localization system for a robot moving in
@@ -12,44 +12,35 @@
             This node is derived, with thanks, from Andrew Howard's excellent
             'amcl' Player driver.
         </p>
+        <p>
+            This version is a fork from the amcl repository
+            http://wiki.ros.org/amcl v1.14.0 and is written and maintained by
+            Badger Technologies.
+        </p>
     </description>
     <url>http://wiki.ros.org/amcl</url>
     <author>Brian P. Gerkey</author>
     <author>contradict@gmail.com</author>
-    <maintainer email="davidvlu@gmail.com">David V. Lu!!</maintainer>
-    <maintainer email="mferguson@fetchrobotics.com">Michael Ferguson</maintainer>
+    <maintainer email="tylerbuchman@jabil.com">Tyler Buchman</maintainer>
     <license>LGPL</license>
 
     <buildtool_depend>catkin</buildtool_depend>
 
-    <build_depend>rosbag</build_depend>
-    <build_depend>dynamic_reconfigure</build_depend>
+    <depend>rosbag</depend>
+    <depend>dynamic_reconfigure</depend>
+    <depend>nav_msgs</depend>
+    <depend>roscpp</depend>
+    <depend>tf</depend>
+    <depend>badger_file_lib</depend>
+    <depend>yaml-cpp</depend>
+    <depend>octomap</depend>
+    <depend>octomap_ros</depend>
+    <depend>octomap_msgs</depend>
+    <depend>pcl_ros</depend>
+    <depend>eigen_conversions</depend>
     <build_depend>message_filters</build_depend>
-    <build_depend>nav_msgs</build_depend>
-    <build_depend>roscpp</build_depend>
     <build_depend>rostest</build_depend>
     <build_depend>std_srvs</build_depend>
-    <build_depend>tf</build_depend>
-    <build_depend>badger_file_lib</build_depend>
-    <build_depend>yaml-cpp</build_depend>
-    <build_depend>octomap</build_depend>
-    <build_depend>octomap_ros</build_depend>
-    <build_depend>octomap_msgs</build_depend>
-    <build_depend>pcl_ros</build_depend>
-    <build_depend>eigen_conversions</build_depend>
-
-    <run_depend>rosbag</run_depend>
-    <run_depend>roscpp</run_depend>
-    <run_depend>dynamic_reconfigure</run_depend>
-    <run_depend>tf</run_depend>
-    <run_depend>nav_msgs</run_depend>
-    <run_depend>badger_file_lib</run_depend>
-    <run_depend>yaml-cpp</run_depend>
-    <run_depend>octomap</run_depend>
-    <run_depend>octomap_ros</run_depend>
-    <run_depend>octomap_msgs</run_depend>
-    <run_depend>pcl_ros</run_depend>
-    <run_depend>eigen_conversions</run_depend>
 
     <test_depend>map_server</test_depend>
 </package>
