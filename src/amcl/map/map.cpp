@@ -40,20 +40,17 @@ Map::~Map()
 {
 }
 
-double
-Map::getScale()
+double Map::getScale()
 {
   return scale_;
 }
 
-void
-Map::setScale(double scale)
+void Map::setScale(double scale)
 {
   scale_ = scale;
 }
 
-bool
-Map::isCSpaceCreated()
+bool Map::isCSpaceCreated()
 {
   return cspace_created_;
 }

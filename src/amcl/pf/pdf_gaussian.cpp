@@ -33,7 +33,6 @@
 
 using namespace amcl;
 
-
 /**************************************************************************
  * Gaussian
  *************************************************************************/
@@ -55,8 +54,7 @@ PDFGaussian::PDFGaussian(PFVector x, PFMatrix cx)
 }
 
 // Generate a sample from the the pdf.
-PFVector
-PDFGaussian::sample()
+PFVector PDFGaussian::sample()
 {
   int i, j;
   PFVector r;
@@ -82,19 +80,24 @@ PDFGaussian::sample()
 // deviation sigma.
 // We use the polar form of the Box-Muller transformation, explained here:
 //   http://www.taygeta.com/random/gaussian.html
-double
-PDFGaussian::draw(double sigma)
+double PDFGaussian::draw(double sigma)
 {
   double x1, x2, w, r;
 
   do
   {
-    do { r = drand48(); } while (r==0.0);
+    do
+    {
+      r = drand48();
+    } while (r == 0.0);
     x1 = 2.0 * r - 1.0;
-    do { r = drand48(); } while (r==0.0);
+    do
+    {
+      r = drand48();
+    } while (r == 0.0);
     x2 = 2.0 * r - 1.0;
-    w = x1*x1 + x2*x2;
-  } while(w > 1.0 || w==0.0);
+    w = x1 * x1 + x2 * x2;
+  } while (w > 1.0 || w == 0.0);
 
-  return(sigma * x2 * sqrt(-2.0*log(w)/w));
+  return (sigma * x2 * sqrt(-2.0 * log(w) / w));
 }

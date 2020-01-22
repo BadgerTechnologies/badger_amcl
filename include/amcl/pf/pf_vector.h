@@ -29,48 +29,45 @@
 
 namespace amcl
 {
-  
 // The basic vector
 class PFVector
 {
-  public:
-    double v[3];
+public:
+  double v[3];
 
-    PFVector();
+  PFVector();
 
-    // Check for NAN or INF in any component
-    bool isFinite();
+  // Check for NAN or INF in any component
+  bool isFinite();
 
-    // Simple vector addition
-    static PFVector pfVectorAdd(PFVector a, PFVector b);
+  // Simple vector addition
+  static PFVector pfVectorAdd(PFVector a, PFVector b);
 
-    // Simple vector subtraction
-    static PFVector pfVectorSub(PFVector a, PFVector b);
+  // Simple vector subtraction
+  static PFVector pfVectorSub(PFVector a, PFVector b);
 
-    // Transform from local to global coords (a + b)
-    static PFVector pfVectorCoordAdd(PFVector a, PFVector b);
+  // Transform from local to global coords (a + b)
+  static PFVector pfVectorCoordAdd(PFVector a, PFVector b);
 
-    // Transform from global to local coords (a - b)
-    static PFVector pfVectorCoordSub(PFVector a, PFVector b);
+  // Transform from global to local coords (a - b)
+  static PFVector pfVectorCoordSub(PFVector a, PFVector b);
 };
-
 
 // The basic matrix
 class PFMatrix
 {
-  public:
-    double m[3][3];
-    
-    PFMatrix();
+public:
+  double m[3][3];
 
-    // Check for NAN or INF in any component
-    bool isFinite();
+  PFMatrix();
 
-    // Decompose a covariance matrix [a] into a rotation matrix [r] and a
-    // diagonal matrix [d] such that a = r * d * r^T.
-    void decompose(PFMatrix *r, PFMatrix *d);
+  // Check for NAN or INF in any component
+  bool isFinite();
+
+  // Decompose a covariance matrix [a] into a rotation matrix [r] and a
+  // diagonal matrix [d] such that a = r * d * r^T.
+  void decompose(PFMatrix* r, PFMatrix* d);
 };
-
 }
 
 #endif

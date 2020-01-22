@@ -32,34 +32,31 @@
 
 namespace amcl
 {
-
 class Map
 {
-  public:
-    Map();
-    ~Map();
-    // Convert from map index to world coords
-    virtual void convertMapToWorld(const std::vector<int> &map_coords,
-                                   std::vector<double> *world_coords) = 0;
-    // Convert from world coords to map coords
-    virtual void convertWorldToMap(const std::vector<double> &world_coords,
-                                   std::vector<int> *map_coords) = 0;
-    // Test to see if the given map coords lie within the absolute map bounds.
-    virtual bool isValid(std::vector<int> coords) = 0;
-    virtual std::vector<int> getSize() = 0;
-    virtual std::vector<double> getOrigin() = 0;
-    virtual void setOrigin(std::vector<double> _origin) = 0;
-    bool isCSpaceCreated();
-    double getScale();
-    void setScale(double _scale);
-  protected:
-    double scale_;
-    // Max distance at which we care about obstacles, for constructing
-    // likelihood field
-    double max_occ_dist_;
-    std::atomic<bool> cspace_created_;
-};
+public:
+  Map();
+  ~Map();
+  // Convert from map index to world coords
+  virtual void convertMapToWorld(const std::vector<int>& map_coords, std::vector<double>* world_coords) = 0;
+  // Convert from world coords to map coords
+  virtual void convertWorldToMap(const std::vector<double>& world_coords, std::vector<int>* map_coords) = 0;
+  // Test to see if the given map coords lie within the absolute map bounds.
+  virtual bool isValid(std::vector<int> coords) = 0;
+  virtual std::vector<int> getSize() = 0;
+  virtual std::vector<double> getOrigin() = 0;
+  virtual void setOrigin(std::vector<double> _origin) = 0;
+  bool isCSpaceCreated();
+  double getScale();
+  void setScale(double _scale);
 
+protected:
+  double scale_;
+  // Max distance at which we care about obstacles, for constructing
+  // likelihood field
+  double max_occ_dist_;
+  std::atomic<bool> cspace_created_;
+};
 }
 
 #endif

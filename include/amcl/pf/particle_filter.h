@@ -35,9 +35,7 @@
 
 namespace amcl
 {
-
-typedef enum
-{
+typedef enum {
   PF_RESAMPLE_MULTINOMIAL,
   PF_RESAMPLE_SYSTEMATIC,
 } PFResampleModelType;
@@ -96,104 +94,101 @@ class SensorData;
 
 // Function prototype for the initialization model; generates a sample pose from
 // an appropriate distribution.
-typedef PFVector (*PFInitModelFnPtr) (Node *init_data);
+typedef PFVector (*PFInitModelFnPtr)(Node* init_data);
 
 // Function prototype for the sensor model; determines the probability
 // for the given set of sample poses.
-typedef double (*PFSensorModelFnPtr) (std::shared_ptr<SensorData> sensor_data,
-                                      std::shared_ptr<PFSampleSet> set);
+typedef double (*PFSensorModelFnPtr)(std::shared_ptr<SensorData> sensor_data, std::shared_ptr<PFSampleSet> set);
 
 // Information for an entire filter
 class ParticleFilter
 {
-  public:
-    // Create a new filter
-    ParticleFilter(int min_samples, int max_samples, double alpha_slow,
-                   double alpha_fast, PFInitModelFnPtr random_pose_fn,
-                   Node *random_pose_data);
+public:
+  // Create a new filter
+  ParticleFilter(int min_samples, int max_samples, double alpha_slow, double alpha_fast,
+                 PFInitModelFnPtr random_pose_fn, Node* random_pose_data);
 
-    // Set the resample model
-    void setResampleModel(PFResampleModelType resample_model);
+  // Set the resample model
+  void setResampleModel(PFResampleModelType resample_model);
 
-    double resampleSystematic(double w_diff);
+  double resampleSystematic(double w_diff);
 
-    double resampleMultinomial(double w_diff);
+  double resampleMultinomial(double w_diff);
 
-    // Initialize the filter using a guassian
-    void init(PFVector mean, PFMatrix cov);
+  // Initialize the filter using a guassian
+  void init(PFVector mean, PFMatrix cov);
 
-    // Initialize the filter using some model
-    void initModel(PFInitModelFnPtr init_fn, Node *init_data);
+  // Initialize the filter using some model
+  void initModel(PFInitModelFnPtr init_fn, Node* init_data);
 
-    // Update the filter with some new sensor observation
-    void updateSensor(PFSensorModelFnPtr sensor_fn, std::shared_ptr<SensorData> sensor_data);
+  // Update the filter with some new sensor observation
+  void updateSensor(PFSensorModelFnPtr sensor_fn, std::shared_ptr<SensorData> sensor_data);
 
-    // Resample the distribution
-    void updateResample();
+  // Resample the distribution
+  void updateResample();
 
-    // Compute the CEP statistics (mean and variance).
-    void getCepStats(PFVector *mean, double *var);
+  // Compute the CEP statistics (mean and variance).
+  void getCepStats(PFVector* mean, double* var);
 
-    // Compute the statistics for a particular cluster.  Returns false if
-    // there is no such cluster.
-    bool getClusterStats(int cluster, double *weight, PFVector *mean, PFMatrix *cov);
+  // Compute the statistics for a particular cluster.  Returns false if
+  // there is no such cluster.
+  bool getClusterStats(int cluster, double* weight, PFVector* mean, PFMatrix* cov);
 
-    //calculate if the particle filter has converged -
-    //and sets the converged flag in the current set and the pf
-    bool updateConverged();
+  // calculate if the particle filter has converged -
+  // and sets the converged flag in the current set and the pf
+  bool updateConverged();
 
-    //sets the current set and pf converged values to zero
-    void initConverged();
+  // sets the current set and pf converged values to zero
+  void initConverged();
 
-    // sets population size parameters
-    void setPopulationSizeParameters(double pop_err, double pop_z);
+  // sets population size parameters
+  void setPopulationSizeParameters(double pop_err, double pop_z);
 
-    // sets decay rates for running averages
-    void setDecayRates(double alpha_slow, double alpha_fast);
+  // sets decay rates for running averages
+  void setDecayRates(double alpha_slow, double alpha_fast);
 
-    // gets pointer to current sample set
-    std::shared_ptr<PFSampleSet> getCurrentSet();
+  // gets pointer to current sample set
+  std::shared_ptr<PFSampleSet> getCurrentSet();
 
-    // getter and setter for whether the particle filter has converged
-    bool isConverged();
-    void setConverged(bool converged);
+  // getter and setter for whether the particle filter has converged
+  bool isConverged();
+  void setConverged(bool converged);
 
-  private:
-    // Compute the required number of samples, given that there are k bins
-    // with samples in them.
-    int resampleLimit(int k);
+private:
+  // Compute the required number of samples, given that there are k bins
+  // with samples in them.
+  int resampleLimit(int k);
 
-    // Re-compute the cluster statistics for a sample set
-    void clusterStats(std::shared_ptr<PFSampleSet> sample_set);
+  // Re-compute the cluster statistics for a sample set
+  void clusterStats(std::shared_ptr<PFSampleSet> sample_set);
 
-    PFResampleModelType resample_model_;
+  PFResampleModelType resample_model_;
 
-    // This min and max number of samples
-    int min_samples_, max_samples_;
+  // This min and max number of samples
+  int min_samples_, max_samples_;
 
-    // Running averages, slow and fast, of likelihood
-    double w_slow_, w_fast_;
+  // Running averages, slow and fast, of likelihood
+  double w_slow_, w_fast_;
 
-    // Function used to draw random pose samples
-    PFInitModelFnPtr random_pose_fn_;
-    Node *random_pose_data_;
+  // Function used to draw random pose samples
+  PFInitModelFnPtr random_pose_fn_;
+  Node* random_pose_data_;
 
-    double dist_threshold_; //distance threshold in each axis over which the pf is considered to not be converged
+  double dist_threshold_;  // distance threshold in each axis over which the pf is considered to not be converged
 
-    // Population size parameters
-    double pop_err_, pop_z_;
+  // Population size parameters
+  double pop_err_, pop_z_;
 
-    // Decay rates for running averages
-    double alpha_slow_, alpha_fast_;
+  // Decay rates for running averages
+  double alpha_slow_, alpha_fast_;
 
-    // The sample sets.  We keep two sets and use [current_set]
-    // to identify the active set.
-    int current_set_;
-    std::vector<std::shared_ptr<PFSampleSet>> sets_;
+  // The sample sets.  We keep two sets and use [current_set]
+  // to identify the active set.
+  int current_set_;
+  std::vector<std::shared_ptr<PFSampleSet>> sets_;
 
-    bool converged_;
+  bool converged_;
 };
-
 }
 
 #endif

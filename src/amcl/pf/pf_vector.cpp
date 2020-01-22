@@ -42,8 +42,7 @@ PFVector::PFVector()
 }
 
 // Check for NAN or INF in any component
-bool
-PFVector::isFinite()
+bool PFVector::isFinite()
 {
   int i;
   for (i = 0; i < 3; i++)
@@ -53,8 +52,7 @@ PFVector::isFinite()
 }
 
 // Simple vector addition
-PFVector
-PFVector::pfVectorAdd(PFVector a, PFVector b)
+PFVector PFVector::pfVectorAdd(PFVector a, PFVector b)
 {
   PFVector c;
   c.v[0] = a.v[0] + b.v[0];
@@ -64,8 +62,7 @@ PFVector::pfVectorAdd(PFVector a, PFVector b)
 }
 
 // Simple vector subtraction
-PFVector
-PFVector::pfVectorSub(PFVector a, PFVector b)
+PFVector PFVector::pfVectorSub(PFVector a, PFVector b)
 {
   PFVector c;
   c.v[0] = a.v[0] - b.v[0];
@@ -75,8 +72,7 @@ PFVector::pfVectorSub(PFVector a, PFVector b)
 }
 
 // Transform from local to global coords (a + b)
-PFVector
-PFVector::pfVectorCoordAdd(PFVector a, PFVector b)
+PFVector PFVector::pfVectorCoordAdd(PFVector a, PFVector b)
 {
   PFVector c;
   c.v[0] = b.v[0] + a.v[0] * cos(b.v[2]) - a.v[1] * sin(b.v[2]);
@@ -87,8 +83,7 @@ PFVector::pfVectorCoordAdd(PFVector a, PFVector b)
 }
 
 // Transform from global to local coords (a - b)
-PFVector
-PFVector::pfVectorCoordSub(PFVector a, PFVector b)
+PFVector PFVector::pfVectorCoordSub(PFVector a, PFVector b)
 {
   PFVector c;
   c.v[0] = +(a.v[0] - b.v[0]) * cos(b.v[2]) + (a.v[1] - b.v[1]) * sin(b.v[2]);
@@ -109,8 +104,7 @@ PFMatrix::PFMatrix()
 }
 
 // Check for NAN or INF in any component
-bool
-PFMatrix::isFinite()
+bool PFMatrix::isFinite()
 {
   int i, j;
 
@@ -123,8 +117,7 @@ PFMatrix::isFinite()
 
 // Decompose a covariance matrix [a] into a rotation matrix [r] and a diagonal
 // matrix [d] such that a = r d r^T.
-void
-PFMatrix::decompose(PFMatrix *r, PFMatrix *d)
+void PFMatrix::decompose(PFMatrix* r, PFMatrix* d)
 {
   int i, j;
 

@@ -32,45 +32,42 @@
 
 namespace amcl
 {
-
 // Forward declarations
 class SensorData;
 
 // Base class for all AMCL sensors
 class Sensor
 {
-  public:
-    // Default constructor
-    Sensor();
+public:
+  // Default constructor
+  Sensor();
 
-    // Default destructor
-    virtual ~Sensor();
+  // Default destructor
+  virtual ~Sensor();
 
-    // Update the filter based on the action model.  Returns true if the filter
-    // has been updated.
-    virtual bool updateAction(std::shared_ptr<ParticleFilter> pf,
-                              std::shared_ptr<SensorData> data);
+  // Update the filter based on the action model.  Returns true if the filter
+  // has been updated.
+  virtual bool updateAction(std::shared_ptr<ParticleFilter> pf, std::shared_ptr<SensorData> data);
 
-    // Initialize the filter based on the sensor model.  Returns true if the
-    // filter has been initialized.
-    virtual bool initSensor(std::shared_ptr<ParticleFilter> pf,
-                            std::shared_ptr<SensorData> data);
+  // Initialize the filter based on the sensor model.  Returns true if the
+  // filter has been initialized.
+  virtual bool initSensor(std::shared_ptr<ParticleFilter> pf, std::shared_ptr<SensorData> data);
 
-    // Update the filter based on the sensor model.  Returns true if the
-    // filter has been updated.
-    virtual bool updateSensor(std::shared_ptr<ParticleFilter> pf,
-                              std::shared_ptr<SensorData> data);
+  // Update the filter based on the sensor model.  Returns true if the
+  // filter has been updated.
+  virtual bool updateSensor(std::shared_ptr<ParticleFilter> pf, std::shared_ptr<SensorData> data);
 };
 
 // Base class for all AMCL sensor measurements
 class SensorData
 {
   // Pointer to sensor that generated the data
-  public:
-    virtual ~SensorData() {}
-    std::shared_ptr<Sensor> sensor_;
+public:
+  virtual ~SensorData()
+  {
+  }
+  std::shared_ptr<Sensor> sensor_;
 };
-
 }
 
 #endif

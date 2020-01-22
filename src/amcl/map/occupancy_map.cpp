@@ -45,63 +45,53 @@ OccupancyMap::OccupancyMap()
   cdm_ = nullptr;
 }
 
-std::vector<double>
-OccupancyMap::getOrigin()
+std::vector<double> OccupancyMap::getOrigin()
 {
-  return {origin_x_, origin_y_};
+  return { origin_x_, origin_y_ };
 }
 
-void
-OccupancyMap::setOrigin(std::vector<double> origin)
+void OccupancyMap::setOrigin(std::vector<double> origin)
 {
   origin_x_ = origin[0];
   origin_y_ = origin[1];
 }
 
-std::vector<int>
-OccupancyMap::getSize()
+std::vector<int> OccupancyMap::getSize()
 {
-  return {size_x_, size_y_};
+  return { size_x_, size_y_ };
 }
 
-void
-OccupancyMap::setSize(std::vector<int> size_vec)
+void OccupancyMap::setSize(std::vector<int> size_vec)
 {
   size_x_ = size_vec[0];
   size_y_ = size_vec[1];
 }
 
-double
-OccupancyMap::getMaxOccDist()
+double OccupancyMap::getMaxOccDist()
 {
   return max_occ_dist_;
 }
 
-void
-OccupancyMap::initCells(int num)
+void OccupancyMap::initCells(int num)
 {
   cells_.resize(num);
 }
 
-void
-OccupancyMap::setCellOccState(int index, int8_t state)
+void OccupancyMap::setCellOccState(int index, int8_t state)
 {
   cells_[index].occ_state = state;
 }
 
-float
-OccupancyMap::getOccDist(int i, int j)
+float OccupancyMap::getOccDist(int i, int j)
 {
-  if(isValid({i, j}))
+  if (isValid({ i, j }))
   {
     return distances_[computeCellIndex(i, j)];
   }
   return max_occ_dist_;
 }
 
-void
-OccupancyMap::convertMapToWorld(const std::vector<int> &map_coords,
-                                std::vector<double> *world_coords)
+void OccupancyMap::convertMapToWorld(const std::vector<int>& map_coords, std::vector<double>* world_coords)
 {
   std::vector<double> return_vals;
   int i = map_coords[0];
@@ -110,9 +100,7 @@ OccupancyMap::convertMapToWorld(const std::vector<int> &map_coords,
   (*world_coords)[1] = origin_y_ + (j - size_y_ / 2) * scale_;
 }
 
-void
-OccupancyMap::convertWorldToMap(const std::vector<double> &world_coords,
-                                std::vector<int> *map_coords)
+void OccupancyMap::convertWorldToMap(const std::vector<double>& world_coords, std::vector<int>* map_coords)
 {
   std::vector<int> return_vals;
   double x = world_coords[0];
@@ -121,22 +109,19 @@ OccupancyMap::convertWorldToMap(const std::vector<double> &world_coords,
   (*map_coords)[1] = floor((y - origin_y_) / scale_ + 0.5) + size_y_ / 2;
 }
 
-bool
-OccupancyMap::isValid(std::vector<int> coords)
+bool OccupancyMap::isValid(std::vector<int> coords)
 {
   int i = coords[0];
   int j = coords[1];
   return (i >= 0) && (i < size_x_) && (j >= 0) && (j < size_y_);
 }
 
-unsigned int
-OccupancyMap::computeCellIndex(int i, int j)
+unsigned int OccupancyMap::computeCellIndex(int i, int j)
 {
   return i + j * unsigned(size_x_);
 }
 
-int8_t
-OccupancyMap::getOccState(int i, int j)
+int8_t OccupancyMap::getOccState(int i, int j)
 {
   return cells_[computeCellIndex(i, j)].occ_state;
 }
