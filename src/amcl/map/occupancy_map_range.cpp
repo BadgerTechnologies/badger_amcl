@@ -1,5 +1,4 @@
 /*
- *  Player - One Hell of a Robot Server
  *  Copyright (C) 2000  Brian Gerkey   &  Kasper Stoy
  *                      gerkey@usc.edu    kaspers@robotics.usc.edu
  *
@@ -22,7 +21,7 @@
  * Desc: Range routines
  * Author: Andrew Howard
  * Maintainter: Tyler Buchman (tyler_buchman@jabil.com)
-**************************************************************************/
+ *************************************************************************/
 
 #include "map/occupancy_map.h"
 
@@ -87,12 +86,12 @@ double OccupancyMap::calcRange(double ox, double oy, double oa, double max_range
   if (steep)
   {
     if (!isValid({ y, x }) || cells_[computeCellIndex(y, x)].occ_state > -1)
-      return sqrt((x - x0) * (x - x0) + (y - y0) * (y - y0)) * scale_;
+      return sqrt((x - x0) * (x - x0) + (y - y0) * (y - y0)) * resolution_;
   }
   else
   {
     if (!isValid({ x, y }) || cells_[computeCellIndex(x, y)].occ_state > -1)
-      return sqrt((x - x0) * (x - x0) + (y - y0) * (y - y0)) * scale_;
+      return sqrt((x - x0) * (x - x0) + (y - y0) * (y - y0)) * resolution_;
   }
 
   while (x != (x1 + xstep * 1))
@@ -108,12 +107,12 @@ double OccupancyMap::calcRange(double ox, double oy, double oa, double max_range
     if (steep)
     {
       if (!isValid({ y, x }) || cells_[computeCellIndex(y, x)].occ_state > -1)
-        return sqrt((x - x0) * (x - x0) + (y - y0) * (y - y0)) * scale_;
+        return sqrt((x - x0) * (x - x0) + (y - y0) * (y - y0)) * resolution_;
     }
     else
     {
       if (!isValid({ x, y }) || cells_[computeCellIndex(x, y)].occ_state > -1)
-        return sqrt((x - x0) * (x - x0) + (y - y0) * (y - y0)) * scale_;
+        return sqrt((x - x0) * (x - x0) + (y - y0) * (y - y0)) * resolution_;
     }
   }
   return max_range;

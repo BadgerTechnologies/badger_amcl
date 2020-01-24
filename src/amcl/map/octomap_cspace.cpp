@@ -1,4 +1,6 @@
-/*  This library is free software; you can redistribute it and/or
+/*  Copyright (C) 2020 Badger Technologies, LLC
+ *
+ *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
  *  License as published by the Free Software Foundation; either
  *  version 2.1 of the License, or (at your option) any later version.
@@ -16,11 +18,10 @@
 /**************************************************************************
  * Desc: Global map (grid-based)
  * Author: Tyler Buchman (tyler_buchman@jabil.com)
-**************************************************************************/
+ *************************************************************************/
 
 #include "map/octomap.h"
 
-#include <math.h>
 #include <octomap/OcTreeKey.h>
 #include <octomap/OcTreeDataNode.h>
 #include <octomap/OcTreeNode.h>
@@ -28,6 +29,7 @@
 #include <stdlib.h>
 
 #include <algorithm>
+#include <cmath>
 
 using namespace amcl;
 
@@ -50,13 +52,13 @@ void OctoMap::updateCSpace()
 
   ROS_INFO("Updating OctoMap CSpace");
   std::priority_queue<CellData> Q;
-  octomap::OcTree* marked = new octomap::OcTree(scale_);
+  octomap::OcTree* marked = new octomap::OcTree(resolution_);
 
-  distances_ = std::unique_ptr<octomap::OcTreeDistance>(new octomap::OcTreeDistance(scale_, max_occ_dist_));
+  distances_ = std::unique_ptr<octomap::OcTreeDistance>(new octomap::OcTreeDistance(resolution_, max_occ_dist_));
 
-  if (!cdm_ || (cdm_->scale_ != scale_) || (std::fabs(cdm_->max_dist_ - max_occ_dist_) > EPSILON_DOUBLE))
+  if (!cdm_ || (cdm_->resolution_ != resolution_) || (std::fabs(cdm_->max_dist_ - max_occ_dist_) > EPSILON))
   {
-    cdm_ = std::unique_ptr<CachedDistanceMap>(new CachedDistanceMap(scale_, max_occ_dist_));
+    cdm_ = std::unique_ptr<CachedDistanceMap>(new CachedDistanceMap(resolution_, max_occ_dist_));
   }
 
   // Enqueue all the obstacle cells
@@ -77,9 +79,9 @@ void OctoMap::updateCSpace()
       j = map_coords[1];
       k = map_coords[2];
       setOccDist(i, j, k, 0.0);
-      cell.src_i_ = cell.i_ = i;
-      cell.src_j_ = cell.j_ = j;
-      cell.src_k_ = cell.k_ = k;
+      cell.src_i = cell.i = i;
+      cell.src_j = cell.j = j;
+      cell.src_k = cell.k = k;
       marked->updateNode(i, j, k, true);
       Q.push(cell);
     }
@@ -96,53 +98,53 @@ void OctoMap::updateCSpace()
   while (!Q.empty())
   {
     CellData current_cell = Q.top();
-    if (current_cell.i_ > cropped_min_cells_[0])
+    if (current_cell.i > cropped_min_cells_[0])
     {
-      int i = current_cell.i_ - 1, j = current_cell.j_, k = current_cell.k_;
+      int i = current_cell.i - 1, j = current_cell.j, k = current_cell.k;
       octomap::OcTreeKey key(i, j, k);
       octomap::OcTreeNode* node = marked->search(key);
       if (node == nullptr or not node->getOccupancy() > occThresh)
-        marked->updateNode(key, enqueue(i, j, k, current_cell.src_i_, current_cell.src_j_, current_cell.src_k_, Q));
+        marked->updateNode(key, enqueue(i, j, k, current_cell.src_i, current_cell.src_j, current_cell.src_k, Q));
     }
-    if (current_cell.j_ > cropped_min_cells_[1])
+    if (current_cell.j > cropped_min_cells_[1])
     {
-      int i = current_cell.i_, j = current_cell.j_ - 1, k = current_cell.k_;
+      int i = current_cell.i, j = current_cell.j - 1, k = current_cell.k;
       octomap::OcTreeKey key(i, j, k);
       octomap::OcTreeNode* node = marked->search(key);
       if (node == nullptr or not node->getOccupancy() > occThresh)
-        marked->updateNode(key, enqueue(i, j, k, current_cell.src_i_, current_cell.src_j_, current_cell.src_k_, Q));
+        marked->updateNode(key, enqueue(i, j, k, current_cell.src_i, current_cell.src_j, current_cell.src_k, Q));
     }
-    if (current_cell.k_ > cropped_min_cells_[2])
+    if (current_cell.k > cropped_min_cells_[2])
     {
-      int i = current_cell.i_, j = current_cell.j_, k = current_cell.k_ - 1;
+      int i = current_cell.i, j = current_cell.j, k = current_cell.k - 1;
       octomap::OcTreeKey key(i, j, k);
       octomap::OcTreeNode* node = marked->search(key);
       if (node == nullptr or not node->getOccupancy() > occThresh)
-        marked->updateNode(key, enqueue(i, j, k, current_cell.src_i_, current_cell.src_j_, current_cell.src_k_, Q));
+        marked->updateNode(key, enqueue(i, j, k, current_cell.src_i, current_cell.src_j, current_cell.src_k, Q));
     }
-    if ((int)current_cell.i_ < cropped_max_cells_[0] - 1)
+    if ((int)current_cell.i < cropped_max_cells_[0] - 1)
     {
-      int i = current_cell.i_ + 1, j = current_cell.j_, k = current_cell.k_;
+      int i = current_cell.i + 1, j = current_cell.j, k = current_cell.k;
       octomap::OcTreeKey key(i, j, k);
       octomap::OcTreeNode* node = marked->search(key);
       if (node == nullptr or not node->getOccupancy() > occThresh)
-        marked->updateNode(key, enqueue(i, j, k, current_cell.src_i_, current_cell.src_j_, current_cell.src_k_, Q));
+        marked->updateNode(key, enqueue(i, j, k, current_cell.src_i, current_cell.src_j, current_cell.src_k, Q));
     }
-    if ((int)current_cell.j_ < cropped_max_cells_[1] - 1)
+    if ((int)current_cell.j < cropped_max_cells_[1] - 1)
     {
-      int i = current_cell.i_, j = current_cell.j_ + 1, k = current_cell.k_;
+      int i = current_cell.i, j = current_cell.j + 1, k = current_cell.k;
       octomap::OcTreeKey key(i, j, k);
       octomap::OcTreeNode* node = marked->search(key);
       if (node == nullptr or not node->getOccupancy() > occThresh)
-        marked->updateNode(key, enqueue(i, j, k, current_cell.src_i_, current_cell.src_j_, current_cell.src_k_, Q));
+        marked->updateNode(key, enqueue(i, j, k, current_cell.src_i, current_cell.src_j, current_cell.src_k, Q));
     }
-    if ((int)current_cell.k_ < cropped_max_cells_[2] - 1)
+    if ((int)current_cell.k < cropped_max_cells_[2] - 1)
     {
-      int i = current_cell.i_, j = current_cell.j_, k = current_cell.k_ + 1;
+      int i = current_cell.i, j = current_cell.j, k = current_cell.k + 1;
       octomap::OcTreeKey key(i, j, k);
       octomap::OcTreeNode* node = marked->search(key);
       if (node == nullptr or not node->getOccupancy() > occThresh)
-        marked->updateNode(key, enqueue(i, j, k, current_cell.src_i_, current_cell.src_j_, current_cell.src_k_, Q));
+        marked->updateNode(key, enqueue(i, j, k, current_cell.src_i, current_cell.src_j, current_cell.src_k, Q));
     }
     Q.pop();
   }
@@ -162,15 +164,15 @@ bool OctoMap::enqueue(int i, int j, int k, int src_i, int src_j, int src_k, std:
   if (distance > cdm_->cell_radius_)
     return false;
 
-  setOccDist(i, j, k, distance * scale_);
+  setOccDist(i, j, k, distance * resolution_);
 
   CellData cell = CellData(*this);
-  cell.i_ = i;
-  cell.j_ = j;
-  cell.k_ = k;
-  cell.src_i_ = src_i;
-  cell.src_j_ = src_j;
-  cell.src_k_ = src_k;
+  cell.i = i;
+  cell.j = j;
+  cell.k = k;
+  cell.src_i = src_i;
+  cell.src_j = src_j;
+  cell.src_k = src_k;
 
   Q.push(cell);
 
@@ -202,7 +204,7 @@ double OctoMap::getOccDist(int i, int j, int k)
 double OctoMap::getOccDist(int i, int j)
 {
   double distance = max_occ_dist_;
-  for (int k = 0; k < lidar_height_ / scale_; k++)
+  for (int k = 0; k < lidar_height_ / resolution_; k++)
   {
     distance = std::min(distance, getOccDist(i, j, k));
   }

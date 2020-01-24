@@ -1,4 +1,6 @@
 /*
+ *  Copyright (C) 2020 Badger Technologies, LLC
+ *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
  *  License as published by the Free Software Foundation; either
@@ -14,15 +16,13 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
-///////////////////////////////////////////////////////////////////////////
-//
-// Desc: AMCL Node for 3D AMCL
-// Author: Tyler Buchman (tyler_buchman@jabil.com)
-//
-///////////////////////////////////////////////////////////////////////////
+/* *************************************************************
+ * Desc: AMCL Node for 3D AMCL
+ * Author: Tyler Buchman (tyler_buchman@jabil.com)
+ ***************************************************************/
 
-#ifndef AMCL_NODE_H
-#define AMCL_NODE_H
+#ifndef AMCL_NODE_NODE_H
+#define AMCL_NODE_NODE_H
 
 #include <boost/thread/mutex.hpp>
 #include <dynamic_reconfigure/server.h>
@@ -333,6 +333,6 @@ private:
   ros::Time last_planar_scan_received_ts_, last_point_cloud_scan_received_ts_;
   ros::Duration planar_scanner_check_interval_, point_cloud_scanner_check_interval_;
 };
-}
+}  // namespace amcl
 
-#endif
+#endif  // AMCL_NODE_NODE_H

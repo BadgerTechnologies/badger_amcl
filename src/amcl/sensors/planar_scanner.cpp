@@ -1,5 +1,4 @@
 /*
- *  Player - One Hell of a Robot Server
  *  Copyright (C) 2000  Brian Gerkey   &  Kasper Stoy
  *                      gerkey@usc.edu    kaspers@robotics.usc.edu
  *
@@ -18,20 +17,19 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
-///////////////////////////////////////////////////////////////////////////
-//
-// Desc: AMCL planar scanner routines
-// Author: Andrew Howard
-// Maintainer: Tyler Buchman (tyler_buchman@jabil.com)
-//
-///////////////////////////////////////////////////////////////////////////
+/***********************************************************************
+ * Desc: AMCL planar scanner routines
+ * Author: Andrew Howard
+ * Maintainer: Tyler Buchman (tyler_buchman@jabil.com)
+ ***********************************************************************/
 
 #include "sensors/planar_scanner.h"
 
-#include <math.h>
 #include <ros/assert.h>
 #include <ros/console.h>
 #include <stdlib.h>
+
+#include <cmath>
 
 using namespace amcl;
 

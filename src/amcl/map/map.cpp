@@ -1,5 +1,4 @@
 /*
- *  Player - One Hell of a Robot Server
  *  Copyright (C) 2000  Brian Gerkey   &  Kasper Stoy
  *                      gerkey@usc.edu    kaspers@robotics.usc.edu
  *
@@ -22,7 +21,7 @@
  * Desc: Global map (grid-based)
  * Author: Andrew Howard
  * Maintainter: Tyler Buchman (tyler_buchman@jabil.com)
-**************************************************************************/
+ ***********************************************************************/
 
 #include "map/map.h"
 
@@ -31,23 +30,13 @@ using namespace amcl;
 // Create a new map
 Map::Map()
 {
-  scale_ = 0;
+  resolution_ = 0;
   cspace_created_ = false;
 }
 
-// Destroy a map
-Map::~Map()
+void Map::setResolution(double resolution)
 {
-}
-
-double Map::getScale()
-{
-  return scale_;
-}
-
-void Map::setScale(double scale)
-{
-  scale_ = scale;
+  resolution_ = resolution;
 }
 
 bool Map::isCSpaceCreated()

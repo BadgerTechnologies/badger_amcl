@@ -1,5 +1,4 @@
 /*
- *  Player - One Hell of a Robot Server
  *  Copyright (C) 2000  Brian Gerkey   &  Kasper Stoy
  *                      gerkey@usc.edu    kaspers@robotics.usc.edu
  *
@@ -18,13 +17,11 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
-///////////////////////////////////////////////////////////////////////////
-//
-// Desc: AMCL sensor
-// Author: Andrew Howard
-// Maintainer: Tyler Buchman (tyler_buchman@jabil.com)
-//
-///////////////////////////////////////////////////////////////////////////
+/*************************************************************************
+ * Desc: AMCL sensor
+ * Author: Andrew Howard
+ * Maintainer: Tyler Buchman (tyler_buchman@jabil.com)
+ *************************************************************************/
 
 #include "sensors/sensor.h"
 

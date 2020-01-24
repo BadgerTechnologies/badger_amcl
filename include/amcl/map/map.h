@@ -1,5 +1,4 @@
 /*
- *  Player - One Hell of a Robot Server
  *  Copyright (C) 2000  Brian Gerkey   &  Kasper Stoy
  *                      gerkey@usc.edu    kaspers@robotics.usc.edu
  *
@@ -24,8 +23,8 @@
  * Mainainer: Tyler Buchman (tyler_buchman@jabil.com)
  **************************************************************************/
 
-#ifndef AMCL_MAP_H
-#define AMCL_MAP_H
+#ifndef AMCL_MAP_MAP_H
+#define AMCL_MAP_MAP_H
 
 #include <atomic>
 #include <vector>
@@ -36,27 +35,25 @@ class Map
 {
 public:
   Map();
-  ~Map();
   // Convert from map index to world coords
   virtual void convertMapToWorld(const std::vector<int>& map_coords, std::vector<double>* world_coords) = 0;
   // Convert from world coords to map coords
   virtual void convertWorldToMap(const std::vector<double>& world_coords, std::vector<int>* map_coords) = 0;
   // Test to see if the given map coords lie within the absolute map bounds.
-  virtual bool isValid(std::vector<int> coords) = 0;
+  virtual bool isValid(const std::vector<int>& coords) = 0;
   virtual std::vector<int> getSize() = 0;
   virtual std::vector<double> getOrigin() = 0;
-  virtual void setOrigin(std::vector<double> _origin) = 0;
-  bool isCSpaceCreated();
-  double getScale();
-  void setScale(double _scale);
+  virtual void setOrigin(const std::vector<double>& origin) = 0;
+  virtual bool isCSpaceCreated();
+  virtual void setResolution(double resolution);
 
 protected:
-  double scale_;
+  double resolution_;
   // Max distance at which we care about obstacles, for constructing
   // likelihood field
   double max_occ_dist_;
   std::atomic<bool> cspace_created_;
 };
-}
+}  // namespace amcl
 
-#endif
+#endif  // AMCL_MAP_MAP_H

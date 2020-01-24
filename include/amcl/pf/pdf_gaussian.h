@@ -1,5 +1,4 @@
 /*
- *  Player - One Hell of a Robot Server
  *  Copyright (C) 2000  Brian Gerkey   &  Kasper Stoy
  *                      gerkey@usc.edu    kaspers@robotics.usc.edu
  *
@@ -24,8 +23,8 @@
  * Maintainter: Tyler Buchman (tyler_buchman@jabil.com)
  *************************************************************************/
 
-#ifndef AMCL_PDF_GAUSSIAN_H
-#define AMCL_PDF_GAUSSIAN_H
+#ifndef AMCL_PF_PDF_GAUSSIAN_H
+#define AMCL_PF_PDF_GAUSSIAN_H
 
 #include "pf/pf_vector.h"
 
@@ -60,6 +59,6 @@ private:
   PFMatrix cr_;
   PFVector cd_;
 };
-}
+}  // namespace amcl
 
-#endif
+#endif  // AMCL_PF_PDF_GAUSSIAN_H

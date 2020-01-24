@@ -6,8 +6,8 @@
 /* Eigen-decomposition for symmetric 3x3 real matrices.
    Public domain, copied from the public domain Java library JAMA. */
 
-#ifndef AMCL_EIG3_H
-#define AMCL_EIG3_H
+#ifndef AMCL_PF_EIG3_H
+#define AMCL_PF_EIG3_H
 
 /* Symmetric matrix A => eigenvectors in columns of V, corresponding
    eigenvalues in d. */
@@ -28,6 +28,6 @@ private:
   static void tred2(std::vector<std::vector<double>> V, std::vector<double> d, std::vector<double> e);
   static void tql2(std::vector<std::vector<double>> V, std::vector<double> d, std::vector<double> e);
 };
-}
+}  // namespace amcl
 
-#endif
+#endif  // AMCL_PF_EIG3_H

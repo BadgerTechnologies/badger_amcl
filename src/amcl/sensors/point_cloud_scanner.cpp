@@ -1,6 +1,5 @@
 /*
- *  Player - One Hell of a Robot Server
- *  Copyright (C) 2000  Brian Gerkey et al.
+ *  Copyright (C) 2020 Badger Technologies, LLC
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -17,21 +16,20 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
-///////////////////////////////////////////////////////////////////////////
-//
-// Desc: Point Cloud Scanner sensor model for 3D AMCL
-// Author: Tyler Buchman (tyler_buchman@jabil.com)
-//
-///////////////////////////////////////////////////////////////////////////
+/*************************************************************************
+ * Desc: Point Cloud Scanner sensor model for 3D AMCL
+ * Author: Tyler Buchman (tyler_buchman@jabil.com)
+ *************************************************************************/
 
 #include "sensors/point_cloud_scanner.h"
 
-#include <math.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl_ros/transforms.h>
 #include <ros/assert.h>
 #include <ros/console.h>
 #include <tf/exceptions.h>
+
+#include <cmath>
 
 using namespace amcl;
 
