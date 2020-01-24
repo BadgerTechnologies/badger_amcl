@@ -1,4 +1,7 @@
-/*  This library is free software; you can redistribute it and/or
+/*
+ *  Copyright (C) 2020 Badger Technologies, LLC
+ *
+ *   This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
  *  License as published by the Free Software Foundation; either
  *  version 2.1 of the License, or (at your option) any later version.
@@ -16,13 +19,12 @@
 /**************************************************************************
  * Desc: Global map (grid-based)
  * Author: Tyler Buchman (tyler_buchman@jabil.com)
-**************************************************************************/
+ *************************************************************************/
 
 #include "map/octomap.h"
 
-#include <math.h>
-
 #include <algorithm>
+#include <cmath>
 
 using namespace amcl;
 
@@ -36,7 +38,7 @@ OctoMap::OctoMap(bool wait_for_occupancy_map)
   map_min_bounds_ = std::vector<double>(2);
   map_max_bounds_ = std::vector<double>(2);
   max_occ_dist_ = 0.0;
-  octree_ = std::make_shared<octomap::OcTree>(scale_);
+  octree_ = std::make_shared<octomap::OcTree>(resolution_);
   distances_ = nullptr;
   cdm_ = nullptr;
 }
@@ -49,9 +51,9 @@ void OctoMap::initFromOctree(std::shared_ptr<octomap::OcTree> octree, double lid
   // set size
   double x_meters, y_meters, z_meters;
   octree_->getMetricSize(x_meters, y_meters, z_meters);
-  full_cells_[0] = (int)ceil(x_meters / scale_);
-  full_cells_[1] = (int)ceil(y_meters / scale_);
-  full_cells_[2] = (int)ceil(z_meters / scale_);
+  full_cells_[0] = (int)ceil(x_meters / resolution_);
+  full_cells_[1] = (int)ceil(y_meters / resolution_);
+  full_cells_[2] = (int)ceil(z_meters / resolution_);
   double min_x, min_y, min_z, max_x, max_y, max_z;
   octree_->getMetricMin(min_x, min_y, min_z);
   octree_->getMetricMax(max_x, max_y, max_z);
@@ -67,7 +69,7 @@ std::vector<double> OctoMap::getOrigin()
   return origin_;
 }
 
-void OctoMap::setOrigin(std::vector<double> origin)
+void OctoMap::setOrigin(const std::vector<double>& origin)
 {
   origin_ = origin;
 }
@@ -91,12 +93,12 @@ void OctoMap::convertMapToWorld(const std::vector<int>& map_coords, std::vector<
   std::vector<double> return_vals;
   int i = map_coords[0];
   int j = map_coords[1];
-  (*world_coords)[0] = origin_[0] + i * scale_;
-  (*world_coords)[1] = origin_[1] + j * scale_;
+  (*world_coords)[0] = origin_[0] + i * resolution_;
+  (*world_coords)[1] = origin_[1] + j * resolution_;
   if (map_coords.size() > 2)
   {
     int k = map_coords[2];
-    (*world_coords)[2] = origin_[2] + k * scale_;
+    (*world_coords)[2] = origin_[2] + k * resolution_;
   }
 }
 
@@ -105,17 +107,17 @@ void OctoMap::convertWorldToMap(const std::vector<double>& world_coords, std::ve
 {
   double x = world_coords[0];
   double y = world_coords[1];
-  (*map_coords)[0] = floor((x - origin_[0]) / scale_ + 0.5);
-  (*map_coords)[1] = floor((y - origin_[1]) / scale_ + 0.5);
+  (*map_coords)[0] = floor((x - origin_[0]) / resolution_ + 0.5);
+  (*map_coords)[1] = floor((y - origin_[1]) / resolution_ + 0.5);
   if (world_coords.size() > 2)
   {
     double z = world_coords[2];
-    (*map_coords)[2] = floor((z - origin_[2]) / scale_ + 0.5);
+    (*map_coords)[2] = floor((z - origin_[2]) / resolution_ + 0.5);
   }
 }
 
 // returns true if all coordinates are within the represented map
-bool OctoMap::isValid(std::vector<int> coords)
+bool OctoMap::isValid(const std::vector<int>& coords)
 {
   int i = coords[0];
   int j = coords[1];

@@ -1,5 +1,4 @@
 /*
- *  Player - One Hell of a Robot Server
  *  Copyright (C) 2000  Brian Gerkey   &  Kasper Stoy
  *                      gerkey@usc.edu    kaspers@robotics.usc.edu
  *
@@ -22,7 +21,7 @@
  * Desc: Global map (grid-based)
  * Author: Andrew Howard
  * Maintainter: Tyler Buchman (tyler_buchman@jabil.com)
-**************************************************************************/
+ *************************************************************************/
 
 #include "map/occupancy_map.h"
 
@@ -42,13 +41,13 @@ bool OccupancyMap::enqueue(int i, int j, int src_i, int src_j, std::priority_que
   if (distance > cdm_->cell_radius_)
     return false;
 
-  setMapOccDist(i, j, distance * scale_);
+  setMapOccDist(i, j, distance * resolution_);
 
   CellData cell = CellData(this);
-  cell.i_ = i;
-  cell.j_ = j;
-  cell.src_i_ = src_i;
-  cell.src_j_ = src_j;
+  cell.i = i;
+  cell.j = j;
+  cell.src_i = src_i;
+  cell.src_j = src_j;
 
   Q.push(cell);
 
@@ -67,22 +66,22 @@ void OccupancyMap::updateCSpace(double max_occ_dist)
 
   max_occ_dist_ = max_occ_dist;
 
-  if (!cdm_ || (cdm_->scale_ != scale_) || (cdm_->max_dist_ != max_occ_dist_))
+  if (!cdm_ || (cdm_->resolution_ != resolution_) || (cdm_->max_dist_ != max_occ_dist_))
   {
-    cdm_ = std::unique_ptr<CachedDistanceMap>(new CachedDistanceMap(scale_, max_occ_dist_));
+    cdm_ = std::unique_ptr<CachedDistanceMap>(new CachedDistanceMap(resolution_, max_occ_dist_));
   }
 
   // Enqueue all the obstacle cells
   CellData cell = CellData(this);
   for (int i = 0; i < size_x_; i++)
   {
-    cell.src_i_ = cell.i_ = i;
+    cell.src_i = cell.i = i;
     for (int j = 0; j < size_y_; j++)
     {
       if (getOccState(i, j) == +1)
       {
         setMapOccDist(i, j, 0.0);
-        cell.src_j_ = cell.j_ = j;
+        cell.src_j = cell.j = j;
         marked[computeCellIndex(i, j)] = true;
         Q.push(cell);
       }
@@ -96,33 +95,33 @@ void OccupancyMap::updateCSpace(double max_occ_dist)
   while (!Q.empty())
   {
     CellData current_cell = Q.top();
-    if (current_cell.i_ > 0)
+    if (current_cell.i > 0)
     {
-      int i = current_cell.i_ - 1, j = current_cell.j_;
+      int i = current_cell.i - 1, j = current_cell.j;
       unsigned int index = computeCellIndex(i, j);
       if (not marked[index])
-        marked[index] = enqueue(i, j, current_cell.src_i_, current_cell.src_j_, Q);
+        marked[index] = enqueue(i, j, current_cell.src_i, current_cell.src_j, Q);
     }
-    if (current_cell.j_ > 0)
+    if (current_cell.j > 0)
     {
-      int i = current_cell.i_, j = current_cell.j_ - 1;
+      int i = current_cell.i, j = current_cell.j - 1;
       unsigned int index = computeCellIndex(i, j);
       if (not marked[index])
-        marked[index] = enqueue(i, j, current_cell.src_i_, current_cell.src_j_, Q);
+        marked[index] = enqueue(i, j, current_cell.src_i, current_cell.src_j, Q);
     }
-    if ((int)current_cell.i_ < size_x_ - 1)
+    if ((int)current_cell.i < size_x_ - 1)
     {
-      int i = current_cell.i_ + 1, j = current_cell.j_;
+      int i = current_cell.i + 1, j = current_cell.j;
       unsigned int index = computeCellIndex(i, j);
       if (not marked[index])
-        marked[index] = enqueue(i, j, current_cell.src_i_, current_cell.src_j_, Q);
+        marked[index] = enqueue(i, j, current_cell.src_i, current_cell.src_j, Q);
     }
-    if ((int)current_cell.j_ < size_y_ - 1)
+    if ((int)current_cell.j < size_y_ - 1)
     {
-      int i = current_cell.i_, j = current_cell.j_ + 1;
+      int i = current_cell.i, j = current_cell.j + 1;
       unsigned int index = computeCellIndex(i, j);
       if (not marked[index])
-        marked[index] = enqueue(i, j, current_cell.src_i_, current_cell.src_j_, Q);
+        marked[index] = enqueue(i, j, current_cell.src_i, current_cell.src_j, Q);
     }
     Q.pop();
   }

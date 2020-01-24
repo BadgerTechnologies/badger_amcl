@@ -1,6 +1,5 @@
 /*
- *  Player - One Hell of a Robot Server
- *  Copyright (C) 2000  Brian Gerkey et al.
+ *  Copyright (C) 2020 Badger Technologies, LLC
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -17,15 +16,13 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
-///////////////////////////////////////////////////////////////////////////
-//
-// Desc: Point Cloud Scanner sensor model for 3D AMCL
-// Author: Tyler Buchman (tyler_buchman@jabil.com)
-//
-///////////////////////////////////////////////////////////////////////////
+/* ********************************************************************
+ * Desc: Point Cloud Scanner sensor model for 3D AMCL
+ * Author: Tyler Buchman (tyler_buchman@jabil.com)
+ **********************************************************************/
 
-#ifndef AMCL_POINT_CLOUD_SCANNER_H
-#define AMCL_POINT_CLOUD_SCANNER_H
+#ifndef AMCL_SENSORS_POINT_CLOUD_SCANNER_H
+#define AMCL_SENSORS_POINT_CLOUD_SCANNER_H
 
 #include "sensors/sensor.h"
 
@@ -129,6 +126,6 @@ private:
   // times we need to create an instance of this vector.
   std::vector<int> map_vec_;
 };
-}
+}  // namespace amcl
 
-#endif
+#endif  // AMCL_SENSORS_POINT_CLOUD_SCANNER_H

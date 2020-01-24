@@ -1,5 +1,4 @@
 /*
- *  Player - One Hell of a Robot Server
  *  Copyright (C) 2000  Brian Gerkey   &  Kasper Stoy
  *                      gerkey@usc.edu    kaspers@robotics.usc.edu
  *
@@ -24,8 +23,8 @@
  * Maintainter: Tyler Buchman (tyler_buchman@jabil.com)
  *************************************************************************/
 
-#ifndef AMCL_PF_VECTOR_H
-#define AMCL_PF_VECTOR_H
+#ifndef AMCL_PF_PF_VECTOR_H
+#define AMCL_PF_PF_VECTOR_H
 
 namespace amcl
 {
@@ -68,6 +67,6 @@ public:
   // diagonal matrix [d] such that a = r * d * r^T.
   void decompose(PFMatrix* r, PFMatrix* d);
 };
-}
+}  // namespace amcl
 
-#endif
+#endif  // AMCL_PF_PF_VECTOR_H

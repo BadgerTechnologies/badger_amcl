@@ -1,5 +1,4 @@
 /*
- *  Player - One Hell of a Robot Server
  *  Copyright (C) 2000  Brian Gerkey   &  Kasper Stoy
  *                      gerkey@usc.edu    kaspers@robotics.usc.edu
  *
@@ -22,7 +21,7 @@
  * Desc: Global map (grid-based)
  * Author: Andrew Howard
  * Maintainter: Tyler Buchman (tyler_buchman@jabil.com)
-**************************************************************************/
+ *************************************************************************/
 
 #include "map/occupancy_map.h"
 
@@ -50,7 +49,7 @@ std::vector<double> OccupancyMap::getOrigin()
   return { origin_x_, origin_y_ };
 }
 
-void OccupancyMap::setOrigin(std::vector<double> origin)
+void OccupancyMap::setOrigin(const std::vector<double>& origin)
 {
   origin_x_ = origin[0];
   origin_y_ = origin[1];
@@ -96,8 +95,8 @@ void OccupancyMap::convertMapToWorld(const std::vector<int>& map_coords, std::ve
   std::vector<double> return_vals;
   int i = map_coords[0];
   int j = map_coords[1];
-  (*world_coords)[0] = origin_x_ + (i - size_x_ / 2) * scale_;
-  (*world_coords)[1] = origin_y_ + (j - size_y_ / 2) * scale_;
+  (*world_coords)[0] = origin_x_ + (i - size_x_ / 2) * resolution_;
+  (*world_coords)[1] = origin_y_ + (j - size_y_ / 2) * resolution_;
 }
 
 void OccupancyMap::convertWorldToMap(const std::vector<double>& world_coords, std::vector<int>* map_coords)
@@ -105,11 +104,11 @@ void OccupancyMap::convertWorldToMap(const std::vector<double>& world_coords, st
   std::vector<int> return_vals;
   double x = world_coords[0];
   double y = world_coords[1];
-  (*map_coords)[0] = floor((x - origin_x_) / scale_ + 0.5) + size_x_ / 2;
-  (*map_coords)[1] = floor((y - origin_y_) / scale_ + 0.5) + size_y_ / 2;
+  (*map_coords)[0] = floor((x - origin_x_) / resolution_ + 0.5) + size_x_ / 2;
+  (*map_coords)[1] = floor((y - origin_y_) / resolution_ + 0.5) + size_y_ / 2;
 }
 
-bool OccupancyMap::isValid(std::vector<int> coords)
+bool OccupancyMap::isValid(const std::vector<int>& coords)
 {
   int i = coords[0];
   int j = coords[1];

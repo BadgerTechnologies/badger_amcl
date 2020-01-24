@@ -1,4 +1,7 @@
 /*
+ *
+ *  Copyright (C) 2020 Badger Technologies, LLC
+ *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
  *  License as published by the Free Software Foundation; either
@@ -14,12 +17,10 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
-///////////////////////////////////////////////////////////////////////////
-//
-// Desc: AMCL Node for 3D AMCL
-// Author: Tyler Buchman (tyler_buchman@jabil.com)
-//
-///////////////////////////////////////////////////////////////////////////
+/*************************************************************************
+ * Desc: AMCL Node for 3D AMCL
+ * Author: Tyler Buchman (tyler_buchman@jabil.com)
+ *************************************************************************/
 
 #include "node/node.h"
 
@@ -129,7 +130,7 @@ std::shared_ptr<OctoMap> Node::convertMap(const octomap_msgs::Octomap& map_msg)
   std::shared_ptr<OctoMap> octomap = std::make_shared<OctoMap>(wait_for_occupancy_map_);
   ROS_ASSERT(octomap);
   octomap::AbstractOcTree* absoctree;
-  double scale = map_msg.resolution;
+  double resolution = map_msg.resolution;
   bool binary = map_msg.binary;
   if (binary)
   {
@@ -143,7 +144,7 @@ std::shared_ptr<OctoMap> Node::convertMap(const octomap_msgs::Octomap& map_msg)
   {
     octree_ = std::shared_ptr<octomap::OcTree>(dynamic_cast<octomap::OcTree*>(absoctree));
   }
-  octomap->setScale(scale);
+  octomap->setResolution(resolution);
   octomap->initFromOctree(octree_, point_cloud_scanner_height_);
   return octomap;
 }

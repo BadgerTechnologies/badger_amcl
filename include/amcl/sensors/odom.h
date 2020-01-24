@@ -1,5 +1,4 @@
 /*
- *  Player - One Hell of a Robot Server
  *  Copyright (C) 2000  Brian Gerkey et al.
  *
  *  This library is free software; you can redistribute it and/or
@@ -25,8 +24,8 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef AMCL_ODOM_DATA_H
-#define AMCL_ODOM_DATA_H
+#ifndef AMCL_SENSORS_ODOM_H
+#define AMCL_SENSORS_ODOM_H
 
 #include "sensors/sensor.h"
 
@@ -85,6 +84,6 @@ private:
   // Drift parameters
   double alpha1_, alpha2_, alpha3_, alpha4_, alpha5_;
 };
-}
+}  // namespace amcl
 
-#endif
+#endif  // AMCL_SENSORS_ODOM_H

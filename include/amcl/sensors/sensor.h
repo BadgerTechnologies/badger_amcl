@@ -1,5 +1,4 @@
 /*
- *  Player - One Hell of a Robot Server
  *  Copyright (C) 2000  Brian Gerkey et al.
  *
  *  This library is free software; you can redistribute it and/or
@@ -23,8 +22,8 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef AMCL_SENSOR_H
-#define AMCL_SENSOR_H
+#ifndef AMCL_SENSORS_SENSOR_H
+#define AMCL_SENSORS_SENSOR_H
 
 #include <memory>
 
@@ -68,6 +67,6 @@ public:
   }
   std::shared_ptr<Sensor> sensor_;
 };
-}
+}  // namespace amcl
 
-#endif
+#endif  // AMCL_SENSORS_SENSOR_H

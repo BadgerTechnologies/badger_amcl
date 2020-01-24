@@ -1,5 +1,4 @@
 /*
- *  Player - One Hell of a Robot Server
  *  Copyright (C) 2000  Brian Gerkey et al.
  *
  *  This library is free software; you can redistribute it and/or
@@ -25,8 +24,8 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef AMCL_PLANAR_SCANNER_H
-#define AMCL_PLANAR_SCANNER_H
+#ifndef AMCL_SENSORS_PLANAR_SCANNER_H
+#define AMCL_SENSORS_PLANAR_SCANNER_H
 
 #include "sensors/sensor.h"
 
@@ -175,6 +174,6 @@ private:
   // times we need to create an instance of this vector.
   std::vector<int> map_vec_;
 };
-}
+}  // namespace amcl
 
-#endif
+#endif  // AMCL_SENSORS_PLANAR_SCANNER_H

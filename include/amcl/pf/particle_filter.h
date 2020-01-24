@@ -1,5 +1,4 @@
 /*
- *  Player - One Hell of a Robot Server
  *  Copyright (C) 2000  Brian Gerkey   &  Kasper Stoy
  *                      gerkey@usc.edu    kaspers@robotics.usc.edu
  *
@@ -24,8 +23,8 @@
  * Maintainter: Tyler Buchman (tyler_buchman@jabil.com)
  *************************************************************************/
 
-#ifndef AMCL_PARTICLE_FILTER_H
-#define AMCL_PARTICLE_FILTER_H
+#ifndef AMCL_PF_PARTICLE_FILTER_H
+#define AMCL_PF_PARTICLE_FILTER_H
 
 #include <memory>
 #include <vector>
@@ -189,6 +188,6 @@ private:
 
   bool converged_;
 };
-}
+}  // namespace amcl
 
-#endif
+#endif  // AMCL_PF_PARTICLE_FILTER_H

@@ -1,5 +1,4 @@
 /*
- *  Player - One Hell of a Robot Server
  *  Copyright (C) 2000  Brian Gerkey   &  Kasper Stoy
  *                      gerkey@usc.edu    kaspers@robotics.usc.edu
  *
@@ -24,8 +23,8 @@
  * Maintainter: Tyler Buchman (tyler_buchman@jabil.com)
  *************************************************************************/
 
-#ifndef PF_KDTREE_H
-#define PF_KDTREE_H
+#ifndef AMCL_PF_PF_KDTREE_H
+#define AMCL_PF_PF_KDTREE_H
 
 #include "pf/pf_vector.h"
 
@@ -105,6 +104,6 @@ private:
   // The number of leaf nodes in the tree
   int leaf_count_;
 };
-}
+}  // namespace amcl
 
-#endif
+#endif  // AMCL_PF_PF_KDTREE_H

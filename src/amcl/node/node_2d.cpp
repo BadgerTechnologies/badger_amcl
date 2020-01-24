@@ -1,4 +1,6 @@
 /*
+ *  Copyright (C) 2020 Badger Technologies, LLC
+ *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
  *  License as published by the Free Software Foundation; either
@@ -14,12 +16,10 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
-///////////////////////////////////////////////////////////////////////////
-//
-// Desc: AMCL Node for 3D AMCL
-// Author: Tyler Buchman (tyler_buchman@jabil.com)
-//
-///////////////////////////////////////////////////////////////////////////
+/************************************************************************
+ * Desc: AMCL Node for 3D AMCL
+ * Author: Tyler Buchman (tyler_buchman@jabil.com)
+ ************************************************************************/
 
 #include "node/node.h"
 
@@ -115,14 +115,14 @@ std::shared_ptr<OccupancyMap> Node::convertMap(const nav_msgs::OccupancyGrid& ma
   std::shared_ptr<OccupancyMap> occupancy_map = std::make_shared<OccupancyMap>();
   ROS_ASSERT(occupancy_map);
   std::vector<int> size_vec;
-  double scale = map_msg.info.resolution / map_scale_up_factor_;
+  double resolution = map_msg.info.resolution / map_scale_up_factor_;
   size_vec.push_back(map_msg.info.width * map_scale_up_factor_);
   size_vec.push_back(map_msg.info.height * map_scale_up_factor_);
   occupancy_map->setSize(size_vec);
-  occupancy_map->setScale(scale);
+  occupancy_map->setResolution(resolution);
   std::vector<double> origin;
-  origin.push_back(map_msg.info.origin.position.x + (size_vec[0] / 2) * scale);
-  origin.push_back(map_msg.info.origin.position.y + (size_vec[1] / 2) * scale);
+  origin.push_back(map_msg.info.origin.position.x + (size_vec[0] / 2) * resolution);
+  origin.push_back(map_msg.info.origin.position.y + (size_vec[1] / 2) * resolution);
   occupancy_map->setOrigin(origin);
   occupancy_map->initCells(size_vec[0] * size_vec[1]);
   for (int y = 0; y < size_vec[1]; y++)

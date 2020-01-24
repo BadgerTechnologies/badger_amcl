@@ -1,5 +1,4 @@
 /*
- *  Player - One Hell of a Robot Server
  *  Copyright (C) 2000  Brian Gerkey   &  Kasper Stoy
  *                      gerkey@usc.edu    kaspers@robotics.usc.edu
  *
@@ -24,13 +23,12 @@
  * Maintainter: Tyler Buchman (tyler_buchman@jabil.com)
  **************************************************************************/
 
-#ifndef AMCL_OCCUPANCY_MAP_H
-#define AMCL_OCCUPANCY_MAP_H
+#ifndef AMCL_MAP_OCCUPANCY_MAP_H
+#define AMCL_MAP_OCCUPANCY_MAP_H
 
 #include "map/map.h"
 
-#include <math.h>
-
+#include <cmath>
 #include <cstdint>
 #include <memory>
 #include <queue>
@@ -49,15 +47,14 @@ class OccupancyMap : public Map
 {
 public:
   OccupancyMap();
-  ~OccupancyMap(){};
   // Convert from map index to world coords
   void convertMapToWorld(const std::vector<int>& map_coords, std::vector<double>* world_coords);
   // Convert from world coords to map coords
   void convertWorldToMap(const std::vector<double>& world_coords, std::vector<int>* map_coords);
   // Test to see if the given map coords lie within the absolute map bounds.
-  bool isValid(std::vector<int> coords);
+  bool isValid(const std::vector<int>& coords);
   std::vector<double> getOrigin();
-  void setOrigin(std::vector<double> origin);
+  void setOrigin(const std::vector<double>& origin);
   std::vector<int> getSize();
   void setSize(std::vector<int> size_vec);
   // Update the cspace distance values
@@ -76,43 +73,33 @@ public:
 private:
   struct CellData
   {
-    OccupancyMap* occMap;
-    CellData(OccupancyMap* _occMap) : occMap(_occMap)
+    OccupancyMap* occ_map;
+    CellData(OccupancyMap* o_map) : occ_map(o_map)
     {
     }
-    int i_, j_;
-    int src_i_, src_j_;
+    int i, j;
+    int src_i, src_j;
   };
 
   class CachedDistanceMap
   {
   public:
-    double** distances_;
-    double scale_;
+    std::vector<std::vector<double>> distances_;
+    double resolution_;
     double max_dist_;
     int cell_radius_;
 
-    CachedDistanceMap(double scale, double max_dist) : distances_(nullptr), scale_(scale), max_dist_(max_dist)
+    CachedDistanceMap(double resolution, double max_dist) : resolution_(resolution), max_dist_(max_dist)
     {
-      cell_radius_ = max_dist / scale;
-      distances_ = new double*[cell_radius_ + 2];
+      cell_radius_ = max_dist / resolution;
+      distances_.resize(cell_radius_ + 2);
       for (int i = 0; i <= cell_radius_ + 1; i++)
       {
-        distances_[i] = new double[cell_radius_ + 2];
+        distances_[i].resize(cell_radius_ + 2);
         for (int j = 0; j <= cell_radius_ + 1; j++)
         {
           distances_[i][j] = sqrt(i * i + j * j);
         }
-      }
-    }
-
-    ~CachedDistanceMap()
-    {
-      if (distances_)
-      {
-        for (int i = 0; i <= cell_radius_ + 1; i++)
-          delete[] distances_[i];
-        delete[] distances_;
       }
     }
   };
@@ -139,8 +126,8 @@ private:
 
 inline bool operator<(const OccupancyMap::CellData& a, const OccupancyMap::CellData& b)
 {
-  return a.occMap->getOccDist(a.i_, a.j_) > b.occMap->getOccDist(b.i_, b.j_);
+  return a.occ_map->getOccDist(a.i, a.j) > b.occ_map->getOccDist(b.i, b.j);
 }
-}
+}  // namespace amcl
 
-#endif
+#endif  // AMCL_MAP_OCCUPANCY_MAP_H
