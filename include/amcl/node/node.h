@@ -104,7 +104,6 @@ private:
   const int INDEX_AA_ = 6 * 5 + 5;
 
   static PFVector uniformPoseGenerator(Node* arg);
-  static std::vector<std::pair<int, int> > free_space_indices_;
 
   void init2D();
   void init3D();
@@ -317,6 +316,8 @@ private:
   bool tf_broadcast_;
   bool tf_reverse_;
   double off_object_penalty_factor_;
+
+  std::vector<std::pair<int, int> > free_space_indices_;
 
   PFSample fake_sample_;
   std::shared_ptr<PFSampleSet> fake_sample_set_;
