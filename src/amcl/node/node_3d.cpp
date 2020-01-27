@@ -519,7 +519,7 @@ void Node::pointCloudReceived(const sensor_msgs::PointCloud2ConstPtr& point_clou
     double max_weight = 0.0;
     int max_weight_hyp = -1;
     int cluster_count = pf_->getCurrentSet()->cluster_count;
-    std::vector<AMCLHyp> hyps;
+    std::vector<PoseHypothesis> hyps;
     hyps.resize(cluster_count);
     double weight;
     PFVector pose_mean;
@@ -533,8 +533,8 @@ void Node::pointCloudReceived(const sensor_msgs::PointCloud2ConstPtr& point_clou
       }
 
       hyps[hyp_count].weight = weight;
-      hyps[hyp_count].pf_pose_mean = pose_mean;
-      hyps[hyp_count].pf_pose_cov = pose_cov;
+      hyps[hyp_count].mean = pose_mean;
+      hyps[hyp_count].covariance = pose_cov;
 
       if (hyps[hyp_count].weight > max_weight)
       {
@@ -550,9 +550,9 @@ void Node::pointCloudReceived(const sensor_msgs::PointCloud2ConstPtr& point_clou
       p.header.frame_id = global_frame_id_;
       p.header.stamp = point_cloud_scan->header.stamp;
       // Copy in the pose
-      p.pose.pose.position.x = hyps[max_weight_hyp].pf_pose_mean.v[0];
-      p.pose.pose.position.y = hyps[max_weight_hyp].pf_pose_mean.v[1];
-      tf::quaternionTFToMsg(tf::createQuaternionFromYaw(hyps[max_weight_hyp].pf_pose_mean.v[2]),
+      p.pose.pose.position.x = hyps[max_weight_hyp].mean.v[0];
+      p.pose.pose.position.y = hyps[max_weight_hyp].mean.v[1];
+      tf::quaternionTFToMsg(tf::createQuaternionFromYaw(hyps[max_weight_hyp].mean.v[2]),
                             p.pose.pose.orientation);
       // Copy in the covariance, converting from 3-D to 6-D
       std::shared_ptr<PFSampleSet> set = pf_->getCurrentSet();
@@ -583,8 +583,8 @@ void Node::pointCloudReceived(const sensor_msgs::PointCloud2ConstPtr& point_clou
       try
       {
         tf::Transform tmp_tf(
-            tf::createQuaternionFromYaw(hyps[max_weight_hyp].pf_pose_mean.v[2]),
-            tf::Vector3(hyps[max_weight_hyp].pf_pose_mean.v[0], hyps[max_weight_hyp].pf_pose_mean.v[1], 0.0));
+            tf::createQuaternionFromYaw(hyps[max_weight_hyp].mean.v[2]),
+            tf::Vector3(hyps[max_weight_hyp].mean.v[0], hyps[max_weight_hyp].mean.v[1], 0.0));
         tf::Stamped<tf::Pose> tmp_tf_stamped(tmp_tf.inverse(), point_cloud_scan->header.stamp, base_frame_id_);
         this->tf_.waitForTransform(base_frame_id_, odom_frame_id_, point_cloud_scan->header.stamp, ros::Duration(1.0));
         this->tf_.transformPose(odom_frame_id_, tmp_tf_stamped, odom_to_map);

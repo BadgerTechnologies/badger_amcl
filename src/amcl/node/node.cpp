@@ -996,10 +996,9 @@ void Node::handleInitialPoseMessage(const geometry_msgs::PoseWithCovarianceStamp
   }
   pf_init_pose_cov.m[2][2] = msg.pose.covariance[6 * 5 + 5];
 
-  delete initial_pose_hyp_;
-  initial_pose_hyp_ = new AMCLHyp();
-  initial_pose_hyp_->pf_pose_mean = pf_init_pose_mean;
-  initial_pose_hyp_->pf_pose_cov = pf_init_pose_cov;
+  initial_pose_hyp_ = std::make_shared<PoseHypothesis>();
+  initial_pose_hyp_->mean = pf_init_pose_mean;
+  initial_pose_hyp_->covariance = pf_init_pose_cov;
   applyInitialPose();
 
   // disable global localization in case it was active
@@ -1016,10 +1015,9 @@ void Node::applyInitialPose()
   boost::recursive_mutex::scoped_lock cfl(configuration_mutex_);
   if (initial_pose_hyp_ != NULL && map_ != NULL)
   {
-    pf_->init(initial_pose_hyp_->pf_pose_mean, initial_pose_hyp_->pf_pose_cov);
+    pf_->init(initial_pose_hyp_->mean, initial_pose_hyp_->covariance);
     pf_init_ = false;
 
-    delete initial_pose_hyp_;
     initial_pose_hyp_ = NULL;
   }
 }

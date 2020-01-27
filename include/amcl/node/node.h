@@ -70,18 +70,14 @@
 namespace amcl
 {
 // Pose hypothesis
-typedef struct
+struct PoseHypothesis
 {
   // Total weight (weights sum to 1)
   double weight;
+  PFVector mean;
+  PFMatrix covariance;
 
-  // Mean of pose esimate
-  PFVector pf_pose_mean;
-
-  // Covariance of pose estimate
-  PFMatrix pf_pose_cov;
-
-} AMCLHyp;
+};
 
 class Node
 {
@@ -266,7 +262,7 @@ private:
   ros::Subscriber occupancy_map_sub_;
   ros::Subscriber octomap_sub_;
 
-  AMCLHyp* initial_pose_hyp_;
+  std::shared_ptr<PoseHypothesis> initial_pose_hyp_;
   int map_scale_up_factor_;
   bool first_map_only_;
   bool first_occupancy_map_received_;
