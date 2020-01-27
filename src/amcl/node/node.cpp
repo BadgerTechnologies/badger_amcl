@@ -40,8 +40,6 @@
 
 using namespace amcl;
 
-std::vector<std::pair<int, int> > Node::free_space_indices_;
-
 Node::Node()
   : sent_first_transform_(false)
   , latest_tf_valid_(false)
