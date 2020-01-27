@@ -88,9 +88,10 @@ void Node::init3D()
 
   if (map_type_ == 3)
   {
-    point_cloud_scan_sub_ = new message_filters::Subscriber<sensor_msgs::PointCloud2>(nh_, point_cloud_scan_topic_, 1);
-    point_cloud_scan_filter_ =
-        new tf::MessageFilter<sensor_msgs::PointCloud2>(*point_cloud_scan_sub_, tf_, odom_frame_id_, 1);
+    point_cloud_scan_sub_ = std::unique_ptr<message_filters::Subscriber<sensor_msgs::PointCloud2>>(
+        new message_filters::Subscriber<sensor_msgs::PointCloud2>(nh_, point_cloud_scan_topic_, 1));
+    point_cloud_scan_filter_ = std::unique_ptr<tf::MessageFilter<sensor_msgs::PointCloud2>>(
+        new tf::MessageFilter<sensor_msgs::PointCloud2>(*point_cloud_scan_sub_, tf_, odom_frame_id_, 1));
     point_cloud_scan_filter_->registerCallback(boost::bind(&Node::pointCloudReceived, this, _1));
     // 15s timer to warn on lack of receipt of point cloud scans, #5209
     point_cloud_scanner_check_interval_ = ros::Duration(15.0);
@@ -218,9 +219,8 @@ void Node::reconfigure3D(amcl::AMCLConfig& config)
   }
 
   point_cloud_scanner_.setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
-  delete point_cloud_scan_filter_;
-  point_cloud_scan_filter_ =
-      new tf::MessageFilter<sensor_msgs::PointCloud2>(*point_cloud_scan_sub_, tf_, odom_frame_id_, 100);
+  point_cloud_scan_filter_ = std::unique_ptr<tf::MessageFilter<sensor_msgs::PointCloud2>>(
+      new tf::MessageFilter<sensor_msgs::PointCloud2>(*point_cloud_scan_sub_, tf_, odom_frame_id_, 100));
   point_cloud_scan_filter_->registerCallback(boost::bind(&Node::pointCloudReceived, this, _1));
 }
 
@@ -641,10 +641,4 @@ void Node::globalLocalizationCallback3D()
     l->setMapFactors(global_localization_off_map_factor_, global_localization_non_free_space_factor_,
                      non_free_space_radius_);
   }
-}
-
-void Node::deleteNode3D()
-{
-  delete point_cloud_scan_filter_;
-  delete point_cloud_scan_sub_;
 }

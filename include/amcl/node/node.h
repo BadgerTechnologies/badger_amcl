@@ -83,7 +83,6 @@ class Node
 {
 public:
   Node();
-  ~Node();
 
   int process();
   void savePoseToServer();
@@ -107,8 +106,6 @@ private:
 
   void init2D();
   void init3D();
-  void deleteNode2D();
-  void deleteNode3D();
 
   // Score a single pose with the sensor model using the last sensor data
   double scorePose(const PFVector& p);
@@ -207,10 +204,10 @@ private:
   std::shared_ptr<octomap::OcTree> octree_;
   std::shared_ptr<Map> map_;
 
-  message_filters::Subscriber<sensor_msgs::LaserScan>* planar_scan_sub_;
-  message_filters::Subscriber<sensor_msgs::PointCloud2>* point_cloud_scan_sub_;
-  tf::MessageFilter<sensor_msgs::LaserScan>* planar_scan_filter_;
-  tf::MessageFilter<sensor_msgs::PointCloud2>* point_cloud_scan_filter_;
+  std::unique_ptr<message_filters::Subscriber<sensor_msgs::LaserScan>> planar_scan_sub_;
+  std::unique_ptr<message_filters::Subscriber<sensor_msgs::PointCloud2>> point_cloud_scan_sub_;
+  std::unique_ptr<tf::MessageFilter<sensor_msgs::LaserScan>> planar_scan_filter_;
+  std::unique_ptr<tf::MessageFilter<sensor_msgs::PointCloud2>> point_cloud_scan_filter_;
   std::vector<std::shared_ptr<PlanarScanner> > planar_scanners_;
   std::vector<std::shared_ptr<PointCloudScanner> > point_cloud_scanners_;
   std::vector<bool> planar_scanners_update_;
@@ -272,7 +269,7 @@ private:
   boost::recursive_mutex configuration_mutex_;
   boost::recursive_mutex tf_mutex_;
   boost::recursive_mutex latest_amcl_pose_mutex_;
-  dynamic_reconfigure::Server<amcl::AMCLConfig>* dsrv_;
+  std::unique_ptr<dynamic_reconfigure::Server<amcl::AMCLConfig>> dsrv_;
   amcl::AMCLConfig default_config_;
   ros::Timer check_planar_scanner_timer_;
   ros::Timer check_point_cloud_scanner_timer_;

@@ -84,8 +84,10 @@ void Node::init2D()
 
   if (map_type_ == 2)
   {
-    planar_scan_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, planar_scan_topic_, 100);
-    planar_scan_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(*planar_scan_sub_, tf_, odom_frame_id_, 100);
+    planar_scan_sub_ = std::unique_ptr<message_filters::Subscriber<sensor_msgs::LaserScan>>(
+        new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, planar_scan_topic_, 100));
+    planar_scan_filter_ = std::unique_ptr<tf::MessageFilter<sensor_msgs::LaserScan>>(
+        new tf::MessageFilter<sensor_msgs::LaserScan>(*planar_scan_sub_.get(), tf_, odom_frame_id_, 100));
     planar_scan_filter_->registerCallback(boost::bind(&Node::planarScanReceived, this, _1));
 
     // 15s timer to warn on lack of receipt of planar scans, #5209
@@ -226,8 +228,8 @@ void Node::reconfigure2D(AMCLConfig& config)
     ROS_INFO("Done initializing likelihood (gompertz) field model.");
   }
   planar_scanner_.setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
-  delete planar_scan_filter_;
-  planar_scan_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(*planar_scan_sub_, tf_, odom_frame_id_, 100);
+  planar_scan_filter_ = std::unique_ptr<tf::MessageFilter<sensor_msgs::LaserScan>>(
+      new tf::MessageFilter<sensor_msgs::LaserScan>(*planar_scan_sub_.get(), tf_, odom_frame_id_, 100));
   planar_scan_filter_->registerCallback(boost::bind(&Node::planarScanReceived, this, _1));
 }
 
@@ -702,10 +704,4 @@ void Node::globalLocalizationCallback2D()
     l->setMapFactors(global_localization_off_map_factor_, global_localization_non_free_space_factor_,
                      non_free_space_radius_);
   }
-}
-
-void Node::deleteNode2D()
-{
-  delete planar_scan_filter_;
-  delete planar_scan_sub_;
 }
