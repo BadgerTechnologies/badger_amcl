@@ -582,7 +582,7 @@ void Node::planarScanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan)
     double max_weight = 0.0;
     int max_weight_hyp = -1;
     int cluster_count = pf_->getCurrentSet()->cluster_count;
-    std::vector<AMCLHyp> hyps;
+    std::vector<PoseHypothesis> hyps;
     hyps.resize(cluster_count);
     for (int hyp_count = 0; hyp_count < cluster_count; hyp_count++)
     {
@@ -596,8 +596,8 @@ void Node::planarScanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan)
       }
 
       hyps[hyp_count].weight = weight;
-      hyps[hyp_count].pf_pose_mean = pose_mean;
-      hyps[hyp_count].pf_pose_cov = pose_cov;
+      hyps[hyp_count].mean = pose_mean;
+      hyps[hyp_count].covariance = pose_cov;
 
       if (hyps[hyp_count].weight > max_weight)
       {
@@ -608,17 +608,17 @@ void Node::planarScanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan)
 
     if (max_weight > 0.0)
     {
-      ROS_DEBUG("Max weight pose: %.3f %.3f %.3f", hyps[max_weight_hyp].pf_pose_mean.v[0],
-                hyps[max_weight_hyp].pf_pose_mean.v[1], hyps[max_weight_hyp].pf_pose_mean.v[2]);
+      ROS_DEBUG("Max weight pose: %.3f %.3f %.3f", hyps[max_weight_hyp].mean.v[0],
+                hyps[max_weight_hyp].mean.v[1], hyps[max_weight_hyp].mean.v[2]);
 
       geometry_msgs::PoseWithCovarianceStamped p;
       // Fill in the header
       p.header.frame_id = global_frame_id_;
       p.header.stamp = planar_scan->header.stamp;
       // Copy in the pose
-      p.pose.pose.position.x = hyps[max_weight_hyp].pf_pose_mean.v[0];
-      p.pose.pose.position.y = hyps[max_weight_hyp].pf_pose_mean.v[1];
-      tf::quaternionTFToMsg(tf::createQuaternionFromYaw(hyps[max_weight_hyp].pf_pose_mean.v[2]),
+      p.pose.pose.position.x = hyps[max_weight_hyp].mean.v[0];
+      p.pose.pose.position.y = hyps[max_weight_hyp].mean.v[1];
+      tf::quaternionTFToMsg(tf::createQuaternionFromYaw(hyps[max_weight_hyp].mean.v[2]),
                             p.pose.pose.orientation);
       // Copy in the covariance, converting from 3-D to 6-D
       std::shared_ptr<PFSampleSet> set = pf_->getCurrentSet();
@@ -628,13 +628,13 @@ void Node::planarScanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan)
         {
           // Report the overall filter covariance, rather than the
           // covariance for the highest-weight cluster
-          // p.covariance[6*i+j] = hyps[max_weight_hyp].pf_pose_cov.m[i][j];
+          // p.covariance[6*i+j] = hyps[max_weight_hyp].covariance.m[i][j];
           p.pose.covariance[6 * i + j] = set->cov.m[i][j];
         }
       }
       // Report the overall filter covariance, rather than the
       // covariance for the highest-weight cluster
-      // p.covariance[6*5+5] = hyps[max_weight_hyp].pf_pose_cov.m[2][2];
+      // p.covariance[6*5+5] = hyps[max_weight_hyp].covariance.m[2][2];
       p.pose.covariance[6 * 5 + 5] = set->cov.m[2][2];
 
       pose_pub_.publish(p);
@@ -646,16 +646,16 @@ void Node::planarScanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan)
         alt_pose_pub_.publish(alt_p);
       }
 
-      ROS_DEBUG("New pose: %6.3f %6.3f %6.3f", hyps[max_weight_hyp].pf_pose_mean.v[0],
-                hyps[max_weight_hyp].pf_pose_mean.v[1], hyps[max_weight_hyp].pf_pose_mean.v[2]);
+      ROS_DEBUG("New pose: %6.3f %6.3f %6.3f", hyps[max_weight_hyp].mean.v[0],
+                hyps[max_weight_hyp].mean.v[1], hyps[max_weight_hyp].mean.v[2]);
 
       // subtracting base to odom from map to base and send map to odom instead
       tf::Stamped<tf::Pose> odom_to_map;
       try
       {
         tf::Transform tmp_tf(
-            tf::createQuaternionFromYaw(hyps[max_weight_hyp].pf_pose_mean.v[2]),
-            tf::Vector3(hyps[max_weight_hyp].pf_pose_mean.v[0], hyps[max_weight_hyp].pf_pose_mean.v[1], 0.0));
+            tf::createQuaternionFromYaw(hyps[max_weight_hyp].mean.v[2]),
+            tf::Vector3(hyps[max_weight_hyp].mean.v[0], hyps[max_weight_hyp].mean.v[1], 0.0));
         tf::Stamped<tf::Pose> tmp_tf_stamped(tmp_tf.inverse(), planar_scan->header.stamp, base_frame_id_);
         this->tf_.transformPose(odom_frame_id_, tmp_tf_stamped, odom_to_map);
       }
