@@ -178,7 +178,8 @@ Node::Node()
 
   m_force_update = false;
 
-  dsrv_ = new dynamic_reconfigure::Server<amcl::AMCLConfig>(ros::NodeHandle("~"));
+  dsrv_ = std::unique_ptr<dynamic_reconfigure::Server<amcl::AMCLConfig>>(
+            new dynamic_reconfigure::Server<amcl::AMCLConfig>(ros::NodeHandle("~")));
   dynamic_reconfigure::Server<amcl::AMCLConfig>::CallbackType cb = boost::bind(&Node::reconfigureCB, this, _1, _2);
   dsrv_->setCallback(cb);
 
@@ -657,21 +658,6 @@ void Node::initFromNewMap()
 
   // Publish initial pose loaded from the server or file at startup
   publishInitialPose();
-}
-
-Node::~Node()
-{
-  delete dsrv_;
-
-  deleteNode2D();
-  if (map_type_ == 2)
-  {
-    deleteNode2D();
-  }
-  else if (map_type_ == 3)
-  {
-    deleteNode3D();
-  }
 }
 
 void Node::initOdomIntegrator()
