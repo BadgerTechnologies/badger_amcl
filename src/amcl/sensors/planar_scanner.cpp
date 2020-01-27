@@ -37,14 +37,14 @@ using namespace amcl;
 // Default constructor
 PlanarScanner::PlanarScanner() : Sensor(), max_beams_(0), max_samples_(0), max_obs_(0), temp_obs_(NULL)
 {
-  this->map_ = nullptr;
+  map_ = nullptr;
 
-  this->off_map_factor_ = 1.0;
-  this->non_free_space_factor_ = 1.0;
-  this->non_free_space_radius_ = 0.0;
+  off_map_factor_ = 1.0;
+  non_free_space_factor_ = 1.0;
+  non_free_space_radius_ = 0.0;
 
-  if (this->map_vec_.size() != 2)
-    this->map_vec_ = { 0, 0 };
+  if (map_vec_.size() != 2)
+    map_vec_ = { 0, 0 };
 }
 
 PlanarScanner::~PlanarScanner()
@@ -61,44 +61,44 @@ PlanarScanner::~PlanarScanner()
 
 void PlanarScanner::init(size_t max_beams, std::shared_ptr<OccupancyMap> map)
 {
-  this->max_beams_ = max_beams;
-  this->map_ = map;
+  max_beams_ = max_beams;
+  map_ = map;
 }
 
 void PlanarScanner::setModelBeam(double z_hit, double z_short, double z_max, double z_rand, double sigma_hit,
                                  double lambda_short)
 {
-  this->model_type_ = PLANAR_MODEL_BEAM;
-  this->z_hit_ = z_hit;
-  this->z_short_ = z_short;
-  this->z_max_ = z_max;
-  this->z_rand_ = z_rand;
-  this->sigma_hit_ = sigma_hit;
-  this->lambda_short_ = lambda_short;
+  model_type_ = PLANAR_MODEL_BEAM;
+  z_hit_ = z_hit;
+  z_short_ = z_short;
+  z_max_ = z_max;
+  z_rand_ = z_rand;
+  sigma_hit_ = sigma_hit;
+  lambda_short_ = lambda_short;
 }
 
 void PlanarScanner::setModelLikelihoodField(double z_hit, double z_rand, double sigma_hit, double max_occ_dist)
 {
-  this->model_type_ = PLANAR_MODEL_LIKELIHOOD_FIELD;
-  this->z_hit_ = z_hit;
-  this->z_rand_ = z_rand;
-  this->sigma_hit_ = sigma_hit;
-  this->map_->updateCSpace(max_occ_dist);
+  model_type_ = PLANAR_MODEL_LIKELIHOOD_FIELD;
+  z_hit_ = z_hit;
+  z_rand_ = z_rand;
+  sigma_hit_ = sigma_hit;
+  map_->updateCSpace(max_occ_dist);
 }
 
 void PlanarScanner::setModelLikelihoodFieldProb(double z_hit, double z_rand, double sigma_hit, double max_occ_dist,
                                                 bool do_beamskip, double beam_skip_distance, double beam_skip_threshold,
                                                 double beam_skip_error_threshold)
 {
-  this->model_type_ = PLANAR_MODEL_LIKELIHOOD_FIELD_PROB;
-  this->z_hit_ = z_hit;
-  this->z_rand_ = z_rand;
-  this->sigma_hit_ = sigma_hit;
-  this->do_beamskip_ = do_beamskip;
-  this->beam_skip_distance_ = beam_skip_distance;
-  this->beam_skip_threshold_ = beam_skip_threshold;
-  this->beam_skip_error_threshold_ = beam_skip_error_threshold;
-  this->map_->updateCSpace(max_occ_dist);
+  model_type_ = PLANAR_MODEL_LIKELIHOOD_FIELD_PROB;
+  z_hit_ = z_hit;
+  z_rand_ = z_rand;
+  sigma_hit_ = sigma_hit;
+  do_beamskip_ = do_beamskip;
+  beam_skip_distance_ = beam_skip_distance;
+  beam_skip_threshold_ = beam_skip_threshold;
+  beam_skip_error_threshold_ = beam_skip_error_threshold;
+  map_->updateCSpace(max_occ_dist);
 }
 
 void PlanarScanner::setModelLikelihoodFieldGompertz(double z_hit, double z_rand, double sigma_hit, double max_occ_dist,
@@ -106,32 +106,32 @@ void PlanarScanner::setModelLikelihoodFieldGompertz(double z_hit, double z_rand,
                                                     double input_shift, double input_scale, double output_shift)
 {
   ROS_INFO("Initializing model likelihood field gompertz");
-  this->model_type_ = PLANAR_MODEL_LIKELIHOOD_FIELD_GOMPERTZ;
-  this->z_hit_ = z_hit;
-  this->z_rand_ = z_rand;
-  this->sigma_hit_ = sigma_hit;
+  model_type_ = PLANAR_MODEL_LIKELIHOOD_FIELD_GOMPERTZ;
+  z_hit_ = z_hit;
+  z_rand_ = z_rand;
+  sigma_hit_ = sigma_hit;
 
-  this->gompertz_a_ = gompertz_a;
-  this->gompertz_b_ = gompertz_b;
-  this->gompertz_c_ = gompertz_c;
-  this->input_shift_ = input_shift;
-  this->input_scale_ = input_scale;
-  this->output_shift_ = output_shift;
-  this->map_->updateCSpace(max_occ_dist);
+  gompertz_a_ = gompertz_a;
+  gompertz_b_ = gompertz_b;
+  gompertz_c_ = gompertz_c;
+  input_shift_ = input_shift;
+  input_scale_ = input_scale;
+  output_shift_ = output_shift;
+  map_->updateCSpace(max_occ_dist);
 }
 
 void PlanarScanner::setMapFactors(double off_map_factor, double non_free_space_factor, double non_free_space_radius)
 {
-  this->off_map_factor_ = off_map_factor;
-  this->non_free_space_factor_ = non_free_space_factor;
-  this->non_free_space_radius_ = non_free_space_radius;
+  off_map_factor_ = off_map_factor;
+  non_free_space_factor_ = non_free_space_factor;
+  non_free_space_radius_ = non_free_space_radius;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Apply the planar sensor model
 bool PlanarScanner::updateSensor(std::shared_ptr<ParticleFilter> pf, std::shared_ptr<SensorData> data)
 {
-  if (this->max_beams_ < 2)
+  if (max_beams_ < 2)
     return false;
 
   // Apply the planar sensor model
@@ -585,11 +585,11 @@ double PlanarScanner::calcLikelihoodFieldModelProb(std::shared_ptr<PlanarData> d
 double PlanarScanner::applyGompertz(double p)
 {
   // shift and scale p
-  p = p * this->input_scale_ + this->input_shift_;
+  p = p * input_scale_ + input_shift_;
   // apply gompertz
-  p = this->gompertz_a_ * exp(-1.0 * this->gompertz_b_ * exp(-1.0 * this->gompertz_c_ * p));
+  p = gompertz_a_ * exp(-1.0 * gompertz_b_ * exp(-1.0 * gompertz_c_ * p));
   // shift output
-  p += this->output_shift_;
+  p += output_shift_;
 
   return p;
 }
