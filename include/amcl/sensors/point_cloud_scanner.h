@@ -78,7 +78,7 @@ public:
   // Set the scanner's pose after construction
   void setPointCloudScannerPose(PFVector& scanner_pose)
   {
-    this->point_cloud_scanner_pose_ = scanner_pose;
+    point_cloud_scanner_pose_ = scanner_pose;
   }
 
   void setPointCloudScannerToFootprintTF(tf::Transform lidarToFootprintTF);

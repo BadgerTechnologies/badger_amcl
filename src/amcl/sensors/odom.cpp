@@ -42,41 +42,41 @@ Odom::Odom() : Sensor()
 
 void Odom::setModelDiff(double alpha1, double alpha2, double alpha3, double alpha4)
 {
-  this->model_type_ = ODOM_MODEL_DIFF;
-  this->alpha1_ = alpha1;
-  this->alpha2_ = alpha2;
-  this->alpha3_ = alpha3;
-  this->alpha4_ = alpha4;
+  model_type_ = ODOM_MODEL_DIFF;
+  alpha1_ = alpha1;
+  alpha2_ = alpha2;
+  alpha3_ = alpha3;
+  alpha4_ = alpha4;
 }
 
 void Odom::setModelOmni(double alpha1, double alpha2, double alpha3, double alpha4, double alpha5)
 {
-  this->model_type_ = ODOM_MODEL_OMNI;
-  this->alpha1_ = alpha1;
-  this->alpha2_ = alpha2;
-  this->alpha3_ = alpha3;
-  this->alpha4_ = alpha4;
-  this->alpha5_ = alpha5;
+  model_type_ = ODOM_MODEL_OMNI;
+  alpha1_ = alpha1;
+  alpha2_ = alpha2;
+  alpha3_ = alpha3;
+  alpha4_ = alpha4;
+  alpha5_ = alpha5;
 }
 
 void Odom::setModelGaussian(double alpha1, double alpha2, double alpha3, double alpha4, double alpha5)
 {
-  this->model_type_ = ODOM_MODEL_GAUSSIAN;
-  this->alpha1_ = alpha1;
-  this->alpha2_ = alpha2;
-  this->alpha3_ = alpha3;
-  this->alpha4_ = alpha4;
-  this->alpha5_ = alpha5;
+  model_type_ = ODOM_MODEL_GAUSSIAN;
+  alpha1_ = alpha1;
+  alpha2_ = alpha2;
+  alpha3_ = alpha3;
+  alpha4_ = alpha4;
+  alpha5_ = alpha5;
 }
 
 void Odom::setModel(OdomModelType type, double alpha1, double alpha2, double alpha3, double alpha4, double alpha5)
 {
-  this->model_type_ = type;
-  this->alpha1_ = alpha1;
-  this->alpha2_ = alpha2;
-  this->alpha3_ = alpha3;
-  this->alpha4_ = alpha4;
-  this->alpha5_ = alpha5;
+  model_type_ = type;
+  alpha1_ = alpha1;
+  alpha2_ = alpha2;
+  alpha3_ = alpha3;
+  alpha4_ = alpha4;
+  alpha5_ = alpha5;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -90,7 +90,7 @@ bool Odom::updateAction(std::shared_ptr<ParticleFilter> pf, std::shared_ptr<Sens
   std::shared_ptr<PFSampleSet> set = pf->getCurrentSet();
   PFVector old_pose = PFVector::pfVectorSub(ndata->pose, ndata->delta);
 
-  switch (this->model_type_)
+  switch (model_type_)
   {
     case ODOM_MODEL_OMNI:
     {
@@ -151,13 +151,13 @@ bool Odom::updateAction(std::shared_ptr<ParticleFilter> pf, std::shared_ptr<Sens
         PFSample* sample = &(set->samples[i]);
 
         // Sample pose differences
-        delta_rot1_hat = angleDiff(delta_rot1, PDFGaussian::draw(this->alpha1_ * delta_rot1_noise * delta_rot1_noise +
-                                                                 this->alpha2_ * delta_trans * delta_trans));
-        delta_trans_hat = delta_trans - PDFGaussian::draw(this->alpha3_ * delta_trans * delta_trans +
-                                                          this->alpha4_ * delta_rot1_noise * delta_rot1_noise +
-                                                          this->alpha4_ * delta_rot2_noise * delta_rot2_noise);
-        delta_rot2_hat = angleDiff(delta_rot2, PDFGaussian::draw(this->alpha1_ * delta_rot2_noise * delta_rot2_noise +
-                                                                 this->alpha2_ * delta_trans * delta_trans));
+        delta_rot1_hat = angleDiff(delta_rot1, PDFGaussian::draw(alpha1_ * delta_rot1_noise * delta_rot1_noise +
+                                                                 alpha2_ * delta_trans * delta_trans));
+        delta_trans_hat = delta_trans - PDFGaussian::draw(alpha3_ * delta_trans * delta_trans +
+                                                          alpha4_ * delta_rot1_noise * delta_rot1_noise +
+                                                          alpha4_ * delta_rot2_noise * delta_rot2_noise);
+        delta_rot2_hat = angleDiff(delta_rot2, PDFGaussian::draw(alpha1_ * delta_rot2_noise * delta_rot2_noise +
+                                                                 alpha2_ * delta_trans * delta_trans));
 
         // Apply sampled update to particle pose
         sample->pose.v[0] += delta_trans_hat * cos(sample->pose.v[2] + delta_rot1_hat);
@@ -226,14 +226,14 @@ bool Odom::updateAction(std::shared_ptr<ParticleFilter> pf, std::shared_ptr<Sens
 
         // Sample pose differences
         delta_rot1_hat =
-            angleDiff(delta_rot1, PDFGaussian::draw(sqrt(this->alpha1_ * delta_rot1_noise * delta_rot1_noise +
-                                                         this->alpha2_ * delta_trans * delta_trans)));
-        delta_trans_hat = delta_trans - PDFGaussian::draw(sqrt(this->alpha3_ * delta_trans * delta_trans +
-                                                               this->alpha4_ * delta_rot1_noise * delta_rot1_noise +
-                                                               this->alpha4_ * delta_rot2_noise * delta_rot2_noise));
+            angleDiff(delta_rot1, PDFGaussian::draw(sqrt(alpha1_ * delta_rot1_noise * delta_rot1_noise +
+                                                         alpha2_ * delta_trans * delta_trans)));
+        delta_trans_hat = delta_trans - PDFGaussian::draw(sqrt(alpha3_ * delta_trans * delta_trans +
+                                                               alpha4_ * delta_rot1_noise * delta_rot1_noise +
+                                                               alpha4_ * delta_rot2_noise * delta_rot2_noise));
         delta_rot2_hat =
-            angleDiff(delta_rot2, PDFGaussian::draw(sqrt(this->alpha1_ * delta_rot2_noise * delta_rot2_noise +
-                                                         this->alpha2_ * delta_trans * delta_trans)));
+            angleDiff(delta_rot2, PDFGaussian::draw(sqrt(alpha1_ * delta_rot2_noise * delta_rot2_noise +
+                                                         alpha2_ * delta_trans * delta_trans)));
 
         // Apply sampled update to particle pose
         sample->pose.v[0] += delta_trans_hat * cos(sample->pose.v[2] + delta_rot1_hat);

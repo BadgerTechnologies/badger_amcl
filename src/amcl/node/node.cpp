@@ -746,8 +746,8 @@ bool Node::getOdomPose(const ros::Time& t, const std::string& f, tf::Stamped<tf:
   tf::Stamped<tf::Pose> ident(tf::Transform(tf::createIdentityQuaternion(), tf::Vector3(0, 0, 0)), t, f);
   try
   {
-    this->tf_.waitForTransform(f, odom_frame_id_, ros::Time::now(), ros::Duration(0.5));
-    this->tf_.transformPose(odom_frame_id_, ident, *odom_pose);
+    tf_.waitForTransform(f, odom_frame_id_, ros::Time::now(), ros::Duration(0.5));
+    tf_.transformPose(odom_frame_id_, ident, *odom_pose);
   }
   catch (tf::TransformException e)
   {
@@ -879,7 +879,7 @@ void Node::publishTransform(const ros::TimerEvent& event)
     odom.pose.pose.orientation = quaternion;
     map_odom_transform_pub_.publish(odom);
 
-    this->tfb_.sendTransform(tmp_tf_stamped);
+    tfb_.sendTransform(tmp_tf_stamped);
     sent_first_transform_ = true;
   }
 }

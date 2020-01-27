@@ -100,8 +100,8 @@ void Node::init3D()
 
   try
   {
-    this->tf_.waitForTransform("base_footprint", "top_laser", ros::Time::now(), ros::Duration(5.0));
-    this->tf_.lookupTransform("base_footprint", "top_laser", ros::Time::now(), point_cloud_scanner_to_footprint_tf_);
+    tf_.waitForTransform("base_footprint", "top_laser", ros::Time::now(), ros::Duration(5.0));
+    tf_.lookupTransform("base_footprint", "top_laser", ros::Time::now(), point_cloud_scanner_to_footprint_tf_);
   }
   catch (tf::TransformException& e)
   {
@@ -151,7 +151,7 @@ std::shared_ptr<OctoMap> Node::convertMap(const octomap_msgs::Octomap& map_msg)
 
 double Node::scorePose3D(const PFVector& p)
 {
-  if (this->last_point_cloud_data_ == NULL)
+  if (last_point_cloud_data_ == NULL)
   {
     // There is no data to match, so return a perfect match
     return 1.0;
@@ -164,7 +164,7 @@ double Node::scorePose3D(const PFVector& p)
   fake_sample_set_->sample_count = 1;
   fake_sample_set_->samples = { fake_sample_ };
   fake_sample_set_->converged = 0;
-  PointCloudScanner::applyModelToSampleSet(this->last_point_cloud_data_, fake_sample_set_);
+  PointCloudScanner::applyModelToSampleSet(last_point_cloud_data_, fake_sample_set_);
   return fake_sample_.weight;
 }
 
@@ -339,7 +339,7 @@ void Node::pointCloudReceived(const sensor_msgs::PointCloud2ConstPtr& point_clou
     tf::Stamped<tf::Pose> point_cloud_scanner_pose;
     try
     {
-      this->tf_.transformPose(base_frame_id_, ident, point_cloud_scanner_pose);
+      tf_.transformPose(base_frame_id_, ident, point_cloud_scanner_pose);
     }
     catch (tf::TransformException& e)
     {
@@ -586,8 +586,8 @@ void Node::pointCloudReceived(const sensor_msgs::PointCloud2ConstPtr& point_clou
             tf::createQuaternionFromYaw(hyps[max_weight_hyp].mean.v[2]),
             tf::Vector3(hyps[max_weight_hyp].mean.v[0], hyps[max_weight_hyp].mean.v[1], 0.0));
         tf::Stamped<tf::Pose> tmp_tf_stamped(tmp_tf.inverse(), point_cloud_scan->header.stamp, base_frame_id_);
-        this->tf_.waitForTransform(base_frame_id_, odom_frame_id_, point_cloud_scan->header.stamp, ros::Duration(1.0));
-        this->tf_.transformPose(odom_frame_id_, tmp_tf_stamped, odom_to_map);
+        tf_.waitForTransform(base_frame_id_, odom_frame_id_, point_cloud_scan->header.stamp, ros::Duration(1.0));
+        tf_.transformPose(odom_frame_id_, tmp_tf_stamped, odom_to_map);
       }
       catch (tf::TransformException e)
       {
@@ -620,13 +620,13 @@ void Node::pointCloudReceived(const sensor_msgs::PointCloud2ConstPtr& point_clou
         (now - save_pose_to_server_last_time_) >= save_pose_to_server_period_)
     {
       ROS_DEBUG("Time to save pose to server: %f", save_pose_to_server_period_.toSec());
-      this->savePoseToServer();
+      savePoseToServer();
       save_pose_to_server_last_time_ = now;
     }
     if ((save_pose_to_file_period_.toSec() > 0.0) && (now - save_pose_to_file_last_time_) >= save_pose_to_file_period_)
     {
       ROS_DEBUG("Time to save pose to file: %f", save_pose_to_file_period_.toSec());
-      this->savePoseToFile();
+      savePoseToFile();
       save_pose_to_file_last_time_ = now;
     }
   }

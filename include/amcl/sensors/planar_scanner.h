@@ -101,7 +101,7 @@ public:
   // Set the scanner's pose after construction
   void setPlanarScannerPose(PFVector& scanner_pose)
   {
-    this->planar_scanner_pose_ = scanner_pose;
+    planar_scanner_pose_ = scanner_pose;
   }
 
   // Apply gompertz transform function to given input

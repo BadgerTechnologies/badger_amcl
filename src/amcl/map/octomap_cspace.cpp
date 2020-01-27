@@ -37,7 +37,7 @@ using namespace amcl;
 // calls the base non-parameter updateCSpace
 void OctoMap::updateMaxOccDist(double max_occ_dist)
 {
-  this->max_occ_dist_ = max_occ_dist;
+  max_occ_dist_ = max_occ_dist;
 }
 
 // Creates the distances lookup object populated with the distance from

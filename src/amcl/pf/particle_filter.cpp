@@ -49,12 +49,12 @@ ParticleFilter::ParticleFilter(int min_samples, int max_samples, double alpha_sl
 
   srand48(time(NULL));
 
-  this->resample_model_ = PF_RESAMPLE_MULTINOMIAL;
-  this->random_pose_fn_ = random_pose_fn;
-  this->random_pose_data_ = random_pose_data;
+  resample_model_ = PF_RESAMPLE_MULTINOMIAL;
+  random_pose_fn_ = random_pose_fn;
+  random_pose_data_ = random_pose_data;
 
-  this->min_samples_ = min_samples;
-  this->max_samples_ = max_samples;
+  min_samples_ = min_samples;
+  max_samples_ = max_samples;
 
   // Control parameters for the population size calculation.  [err] is
   // the max error between the true distribution and the estimated
@@ -95,11 +95,11 @@ ParticleFilter::ParticleFilter(int min_samples, int max_samples, double alpha_sl
     set->cov = PFMatrix();
   }
 
-  this->w_slow_ = 0.0;
-  this->w_fast_ = 0.0;
+  w_slow_ = 0.0;
+  w_fast_ = 0.0;
 
-  this->alpha_slow_ = alpha_slow;
-  this->alpha_fast_ = alpha_fast;
+  alpha_slow_ = alpha_slow;
+  alpha_fast_ = alpha_fast;
 
   // set converged to 0
   initConverged();
@@ -107,7 +107,7 @@ ParticleFilter::ParticleFilter(int min_samples, int max_samples, double alpha_sl
 
 void ParticleFilter::setResampleModel(PFResampleModelType resample_model)
 {
-  this->resample_model_ = resample_model;
+  resample_model_ = resample_model;
 }
 
 // Initialize the filter using a guassian
@@ -673,14 +673,14 @@ bool ParticleFilter::getClusterStats(int clabel, double* weight, PFVector* mean,
 // sets population size parameters
 void ParticleFilter::setPopulationSizeParameters(double pop_err, double pop_z)
 {
-  this->pop_err_ = pop_err;
-  this->pop_z_ = pop_z;
+  pop_err_ = pop_err;
+  pop_z_ = pop_z;
 }
 
 void ParticleFilter::setDecayRates(double alpha_slow, double alpha_fast)
 {
-  this->alpha_slow_ = alpha_slow;
-  this->alpha_fast_ = alpha_fast;
+  alpha_slow_ = alpha_slow;
+  alpha_fast_ = alpha_fast;
 }
 
 // gets pointer to current sample set
@@ -698,5 +698,5 @@ bool ParticleFilter::isConverged()
 // sets whether the particle filter has converged
 void ParticleFilter::setConverged(bool converged)
 {
-  this->converged_ = converged;
+  converged_ = converged;
 }

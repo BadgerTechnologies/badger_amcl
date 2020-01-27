@@ -147,7 +147,7 @@ std::shared_ptr<OccupancyMap> Node::convertMap(const nav_msgs::OccupancyGrid& ma
 // Helper function to score a pose for uniform pose generation
 double Node::scorePose2D(const PFVector& p)
 {
-  if (this->last_planar_data_ == NULL)
+  if (last_planar_data_ == NULL)
   {
     // There is no data to match, so return a perfect match
     return 1.0;
@@ -160,7 +160,7 @@ double Node::scorePose2D(const PFVector& p)
   fake_sample_set_->sample_count = 1;
   fake_sample_set_->samples = { fake_sample_ };
   fake_sample_set_->converged = 0;
-  PlanarScanner::applyModelToSampleSet(this->last_planar_data_, fake_sample_set_);
+  PlanarScanner::applyModelToSampleSet(last_planar_data_, fake_sample_set_);
   return fake_sample_.weight;
 }
 
@@ -360,7 +360,7 @@ void Node::planarScanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan)
     tf::Stamped<tf::Pose> planar_scanner_pose;
     try
     {
-      this->tf_.transformPose(base_frame_id_, ident, planar_scanner_pose);
+      tf_.transformPose(base_frame_id_, ident, planar_scanner_pose);
     }
     catch (tf::TransformException& e)
     {
@@ -657,7 +657,7 @@ void Node::planarScanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan)
             tf::createQuaternionFromYaw(hyps[max_weight_hyp].mean.v[2]),
             tf::Vector3(hyps[max_weight_hyp].mean.v[0], hyps[max_weight_hyp].mean.v[1], 0.0));
         tf::Stamped<tf::Pose> tmp_tf_stamped(tmp_tf.inverse(), planar_scan->header.stamp, base_frame_id_);
-        this->tf_.transformPose(odom_frame_id_, tmp_tf_stamped, odom_to_map);
+        tf_.transformPose(odom_frame_id_, tmp_tf_stamped, odom_to_map);
       }
       catch (tf::TransformException)
       {
@@ -681,13 +681,13 @@ void Node::planarScanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan)
     if ((save_pose_to_server_period_.toSec() > 0.0) &&
         (now - save_pose_to_server_last_time_) >= save_pose_to_server_period_)
     {
-      this->savePoseToServer();
+      savePoseToServer();
       save_pose_to_server_last_time_ = now;
     }
     if ((save_pose_to_file_period_.toSec() > 0.0) && (now - save_pose_to_file_last_time_) >= save_pose_to_file_period_)
     {
       ROS_DEBUG("save pose to file period: %f", save_pose_to_file_period_.toSec());
-      this->savePoseToFile();
+      savePoseToFile();
       save_pose_to_file_last_time_ = now;
     }
   }

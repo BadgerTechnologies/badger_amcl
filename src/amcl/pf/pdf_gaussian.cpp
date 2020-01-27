@@ -41,8 +41,8 @@ PDFGaussian::PDFGaussian(PFVector x, PFMatrix cx)
 {
   PFMatrix m;
 
-  this->x_ = x;
-  this->cx_ = cx;
+  x_ = x;
+  cx_ = cx;
 
   // Decompose the convariance matrix into a rotation
   // matrix and a diagonal matrix.

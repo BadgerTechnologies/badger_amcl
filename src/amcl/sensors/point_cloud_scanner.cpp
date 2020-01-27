@@ -35,68 +35,68 @@ using namespace amcl;
 
 PointCloudScanner::PointCloudScanner() : Sensor()
 {
-  this->max_beams_ = 0;
-  this->map_ = nullptr;
-  this->point_cloud_scanner_height_ = 0;
+  max_beams_ = 0;
+  map_ = nullptr;
+  point_cloud_scanner_height_ = 0;
 
-  this->off_map_factor_ = 1.0;
-  this->non_free_space_factor_ = 1.0;
-  this->non_free_space_radius_ = 0.0;
+  off_map_factor_ = 1.0;
+  non_free_space_factor_ = 1.0;
+  non_free_space_radius_ = 0.0;
 
-  if (this->map_vec_.size() != 3)
-    this->map_vec_ = { 0, 0, 0 };
+  if (map_vec_.size() != 3)
+    map_vec_ = { 0, 0, 0 };
 }
 
 void PointCloudScanner::init(size_t max_beams, std::shared_ptr<OctoMap> map, double point_cloud_scanner_height)
 {
-  this->max_beams_ = max_beams;
-  this->map_ = map;
-  this->point_cloud_scanner_height_ = point_cloud_scanner_height;
+  max_beams_ = max_beams;
+  map_ = map;
+  point_cloud_scanner_height_ = point_cloud_scanner_height;
 }
 
 void PointCloudScanner::setPointCloudModel(double z_hit, double z_rand, double sigma_hit, double max_occ_dist)
 {
-  this->model_type_ = POINT_CLOUD_MODEL;
-  this->z_hit_ = z_hit;
-  this->z_rand_ = z_rand;
-  this->sigma_hit_ = sigma_hit;
-  this->map_->updateMaxOccDist(max_occ_dist);
+  model_type_ = POINT_CLOUD_MODEL;
+  z_hit_ = z_hit;
+  z_rand_ = z_rand;
+  sigma_hit_ = sigma_hit;
+  map_->updateMaxOccDist(max_occ_dist);
 }
 
 void PointCloudScanner::setPointCloudModelGompertz(double z_hit, double z_rand, double sigma_hit, double max_occ_dist,
                                                    double gompertz_a, double gompertz_b, double gompertz_c,
                                                    double input_shift, double input_scale, double output_shift)
 {
-  this->model_type_ = POINT_CLOUD_MODEL_GOMPERTZ;
-  this->z_hit_ = z_hit;
-  this->z_rand_ = z_rand;
-  this->sigma_hit_ = sigma_hit;
-  this->gompertz_a_ = gompertz_a;
-  this->gompertz_b_ = gompertz_b;
-  this->gompertz_c_ = gompertz_c;
-  this->input_shift_ = input_shift;
-  this->input_scale_ = input_scale;
-  this->output_shift_ = output_shift;
-  this->map_->updateMaxOccDist(max_occ_dist);
+  model_type_ = POINT_CLOUD_MODEL_GOMPERTZ;
+  z_hit_ = z_hit;
+  z_rand_ = z_rand;
+  sigma_hit_ = sigma_hit;
+  gompertz_a_ = gompertz_a;
+  gompertz_b_ = gompertz_b;
+  gompertz_c_ = gompertz_c;
+  input_shift_ = input_shift;
+  input_scale_ = input_scale;
+  output_shift_ = output_shift;
+  map_->updateMaxOccDist(max_occ_dist);
 }
 
 void PointCloudScanner::setMapFactors(double off_map_factor, double non_free_space_factor, double non_free_space_radius)
 {
-  this->off_map_factor_ = off_map_factor;
-  this->non_free_space_factor_ = non_free_space_factor;
-  this->non_free_space_radius_ = non_free_space_radius;
+  off_map_factor_ = off_map_factor;
+  non_free_space_factor_ = non_free_space_factor;
+  non_free_space_radius_ = non_free_space_radius;
 }
 
 void PointCloudScanner::setPointCloudScannerToFootprintTF(tf::Transform point_cloud_scanner_to_footprint_tf)
 {
-  this->point_cloud_scanner_to_footprint_tf_ = point_cloud_scanner_to_footprint_tf;
+  point_cloud_scanner_to_footprint_tf_ = point_cloud_scanner_to_footprint_tf;
 }
 
 // Update the filter based on the sensor model.  Returns true if the
 // filter has been updated.
 bool PointCloudScanner::updateSensor(std::shared_ptr<ParticleFilter> pf, std::shared_ptr<SensorData> data)
 {
-  if (this->max_beams_ < 2)
+  if (max_beams_ < 2)
     return false;
   // Apply the point cloud scanner sensor model
   pf->updateSensor((PFSensorModelFnPtr)applyModelToSampleSet, data);
@@ -252,11 +252,11 @@ bool PointCloudScanner::getMapCloud(std::shared_ptr<PointCloudScanner> self, std
 double PointCloudScanner::applyGompertz(double p)
 {
   // shift and scale p
-  p = p * this->input_scale_ + this->input_shift_;
+  p = p * input_scale_ + input_shift_;
   // apply gompertz
-  p = this->gompertz_a_ * exp(-1.0 * this->gompertz_b_ * exp(-1.0 * this->gompertz_c_ * p));
+  p = gompertz_a_ * exp(-1.0 * gompertz_b_ * exp(-1.0 * gompertz_c_ * p));
   // shift output
-  p += this->output_shift_;
+  p += output_shift_;
 
   return p;
 }
