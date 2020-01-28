@@ -50,7 +50,8 @@ public:
   void getMinMaxCells(std::vector<int>* min_cells, std::vector<int>* max_cells);
   std::vector<double> getOrigin();
   void setOrigin(const std::vector<double>& origin);
-  void setMapBounds(std::vector<double> map_min, std::vector<double> map_max);
+  void setMapBounds(std::shared_ptr<std::vector<double>> map_min,
+                    std::shared_ptr<std::vector<double>> map_max);
   // Update the cspace distance values
   void updateCSpace();
   void updateMaxOccDist(double max_occ_dist);

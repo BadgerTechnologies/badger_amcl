@@ -45,23 +45,15 @@ Node::Node()
   : sent_first_transform_(false)
   , latest_tf_valid_(false)
   , map_(NULL)
-  , resample_count_(0)
   , private_nh_("~")
   , initial_pose_hyp_(NULL)
   , first_reconfigure_call_(true)
   , global_localization_active_(false)
 {
-  boost::recursive_mutex::scoped_lock cfl(configuration_mutex_);
+  std::lock_guard<std::mutex> cfl(configuration_mutex_);
 
-  const std::string default_planar_scan_topic = "/scans/mark_and_clear";
-  private_nh_.param("planar_scan_topic", planar_scan_topic_, default_planar_scan_topic);
-  const std::string default_point_cloud_scan_topic = "/scans/top/points_filtered";
-  private_nh_.param("point_cloud_scan_topic", point_cloud_scan_topic_, default_point_cloud_scan_topic);
   // 2: 2d, 3: 3d, else: none
   private_nh_.param("map_type", map_type_, 0);
-  // Grab params off the param server
-  private_nh_.param("first_map_only", first_map_only_, false);
-  // irrelevant if occupancy map is the primary map for localization
   private_nh_.param("wait_for_occupancy_map", wait_for_occupancy_map_, false);
 
   double tmp;
@@ -81,11 +73,6 @@ Node::Node()
   private_nh_.param("odom_alpha3", alpha3_, 0.2);
   private_nh_.param("odom_alpha4", alpha4_, 0.2);
   private_nh_.param("odom_alpha5", alpha5_, 0.2);
-
-  private_nh_.param("do_beamskip", do_beamskip_, false);
-  private_nh_.param("beam_skip_distance", beam_skip_distance_, 0.5);
-  private_nh_.param("beam_skip_threshold", beam_skip_threshold_, 0.3);
-  private_nh_.param("beam_skip_error_threshold_", beam_skip_error_threshold_, 0.9);
 
   private_nh_.param("save_pose", save_pose_, false);
   const std::string default_filename = "savedpose.yaml";
@@ -117,7 +104,6 @@ Node::Node()
   private_nh_.param("base_frame_id", base_frame_id_, std::string("base_link"));
   private_nh_.param("global_frame_id", global_frame_id_, std::string("map"));
   private_nh_.param("global_alt_frame_id", global_alt_frame_id_, std::string(""));
-  private_nh_.param("resample_interval", resample_interval_, 2);
   private_nh_.param("resample_model_type", tmp_model_type, std::string("multinomial"));
   if (tmp_model_type == "multinomial")
     resample_model_type_ = PF_RESAMPLE_MULTINOMIAL;
@@ -147,6 +133,7 @@ Node::Node()
   initial_pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>(
       "initialpose", 1, boost::bind(&Node::newInitialPoseSubscriber, this, _1));
 
+  free_space_indices_ = std::make_shared<std::vector<std::pair<int, int>>>();
   pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("amcl_pose", 2, true);
   particlecloud_pub_ = nh_.advertise<geometry_msgs::PoseArray>("particlecloud", 2, true);
   if (global_alt_frame_id_.size() > 0)
@@ -159,10 +146,10 @@ Node::Node()
   map_odom_transform_pub_ = nh_.advertise<nav_msgs::Odometry>("amcl_map_odom_transform", 1);
   global_loc_srv_ = nh_.advertiseService("global_localization", &Node::globalLocalizationCallback, this);
   loadPose();
-  init2D();
-  if (map_type_ == 3)
+  node_2d_ = std::make_shared<Node2D>(this, map_type_, configuration_mutex_);
+  if(map_type_ == 3)
   {
-    init3D();
+    node_3d_ = std::make_shared<Node3D>(this, map_type_, configuration_mutex_);
   }
 
   if (odom_integrator_topic_.size())
@@ -170,14 +157,6 @@ Node::Node()
     odom_integrator_sub_ = nh_.subscribe(odom_integrator_topic_, 20, &Node::integrateOdom, this);
     absolute_motion_pub_ = nh_.advertise<geometry_msgs::Pose2D>("amcl_absolute_motion", 20, false);
   }
-
-  // To prevent a race condition, this block must be after the load pose block
-  first_occupancy_map_received_ = false;
-  first_octomap_received_ = false;
-  occupancy_map_sub_ = nh_.subscribe("map", 1, &Node::occupancyMapMsgReceived, this);
-  octomap_sub_ = nh_.subscribe("octomap_binary", 1, &Node::octomapMsgReceived, this);
-
-  m_force_update = false;
 
   dsrv_ = std::unique_ptr<dynamic_reconfigure::Server<amcl::AMCLConfig>>(
             new dynamic_reconfigure::Server<amcl::AMCLConfig>(ros::NodeHandle("~")));
@@ -189,8 +168,6 @@ Node::Node()
 
 void Node::reconfigureCB(AMCLConfig& config, uint32_t level)
 {
-  boost::recursive_mutex::scoped_lock cfl(configuration_mutex_);
-
   // we don't want to do anything on the first call
   // which corresponds to startup
   if (first_reconfigure_call_)
@@ -200,6 +177,8 @@ void Node::reconfigureCB(AMCLConfig& config, uint32_t level)
     return;
   }
 
+  std::lock_guard<std::mutex> cfl(configuration_mutex_);
+
   if (config.restore_defaults)
   {
     config = default_config_;
@@ -207,16 +186,9 @@ void Node::reconfigureCB(AMCLConfig& config, uint32_t level)
     config.restore_defaults = false;
   }
 
-  planar_scan_topic_ = config.planar_scan_topic;
-  point_cloud_scan_topic_ = config.point_cloud_scan_topic;
-
-  // 2: 2d, 3: 3d, else: none
-  map_type_ = config.map_type;
-
   d_thresh_ = config.update_min_d;
   a_thresh_ = config.update_min_a;
 
-  resample_interval_ = config.resample_interval;
   if (config.resample_model_type == "multinomial")
     resample_model_type_ = PF_RESAMPLE_MULTINOMIAL;
   else if (config.resample_model_type == "systematic")
@@ -269,10 +241,6 @@ void Node::reconfigureCB(AMCLConfig& config, uint32_t level)
   tf_broadcast_ = config.tf_broadcast;
   tf_reverse_ = config.tf_reverse;
 
-  do_beamskip_ = config.do_beamskip;
-  beam_skip_distance_ = config.beam_skip_distance;
-  beam_skip_threshold_ = config.beam_skip_threshold;
-
   std::function<PFVector()> foo = std::bind(&Node::uniformPoseGenerator, this);
   uniform_pose_generator_fn_ptr_ = std::make_shared<std::function<PFVector()>>(foo);
   pf_ = std::make_shared<ParticleFilter>(min_particles_, max_particles_, alpha_slow_, alpha_fast_,
@@ -301,14 +269,16 @@ void Node::reconfigureCB(AMCLConfig& config, uint32_t level)
   base_frame_id_ = config.base_frame_id;
   global_frame_id_ = config.global_frame_id;
 
-  if (map_type_ == 2)
+  ROS_INFO("before reconfigure types");
+  if(map_type_ == 2)
   {
-    reconfigure2D(config);
+    node_2d_->reconfigure(config);
   }
   else if (map_type_ == 3)
   {
-    reconfigure3D(config);
+    node_3d_->reconfigure(config);
   }
+  ROS_INFO("after reconfigure types");
 
   save_pose_ = config.save_pose;
   const std::string filename = config.saved_pose_filename;
@@ -317,6 +287,172 @@ void Node::reconfigureCB(AMCLConfig& config, uint32_t level)
   initial_pose_sub_ = nh_.subscribe("initialpose", 2, &Node::initialPoseReceived, this);
 
   publish_transform_timer_ = nh_.createTimer(transform_publish_period_, boost::bind(&Node::publishTransform, this, _1));
+}
+
+void Node::setPfDecayRateNormal()
+{
+  pf_->setDecayRates(alpha_slow_, alpha_fast_);
+}
+
+bool Node::updatePf(ros::Time t, std::shared_ptr<std::vector<bool>> scanners_update, int scanner_index,
+                    int* resample_count, bool* force_publication, bool* force_update)
+{
+  // Where was the robot when this scan was taken?
+  PFVector pose;
+  if (!getOdomPose(t, &pose))
+  {
+    ROS_ERROR("Couldn't determine robot's pose associated with planar scan");
+    return false;
+  }
+
+  PFVector delta;
+  if (pf_init_)
+  {
+    // Compute change in pose
+    delta.v[0] = pose.v[0] - pf_odom_pose_.v[0];
+    delta.v[1] = pose.v[1] - pf_odom_pose_.v[1];
+    delta.v[2] = angleDiff(pose.v[2], pf_odom_pose_.v[2]);
+
+    // See if we should update the filter
+    bool update;
+    if (odom_integrator_topic_.size())
+    {
+      double abs_trans = sqrt(odom_integrator_absolute_motion_.v[0] * odom_integrator_absolute_motion_.v[0] +
+                              odom_integrator_absolute_motion_.v[1] * odom_integrator_absolute_motion_.v[1]);
+      double abs_rot = odom_integrator_absolute_motion_.v[2];
+      update = abs_trans >= d_thresh_ || abs_rot >= a_thresh_;
+    }
+    else
+    {
+      update = fabs(delta.v[0]) > d_thresh_ || fabs(delta.v[1]) > d_thresh_ || fabs(delta.v[2]) > a_thresh_;
+    }
+    update = update || *force_update;
+    *force_update = false;
+
+    // Set the planar scanner update flags
+    if (update)
+      for (unsigned int i = 0; i < scanners_update->size(); i++)
+        scanners_update->at(i) = true;
+
+    if(scanners_update->at(scanner_index))
+    {
+      std::shared_ptr<OdomData> odata = std::make_shared<OdomData>();
+      odata->pose = pose;
+      // HACK
+      // Modify the delta in the action data so the filter gets
+      // updated correctly
+      odata->delta = delta;
+      odata->absolute_motion = odom_integrator_absolute_motion_;
+      if (odom_integrator_topic_.size())
+      {
+        geometry_msgs::Pose2D p;
+        p.x = odata->absolute_motion.v[0];
+        p.y = odata->absolute_motion.v[1];
+        p.theta = odata->absolute_motion.v[2];
+        absolute_motion_pub_.publish(p);
+      }
+
+      // Use the action data to update the filter
+      odom_.updateAction(pf_, std::dynamic_pointer_cast<SensorData>(odata));
+      resetOdomIntegrator();
+      pf_odom_pose_ = pose;
+    }
+  }
+  else
+  {
+    // Pose at last filter update
+    pf_odom_pose_ = pose;
+    // Filter is now initialized
+    pf_init_ = true;
+    // Should update sensor data
+    for (unsigned int i = 0; i < scanners_update->size(); i++)
+      scanners_update->at(i) = true;
+    *force_publication = true;
+    resample_count = 0;
+    initOdomIntegrator();
+  }
+  return true;
+}
+
+std::shared_ptr<ParticleFilter> Node::getPfPtr()
+{
+  return pf_;
+}
+
+void Node::publishPfCloud()
+{
+  std::shared_ptr<PFSampleSet> set = pf_->getCurrentSet();
+  ROS_DEBUG("Num samples: %d\n", set->sample_count);
+  geometry_msgs::PoseArray cloud_msg;
+  cloud_msg.header.stamp = ros::Time::now();
+  cloud_msg.header.frame_id = global_frame_id_;
+  cloud_msg.poses.resize(set->sample_count);
+  for (int i = 0; i < set->sample_count; i++)
+  {
+    tf::poseTFToMsg(tf::Pose(tf::createQuaternionFromYaw(set->samples[i].pose.v[2]),
+                             tf::Vector3(set->samples[i].pose.v[0], set->samples[i].pose.v[1], 0)),
+                    cloud_msg.poses[i]);
+  }
+  particlecloud_pub_.publish(cloud_msg);
+  if (global_alt_frame_id_.size() > 0)
+  {
+    geometry_msgs::PoseArray alt_cloud_msg(cloud_msg);
+    alt_cloud_msg.header.frame_id = global_alt_frame_id_;
+    alt_particlecloud_pub_.publish(alt_cloud_msg);
+  }
+}
+
+void Node::publishPose(geometry_msgs::PoseWithCovarianceStamped p)
+{
+  pose_pub_.publish(p);
+  last_published_pose_ = p;
+  if (global_alt_frame_id_.size() > 0)
+  {
+    geometry_msgs::PoseWithCovarianceStamped alt_p(p);
+    alt_p.header.frame_id = global_alt_frame_id_;
+    alt_pose_pub_.publish(alt_p);
+  }
+}
+
+bool Node::updateTf(const tf::Stamped<tf::Pose>& odom_to_map)
+{
+  std::lock_guard<std::mutex> tfl(tf_mutex_);
+  latest_tf_ = tf::Transform(tf::Quaternion(odom_to_map.getRotation()),
+                             tf::Point(odom_to_map.getOrigin()));
+  latest_tf_valid_ = true;
+
+  try
+  {
+    latest_tf_ = tf::Transform(tf::Quaternion(odom_to_map.getRotation()),
+                               tf::Point(odom_to_map.getOrigin()));
+    latest_tf_valid_ = true;
+  }
+  catch (tf::TransformException)
+  {
+    ROS_WARN("Failed to transform odom to map pose");
+    return false;
+  }
+}
+
+void Node::attemptSavePose()
+{
+  if (latest_tf_valid_)
+  {
+    // Is it time to save our last pose to the param server
+    ros::Time now = ros::Time::now();
+    if ((save_pose_to_server_period_.toSec() > 0.0) &&
+        (now - save_pose_to_server_last_time_) >= save_pose_to_server_period_)
+    {
+      savePoseToServer();
+      save_pose_to_server_last_time_ = now;
+    }
+    if ((save_pose_to_file_period_.toSec() > 0.0) && (now - save_pose_to_file_last_time_) >= save_pose_to_file_period_)
+    {
+      ROS_DEBUG("save pose to file period: %f", save_pose_to_file_period_.toSec());
+      savePoseToFile();
+      save_pose_to_file_last_time_ = now;
+    }
+  }
 }
 
 void Node::loadPose()
@@ -432,8 +568,8 @@ bool Node::loadPoseFromServer()
   {
     init_cov_[2] = tmp_pos;
   }
-  ROS_DEBUG("Successfully loaded initial pose from server.");
-  ROS_DEBUG("Pose loaded: (%.3f, %.3f)", init_pose_[0], init_pose_[1]);
+  ROS_INFO("Successfully loaded initial pose from server.");
+  ROS_INFO("Pose loaded: (%.3f, %.3f)", init_pose_[0], init_pose_[1]);
   return true;
 }
 
@@ -471,8 +607,8 @@ bool Node::loadPoseFromFile()
   init_cov_[0] = xx;
   init_cov_[1] = yy;
   init_cov_[2] = aa;
-  ROS_DEBUG("Successfully loaded YAML pose from file.");
-  ROS_DEBUG("Pose loaded: %.3f, %.3f", init_pose_[0], init_pose_[1]);
+  ROS_INFO("Successfully loaded YAML pose from file.");
+  ROS_INFO("Pose loaded: %.3f, %.3f", init_pose_[0], init_pose_[1]);
   return true;
 }
 
@@ -551,7 +687,7 @@ void Node::savePoseToServer()
   private_nh_.setParam("initial_cov_aa", last_published_pose_.pose.covariance[INDEX_AA_]);
   geometry_msgs::Pose pose;
   tf::poseTFToMsg(map_pose, pose);
-  boost::recursive_mutex::scoped_lock lpl(latest_amcl_pose_mutex_);
+  std::lock_guard<std::mutex> lpl(latest_amcl_pose_mutex_);
   latest_amcl_pose_.pose.pose = pose;
   latest_amcl_pose_.pose.covariance[INDEX_XX_] = last_published_pose_.pose.covariance[INDEX_XX_];
   latest_amcl_pose_.pose.covariance[INDEX_YY_] = last_published_pose_.pose.covariance[INDEX_YY_];
@@ -567,7 +703,7 @@ void Node::savePoseToFile()
     ROS_DEBUG("As specified, not saving pose to file");
     return;
   }
-  boost::recursive_mutex::scoped_lock lpl(latest_amcl_pose_mutex_);
+  std::lock_guard<std::mutex> lpl(latest_amcl_pose_mutex_);
 
   YAML::Node stamp_node;
   ros::Time stamp = latest_amcl_pose_.header.stamp;
@@ -627,8 +763,9 @@ std::string Node::makeFilepathFromName(const std::string filename)
   return bar_common_string + "/" + filename;
 }
 
-void Node::initFromNewMap()
+void Node::initFromNewMap(std::shared_ptr<Map> new_map)
 {
+  map_ = new_map;
   // Create the particle filter
   std::function<PFVector()> foo = std::bind(&Node::uniformPoseGenerator, this);
   uniform_pose_generator_fn_ptr_ = std::make_shared<std::function<PFVector()>>(foo);
@@ -652,17 +789,22 @@ void Node::initFromNewMap()
   // Odometry
   odom_.setModel(odom_model_type_, alpha1_, alpha2_, alpha3_, alpha4_, alpha5_);
 
-  if (map_type_ == 2)
-  {
-    initFromNewOccupancyMap();
-  }
-  else if (map_type_ == 3)
-  {
-    initFromNewOctomap();
-  }
-
   // Publish initial pose loaded from the server or file at startup
   publishInitialPose();
+}
+
+void Node::updateBoundsFromOccupancyMap(std::shared_ptr<std::vector<double>> map_min,
+                                        std::shared_ptr<std::vector<double>> map_max)
+{
+  if(map_type_ == 3 and wait_for_occupancy_map_)
+  {
+    node_3d_->setOctomapBoundsFromOccupancyMap(map_min, map_max);
+  }
+}
+
+void Node::updateFreeSpaceIndices(std::shared_ptr<std::vector<std::pair<int, int>>> fsi)
+{
+  free_space_indices_ = fsi;
 }
 
 void Node::initOdomIntegrator()
@@ -731,24 +873,24 @@ void Node::integrateOdom(const nav_msgs::OdometryConstPtr& msg)
   odom_integrator_last_pose_ = pose;
 }
 
-bool Node::getOdomPose(const ros::Time& t, const std::string& f, tf::Stamped<tf::Pose>* odom_pose, PFVector* map_pose)
+bool Node::getOdomPose(const ros::Time& t, PFVector* map_pose)
 {
   // Get the robot's pose
-  tf::Stamped<tf::Pose> ident(tf::Transform(tf::createIdentityQuaternion(), tf::Vector3(0, 0, 0)), t, f);
+  tf::Stamped<tf::Pose> ident(tf::Transform(tf::createIdentityQuaternion(), tf::Vector3(0, 0, 0)), t, base_frame_id_);
   try
   {
-    tf_.waitForTransform(f, odom_frame_id_, ros::Time::now(), ros::Duration(0.5));
-    tf_.transformPose(odom_frame_id_, ident, *odom_pose);
+    tf_.waitForTransform(base_frame_id_, odom_frame_id_, ros::Time::now(), ros::Duration(0.5));
+    tf_.transformPose(odom_frame_id_, ident, latest_odom_pose_);
   }
   catch (tf::TransformException e)
   {
     ROS_DEBUG("Failed to compute odom pose, skipping scan (%s)", e.what());
     return false;
   }
-  map_pose->v[0] = odom_pose->getOrigin().x();
-  map_pose->v[1] = odom_pose->getOrigin().y();
+  map_pose->v[0] = latest_odom_pose_.getOrigin().x();
+  map_pose->v[1] = latest_odom_pose_.getOrigin().y();
   double pitch, roll, yaw;
-  odom_pose->getBasis().getEulerYPR(yaw, pitch, roll);
+  latest_odom_pose_.getBasis().getEulerYPR(yaw, pitch, roll);
   map_pose->v[2] = yaw;
   return true;
 }
@@ -757,13 +899,13 @@ bool Node::getOdomPose(const ros::Time& t, const std::string& f, tf::Stamped<tf:
 PFVector Node::randomFreeSpacePose()
 {
   PFVector p;
-  if (free_space_indices_.size() == 0)
+  if (free_space_indices_->size() == 0)
   {
     ROS_WARN("Free space indices have not been initialized");
     return p;
   }
-  unsigned int rand_index = drand48() * free_space_indices_.size();
-  std::pair<int, int> free_point = free_space_indices_[rand_index];
+  unsigned int rand_index = drand48() * free_space_indices_->size();
+  std::pair<int, int> free_point = free_space_indices_->at(rand_index);
   std::vector<double> p_vec(2);
   map_->convertMapToWorld({ free_point.first, free_point.second }, &p_vec);
   p.v[0] = p_vec[0];
@@ -777,11 +919,11 @@ double Node::scorePose(const PFVector& p)
 {
   if (map_type_ == 2)
   {
-    return scorePose2D(p);
+    return node_2d_->scorePose(p);
   }
   else if (map_type_ == 3)
   {
-    return scorePose3D(p);
+    return node_3d_->scorePose(p);
   }
   else
   {
@@ -819,16 +961,16 @@ bool Node::globalLocalizationCallback(std_srvs::Empty::Request& req, std_srvs::E
   {
     return true;
   }
-  boost::recursive_mutex::scoped_lock cfl(configuration_mutex_);
+  std::lock_guard<std::mutex> cfl(configuration_mutex_);
   global_localization_active_ = true;
   pf_->setDecayRates(global_localization_alpha_slow_, global_localization_alpha_fast_);
   if (map_type_ == 2)
   {
-    globalLocalizationCallback2D();
+    node_2d_->globalLocalizationCallback();
   }
   else if (map_type_ == 3)
   {
-    globalLocalizationCallback3D();
+    node_3d_->globalLocalizationCallback();
   }
   pf_->initModel(uniform_pose_generator_fn_ptr_);
   pf_init_ = false;
@@ -837,7 +979,7 @@ bool Node::globalLocalizationCallback(std_srvs::Empty::Request& req, std_srvs::E
 
 void Node::publishTransform(const ros::TimerEvent& event)
 {
-  boost::recursive_mutex::scoped_lock tfl(tf_mutex_);
+  std::lock_guard<std::mutex> tfl(tf_mutex_);
   if (tf_broadcast_ && latest_tf_valid_)
   {
     // We want to send a transform that is good up until a
@@ -869,7 +1011,6 @@ void Node::publishTransform(const ros::TimerEvent& event)
     odom.pose.pose.position.z = origin.z;
     odom.pose.pose.orientation = quaternion;
     map_odom_transform_pub_.publish(odom);
-
     tfb_.sendTransform(tmp_tf_stamped);
     sent_first_transform_ = true;
   }
@@ -884,12 +1025,12 @@ double Node::getYaw(tf::Pose& t)
 
 void Node::initialPoseReceived(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg)
 {
+  std::lock_guard<std::mutex> cfl(configuration_mutex_);
   handleInitialPoseMessage(*msg);
 }
 
 void Node::handleInitialPoseMessage(const geometry_msgs::PoseWithCovarianceStamped& orig_msg)
 {
-  boost::recursive_mutex::scoped_lock cfl(configuration_mutex_);
   geometry_msgs::PoseWithCovarianceStamped msg(orig_msg);
   // Rewrite to our global frame if received in the alt frame.
   // This allows us to run with multiple localizers using tf_reverse and pose them all at once.
@@ -953,7 +1094,7 @@ void Node::handleInitialPoseMessage(const geometry_msgs::PoseWithCovarianceStamp
     // global_frame_id_ frame doesn't exist.  We only care about in-time
     // transformation for on-the-move pose-setting, so ignoring this
     // startup condition doesn't really cost us anything.
-    boost::recursive_mutex::scoped_lock tfl(tf_mutex_);
+    std::lock_guard<std::mutex> tfl(tf_mutex_);
     if (sent_first_transform_)
       ROS_WARN("Failed to transform initial pose in time (%s)", e.what());
     tx_odom.setIdentity();
@@ -1001,7 +1142,6 @@ void Node::handleInitialPoseMessage(const geometry_msgs::PoseWithCovarianceStamp
  */
 void Node::applyInitialPose()
 {
-  boost::recursive_mutex::scoped_lock cfl(configuration_mutex_);
   if (initial_pose_hyp_ != NULL && map_ != NULL)
   {
     pf_->init(initial_pose_hyp_->mean, initial_pose_hyp_->covariance);
@@ -1013,7 +1153,7 @@ void Node::applyInitialPose()
 
 void Node::newInitialPoseSubscriber(const ros::SingleSubscriberPublisher& single_sub_pub)
 {
-  boost::recursive_mutex::scoped_lock lpl(latest_amcl_pose_mutex_);
+  std::lock_guard<std::mutex> lpl(latest_amcl_pose_mutex_);
   if (latest_amcl_pose_.header.frame_id.compare("map") != 0)
   {
     ROS_DEBUG("New initial pose subscriber registered. "
