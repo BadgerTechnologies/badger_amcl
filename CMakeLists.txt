@@ -66,7 +66,7 @@ add_library(amcl_core
     src/amcl/sensors/point_cloud_scanner.cpp
     src/amcl/node/node_2d.cpp
     src/amcl/node/node_3d.cpp
-	src/amcl/node/node.cpp
+    src/amcl/node/node.cpp
 )
 target_link_libraries(amcl_core
     ${OCTOMAP_LIBRARIES}

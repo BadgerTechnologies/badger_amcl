@@ -25,6 +25,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <ros/console.h>
+
 
 using namespace amcl;
 
@@ -144,18 +146,20 @@ double OctoMap::getMaxOccDist()
   return max_occ_dist_;
 }
 
-void OctoMap::setMapBounds(std::vector<double> map_min, std::vector<double> map_max)
+void OctoMap::setMapBounds(std::shared_ptr<std::vector<double>> map_min,
+                           std::shared_ptr<std::vector<double>> map_max)
 {
-  std::vector<int> cells_min(map_min.size()), cells_max(map_max.size());
+  std::vector<int> cells_min(map_min->size()), cells_max(map_max->size());
+  std::vector<double> map_min_local(*map_min), map_max_local(*map_max);
   // add a buffer around map bounds to ensure representation
   // of objects at extreme map values
-  for (int i = 0; i < map_min.size(); i++)
+  for (int i = 0; i < map_min_local.size(); i++)
   {
-    map_min[i] -= max_occ_dist_;
-    map_max[i] += max_occ_dist_;
+    map_min_local[i] -= max_occ_dist_;
+    map_max_local[i] += max_occ_dist_;
   }
-  convertWorldToMap(map_min, &cells_min);
-  convertWorldToMap(map_max, &cells_max);
+  convertWorldToMap(map_min_local, &cells_min);
+  convertWorldToMap(map_max_local, &cells_max);
   for (int i = 0; i < cells_min.size(); i++)
   {
     cropped_min_cells_[i] = std::max(cropped_min_cells_[i], cells_min[i]);

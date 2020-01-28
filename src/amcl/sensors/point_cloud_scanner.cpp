@@ -26,7 +26,6 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl_ros/transforms.h>
 #include <ros/assert.h>
-#include <ros/console.h>
 #include <tf/exceptions.h>
 
 #include <cmath>
