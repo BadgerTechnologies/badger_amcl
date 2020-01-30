@@ -162,7 +162,7 @@ double Node::scorePose2D(const PFVector& p)
   fake_sample_set_->sample_count = 1;
   fake_sample_set_->samples = { fake_sample_ };
   fake_sample_set_->converged = 0;
-  PlanarScanner::applyModelToSampleSet(last_planar_data_, fake_sample_set_);
+  planar_scanner_.applyModelToSampleSet(last_planar_data_, fake_sample_set_);
   return fake_sample_.weight;
 }
 

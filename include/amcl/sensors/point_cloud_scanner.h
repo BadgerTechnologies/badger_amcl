@@ -71,7 +71,7 @@ public:
 
   // Update a sample set based on the sensor model.
   // Returns total weights of particles, or 0.0 on failure.
-  static double applyModelToSampleSet(std::shared_ptr<SensorData> data, std::shared_ptr<PFSampleSet> set);
+  double applyModelToSampleSet(std::shared_ptr<SensorData> data, std::shared_ptr<PFSampleSet> set);
 
   void setMapFactors(double off_map_factor, double non_free_space_factor, double non_free_space_radius);
 

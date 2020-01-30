@@ -88,16 +88,7 @@ typedef struct
   int converged;
 } PFSampleSet;
 
-class Node;
 class SensorData;
-
-// Function prototype for the initialization model; generates a sample pose from
-// an appropriate distribution.
-typedef PFVector (*PFInitModelFnPtr)(Node* init_data);
-
-// Function prototype for the sensor model; determines the probability
-// for the given set of sample poses.
-typedef double (*PFSensorModelFnPtr)(std::shared_ptr<SensorData> sensor_data, std::shared_ptr<PFSampleSet> set);
 
 // Information for an entire filter
 class ParticleFilter
@@ -105,7 +96,7 @@ class ParticleFilter
 public:
   // Create a new filter
   ParticleFilter(int min_samples, int max_samples, double alpha_slow, double alpha_fast,
-                 PFInitModelFnPtr random_pose_fn, Node* random_pose_data);
+                 std::shared_ptr<std::function<PFVector()>> random_pose_fn_ptr);
 
   // Set the resample model
   void setResampleModel(PFResampleModelType resample_model);
@@ -118,10 +109,12 @@ public:
   void init(PFVector mean, PFMatrix cov);
 
   // Initialize the filter using some model
-  void initModel(PFInitModelFnPtr init_fn, Node* init_data);
+  void initModel(std::shared_ptr<std::function<PFVector()>> init_fn);
 
   // Update the filter with some new sensor observation
-  void updateSensor(PFSensorModelFnPtr sensor_fn, std::shared_ptr<SensorData> sensor_data);
+  void updateSensor(std::shared_ptr<std::function<double(std::shared_ptr<SensorData>,
+                                                         std::shared_ptr<PFSampleSet>)>> sensor_fn_ptr,
+                    std::shared_ptr<SensorData> sensor_data);
 
   // Resample the distribution
   void updateResample();
@@ -170,8 +163,7 @@ private:
   double w_slow_, w_fast_;
 
   // Function used to draw random pose samples
-  PFInitModelFnPtr random_pose_fn_;
-  Node* random_pose_data_;
+  std::shared_ptr<std::function<PFVector()>> random_pose_fn_ptr_;
 
   double dist_threshold_;  // distance threshold in each axis over which the pf is considered to not be converged
 

@@ -165,7 +165,7 @@ double Node::scorePose3D(const PFVector& p)
   fake_sample_set_->sample_count = 1;
   fake_sample_set_->samples = { fake_sample_ };
   fake_sample_set_->converged = 0;
-  PointCloudScanner::applyModelToSampleSet(last_point_cloud_data_, fake_sample_set_);
+  point_cloud_scanner_.applyModelToSampleSet(last_point_cloud_data_, fake_sample_set_);
   return fake_sample_.weight;
 }
 

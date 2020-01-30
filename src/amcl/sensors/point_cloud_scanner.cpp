@@ -30,6 +30,7 @@
 #include <tf/exceptions.h>
 
 #include <cmath>
+#include <functional>
 
 using namespace amcl;
 
@@ -99,8 +100,10 @@ bool PointCloudScanner::updateSensor(std::shared_ptr<ParticleFilter> pf, std::sh
   if (max_beams_ < 2)
     return false;
   // Apply the point cloud scanner sensor model
-  pf->updateSensor((PFSensorModelFnPtr)applyModelToSampleSet, data);
-
+  std::function<double(std::shared_ptr<SensorData>, std::shared_ptr<PFSampleSet>)> foo = std::bind(
+      &PointCloudScanner::applyModelToSampleSet, this, std::placeholders::_1, std::placeholders::_2);
+  pf->updateSensor(std::make_shared<std::function<double(std::shared_ptr<SensorData>, std::shared_ptr<PFSampleSet>)>>(foo),
+                   data);
   return true;
 }
 

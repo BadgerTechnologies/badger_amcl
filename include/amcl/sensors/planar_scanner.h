@@ -92,11 +92,11 @@ public:
 
   // Update the filter based on the sensor model.  Returns true if the
   // filter has been updated.
-  virtual bool updateSensor(std::shared_ptr<ParticleFilter> pf, std::shared_ptr<SensorData> data);
+  bool updateSensor(std::shared_ptr<ParticleFilter> pf, std::shared_ptr<SensorData> data);
 
   // Update a sample set based on the sensor model.
   // Returns total weights of particles, or 0.0 on failure.
-  static double applyModelToSampleSet(std::shared_ptr<SensorData> data, std::shared_ptr<PFSampleSet> set);
+  double applyModelToSampleSet(std::shared_ptr<SensorData> data, std::shared_ptr<PFSampleSet> set);
 
   // Set the scanner's pose after construction
   void setPlanarScannerPose(PFVector& scanner_pose)
