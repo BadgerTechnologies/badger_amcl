@@ -30,6 +30,7 @@
 #include <stdlib.h>
 
 #include <cmath>
+#include <functional>
 
 using namespace amcl;
 
@@ -135,8 +136,11 @@ bool PlanarScanner::updateSensor(std::shared_ptr<ParticleFilter> pf, std::shared
     return false;
 
   // Apply the planar sensor model
-  pf->updateSensor((PFSensorModelFnPtr)applyModelToSampleSet, data);
-
+  std::function<double(std::shared_ptr<SensorData>, std::shared_ptr<PFSampleSet>)> foo = std::bind(
+      &PlanarScanner::applyModelToSampleSet, this, std::placeholders::_1, std::placeholders::_2);
+  std::shared_ptr<std::function<double(std::shared_ptr<SensorData>, std::shared_ptr<PFSampleSet>)>> foo_fn_ptr = (
+      std::make_shared<std::function<double(std::shared_ptr<SensorData>, std::shared_ptr<PFSampleSet>)>>(foo));
+  pf->updateSensor(foo_fn_ptr, data);
   return true;
 }
 

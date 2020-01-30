@@ -102,8 +102,6 @@ private:
   const int INDEX_YY_ = 6 * 1 + 1;
   const int INDEX_AA_ = 6 * 5 + 5;
 
-  static PFVector uniformPoseGenerator(Node* arg);
-
   void init2D();
   void init3D();
 
@@ -131,6 +129,7 @@ private:
   void initFromNewOctomap();
   std::shared_ptr<OccupancyMap> convertMap(const nav_msgs::OccupancyGrid& map_msg);
   std::shared_ptr<OctoMap> convertMap(const octomap_msgs::Octomap& map_msg);
+  PFVector uniformPoseGenerator();
 
   std::string makeFilepathFromName(const std::string filename);
   void loadPose();
@@ -162,6 +161,8 @@ private:
 
   double normalize(double z);
   double angleDiff(double a, double b);
+
+  std::shared_ptr<std::function<PFVector()>> uniform_pose_generator_fn_ptr_;
 
   std::string planar_scan_topic_;
   std::string point_cloud_scan_topic_;

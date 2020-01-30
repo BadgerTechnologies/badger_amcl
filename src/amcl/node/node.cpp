@@ -37,6 +37,7 @@
 #include <tf/transform_datatypes.h>
 
 #include <cstdlib>
+#include <functional>
 
 using namespace amcl;
 
@@ -272,8 +273,10 @@ void Node::reconfigureCB(AMCLConfig& config, uint32_t level)
   beam_skip_distance_ = config.beam_skip_distance;
   beam_skip_threshold_ = config.beam_skip_threshold;
 
+  std::function<PFVector()> foo = std::bind(&Node::uniformPoseGenerator, this);
+  uniform_pose_generator_fn_ptr_ = std::make_shared<std::function<PFVector()>>(foo);
   pf_ = std::make_shared<ParticleFilter>(min_particles_, max_particles_, alpha_slow_, alpha_fast_,
-                                         (PFInitModelFnPtr)Node::uniformPoseGenerator, this);
+                                         uniform_pose_generator_fn_ptr_);
   pf_err_ = config.kld_err;
   pf_z_ = config.kld_z;
   pf_->setPopulationSizeParameters(pf_err_, pf_z_);
@@ -627,8 +630,10 @@ std::string Node::makeFilepathFromName(const std::string filename)
 void Node::initFromNewMap()
 {
   // Create the particle filter
+  std::function<PFVector()> foo = std::bind(&Node::uniformPoseGenerator, this);
+  uniform_pose_generator_fn_ptr_ = std::make_shared<std::function<PFVector()>>(foo);
   pf_ = std::make_shared<ParticleFilter>(min_particles_, max_particles_, alpha_slow_, alpha_fast_,
-                                         (PFInitModelFnPtr)Node::uniformPoseGenerator, this);
+                                         uniform_pose_generator_fn_ptr_);
   pf_->setPopulationSizeParameters(pf_err_, pf_z_);
   pf_->setResampleModel(resample_model_type_);
 
@@ -785,12 +790,12 @@ double Node::scorePose(const PFVector& p)
   }
 }
 
-PFVector Node::uniformPoseGenerator(Node* self)
+PFVector Node::uniformPoseGenerator()
 {
-  double good_weight = self->uniform_pose_starting_weight_threshold_;
-  const double deweight_multiplier = self->uniform_pose_deweight_multiplier_;
+  double good_weight = uniform_pose_starting_weight_threshold_;
+  const double deweight_multiplier = uniform_pose_deweight_multiplier_;
   PFVector p;
-  p = self->randomFreeSpacePose();
+  p = randomFreeSpacePose();
 
   // Check and see how "good" this pose is.
   // Begin with the configured starting weight threshold,
@@ -799,9 +804,9 @@ PFVector Node::uniformPoseGenerator(Node* self)
   // Also sanitize the value of deweight_multiplier.
   if (good_weight > 0.0 && deweight_multiplier < 1.0 && deweight_multiplier >= 0.0)
   {
-    while (self->scorePose(p) < good_weight)
+    while (scorePose(p) < good_weight)
     {
-      p = self->randomFreeSpacePose();
+      p = randomFreeSpacePose();
       good_weight *= deweight_multiplier;
     }
   }
@@ -825,7 +830,7 @@ bool Node::globalLocalizationCallback(std_srvs::Empty::Request& req, std_srvs::E
   {
     globalLocalizationCallback3D();
   }
-  pf_->initModel((PFInitModelFnPtr)Node::uniformPoseGenerator, this);
+  pf_->initModel(uniform_pose_generator_fn_ptr_);
   pf_init_ = false;
   return true;
 }
