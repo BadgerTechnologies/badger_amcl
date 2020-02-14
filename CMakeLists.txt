@@ -19,6 +19,8 @@ find_package(catkin REQUIRED
 find_package(Boost REQUIRED)
 find_package(OCTOMAP REQUIRED)
 
+add_subdirectory(sparse-map)
+
 # dynamic reconfigure
 generate_dynamic_reconfigure_options(
     cfg/AMCL.cfg
@@ -73,6 +75,7 @@ target_link_libraries(amcl_core
     ${Boost_LIBRARIES}
     ${catkin_LIBRARIES}
     yaml-cpp
+    tsl::sparse_map
 )
 
 add_executable(amcl

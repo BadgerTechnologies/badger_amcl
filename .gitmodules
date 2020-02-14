@@ -1,0 +1,3 @@
+[submodule "sparse-map"]
+	path = sparse-map
+	url = https://github.com/BadgerTechnologies/sparse-map.git

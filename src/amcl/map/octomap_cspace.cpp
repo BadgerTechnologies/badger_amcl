@@ -22,6 +22,7 @@
 
 #include "map/octomap.h"
 
+#include <boost/functional/hash.hpp>
 #include <octomap/OcTreeKey.h>
 #include <octomap/OcTreeDataNode.h>
 #include <octomap/OcTreeNode.h>
@@ -54,7 +55,14 @@ void OctoMap::updateCSpace()
   std::priority_queue<CellData> Q;
   octomap::OcTree* marked = new octomap::OcTree(resolution_);
 
-  distances_ = std::unique_ptr<octomap::OcTreeDistance>(new octomap::OcTreeDistance(resolution_, max_occ_dist_));
+  if(use_hashmap_)
+  {
+    distances_hash_ = std::unique_ptr<tsl::sparse_map<size_t, double>>(new tsl::sparse_map<size_t, double>());
+  }
+  else
+  {
+    distances_octree_ = std::unique_ptr<octomap::OcTreeDistance>(new octomap::OcTreeDistance(resolution_, max_occ_dist_));
+  }
 
   if (!cdm_ || (cdm_->resolution_ != resolution_) || (std::fabs(cdm_->max_dist_ - max_occ_dist_) > EPSILON))
   {
@@ -183,21 +191,41 @@ bool OctoMap::enqueue(int i, int j, int k, int src_i, int src_j, int src_k, std:
 // Sets the distance from the voxel to the nearest object in the static map
 void OctoMap::setOccDist(int i, int j, int k, double d)
 {
-  int index = floor(d * 100);
-  octomap::OcTreeKey key(i, j, k);
-  distances_->setDistanceForKey(key, d);
+  if(use_hashmap_)
+  {
+    size_t hash = makeHash(i, j, k);
+    distances_hash_->insert_or_assign(hash, d);
+  }
+  else
+  {
+    int index = floor(d * 100);
+    octomap::OcTreeKey key(i, j, k);
+    distances_octree_->setDistanceForKey(key, d);
+  }
 }
 
 // returns the distance from the 3d voxel to the nearest object in the static map
 double OctoMap::getOccDist(int i, int j, int k)
 {
-  octomap::OcTreeKey key(i, j, k);
-  octomap::OcTreeDataNode<double>* node = distances_->search(key);
-  if (node and node->getValue() < max_occ_dist_)
+  if(use_hashmap_)
   {
-    return node->getValue();
+    size_t hash = makeHash(i, j, k);
+    tsl::sparse_map<size_t, double>::iterator it = distances_hash_->find(hash);
+    if(it != distances_hash_->end())
+    {
+      return it->second;
+    }
   }
-  return 1 * max_occ_dist_;
+  else
+  {
+    octomap::OcTreeKey key(i, j, k);
+    octomap::OcTreeDataNode<double>* node = distances_octree_->search(key);
+    if (node and node->getValue() < max_occ_dist_)
+    {
+      return node->getValue();
+    }
+  }
+  return max_occ_dist_;
 }
 
 // returns the distance from the 2d pose to the nearest object in a 2.5d view
@@ -209,4 +237,13 @@ double OctoMap::getOccDist(int i, int j)
     distance = std::min(distance, getOccDist(i, j, k));
   }
   return distance;
+}
+
+size_t OctoMap::makeHash(int i, int j, int k)
+{
+  std::size_t hash(0);
+  boost::hash_combine(hash, i);
+  boost::hash_combine(hash, j);
+  boost::hash_combine(hash, k);
+  return hash;
 }

@@ -41,8 +41,10 @@ OctoMap::OctoMap(bool wait_for_occupancy_map)
   map_max_bounds_ = std::vector<double>(2);
   max_occ_dist_ = 0.0;
   octree_ = std::make_shared<octomap::OcTree>(resolution_);
-  distances_ = nullptr;
+  distances_octree_ = nullptr;
+  distances_hash_ = nullptr;
   cdm_ = nullptr;
+  use_hashmap_ = true;
 }
 
 // initialize octomap from octree
