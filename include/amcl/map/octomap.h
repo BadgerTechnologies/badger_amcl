@@ -26,13 +26,15 @@
 
 #include "map/map.h"
 
-#include <octomap/OcTree.h>
-#include <octomap/OcTreeDistance.h>
-
 #include <limits>
 #include <memory>
 #include <queue>
 #include <vector>
+
+#include <tsl/sparse_map.h>
+
+#include <octomap/OcTree.h>
+#include <octomap/OcTreeDistance.h>
 
 namespace amcl
 {
@@ -102,11 +104,14 @@ private:
   void setOccDist(int i, int j, int k, double d);
   bool enqueue(int i, int j, int k, int src_i, int src_j, int src_k, std::priority_queue<CellData>& Q);
   unsigned int computeCellIndex(int i, int j, int k);
+  size_t makeHash(int i, int j, int k);
 
   friend bool operator<(const OctoMap::CellData& a, const OctoMap::CellData& b);
 
+  bool use_hashmap_;
   std::shared_ptr<octomap::OcTree> octree_;
-  std::unique_ptr<octomap::OcTreeDistance> distances_;
+  std::unique_ptr<octomap::OcTreeDistance> distances_octree_;
+  std::unique_ptr<tsl::sparse_map<size_t, double>> distances_hash_;
   // Map origin; the map is a viewport onto a conceptual larger map.
   std::vector<double> origin_;
   // Map dimensions (number of cells)
