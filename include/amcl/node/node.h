@@ -84,13 +84,12 @@ public:
   bool getOdomPose(const ros::Time& t, PFVector* map_pose);
   std::shared_ptr<ParticleFilter> getPfPtr();
   void publishPfCloud();
-  void publishPose(geometry_msgs::PoseWithCovarianceStamped p);
+  void updatePose(const PFVector& max_hyp_mean, const ros::Time& stamp);
   bool updateTf(const tf::Stamped<tf::Pose>& odom_to_map);
-  void setPfInitialized();
-  void setPfDecayRateNormal();
-  bool updatePf(ros::Time t, std::shared_ptr<std::vector<bool>> scanners_update,
+  bool updatePf(const ros::Time& t, std::shared_ptr<std::vector<bool>> scanners_update,
                 int scanner_index, int* resample_count, bool* force_publication,
                 bool* force_update);
+  void setPfDecayRateNormal();
   void attemptSavePose();
   void savePoseToServer();
   void savePoseToFile();
@@ -117,18 +116,26 @@ private:
   // Score a single pose with the sensor model using the last sensor data
   double scorePose(const PFVector& p);
 
+  // Initial pose related functions
   void initialPoseReceived(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg);
-  void handleInitialPoseMessage(const geometry_msgs::PoseWithCovarianceStamped& orig_msg);
-  void applyInitialPose();
+  void handleInitialPose(geometry_msgs::PoseWithCovarianceStamped& msg);
+  void resolveFrameId(geometry_msgs::PoseWithCovarianceStamped& msg);
+  bool checkInitialPose(const geometry_msgs::PoseWithCovarianceStamped& msg);
+  void setMsgCovarianceVals(geometry_msgs::PoseWithCovarianceStamped* msg);
+  void transformMsgToTfPose(const geometry_msgs::PoseWithCovarianceStamped& msg, tf::Pose* pose);
+  void transformPoseToGlobalFrame(const geometry_msgs::PoseWithCovarianceStamped& msg,
+                                  const tf::Pose& pose);
+  void publishInitialPose();
   void newInitialPoseSubscriber(const ros::SingleSubscriberPublisher& single_sub_pub);
 
   std::string makeFilepathFromName(const std::string filename);
   void loadPose();
-  void publishInitialPose();
+  void publishPose(const geometry_msgs::PoseWithCovarianceStamped& p);
+  void applyInitialPose();
   bool loadPoseFromServer();
   bool loadPoseFromFile();
   YAML::Node loadYamlFromFile();
-  double getYaw(tf::Pose& t);
+  double getYaw(const tf::Pose& t);
 
   // Odometry integrator
   void integrateOdom(const nav_msgs::OdometryConstPtr& msg);
@@ -136,6 +143,15 @@ private:
   void publishTransform(const ros::TimerEvent& event);
   double normalize(double z);
   double angleDiff(double a, double b);
+
+  // Update PF helper functions
+  void computeDelta(const PFVector& pose, PFVector* delta);
+  void setScannersUpdateFlags(const PFVector& delta,
+                              std::shared_ptr<std::vector<bool>> scanners_update,
+                              bool* force_update);
+  void updateOdom(const PFVector& pose, const PFVector &delta);
+  void initOdom(const PFVector& pose, std::shared_ptr<std::vector<bool>> scanners_update,
+                int* resample_count, bool* force_publication);
 
   std::shared_ptr<std::function<PFVector()>> uniform_pose_generator_fn_ptr_;
 
@@ -198,7 +214,7 @@ private:
   // Particle filter
   std::shared_ptr<ParticleFilter> pf_;
   double pf_err_, pf_z_;
-  bool pf_init_;
+  bool odom_init_;
   PFVector pf_odom_pose_;
   double d_thresh_, a_thresh_;
   PFResampleModelType resample_model_type_;
@@ -206,7 +222,7 @@ private:
   std::shared_ptr<PoseHypothesis> initial_pose_hyp_;
   double init_pose_[3];
   double init_cov_[3];
-  geometry_msgs::PoseWithCovarianceStamped last_published_pose_;
+  std::shared_ptr<geometry_msgs::PoseWithCovarianceStamped> last_published_pose_;
 
   bool first_reconfigure_call_;
   std::mutex configuration_mutex_;

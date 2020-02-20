@@ -32,45 +32,35 @@
 
 using namespace amcl;
 
-bool OccupancyMap::enqueue(int i, int j, int src_i, int src_j, std::priority_queue<CellData>& Q)
-{
-  int di = abs(i - src_i);
-  int dj = abs(j - src_j);
-  double distance = cdm_->distances_[di][dj];
-
-  if (distance > cdm_->cell_radius_)
-    return false;
-
-  setMapOccDist(i, j, distance * resolution_);
-
-  CellData cell = CellData(this);
-  cell.i = i;
-  cell.j = j;
-  cell.src_i = src_i;
-  cell.src_j = src_j;
-
-  Q.push(cell);
-
-  return true;
-}
-
 // Update the cspace distance values
 void OccupancyMap::updateCSpace(double max_occ_dist)
 {
-  ROS_INFO("Updating Occupancy Map CSpace");
-  std::priority_queue<CellData> Q;
-
-  distances_.resize(unsigned(size_x_) * size_y_);
-
-  std::vector<bool> marked(unsigned(size_x_) * size_y_, false);
-
   max_occ_dist_ = max_occ_dist;
+  if(max_occ_dist_ == 0.0)
+  {
+    ROS_DEBUG("Failed to update cspace, max occ dist is 0");
+    return;
+  }
 
+  ROS_INFO("Updating Occupancy Map CSpace");
+  q_ = std::unique_ptr<std::priority_queue<CellData>>(new std::priority_queue<CellData>());
+  unsigned s = unsigned(size_x_) * size_y_;
+  marked_ = std::unique_ptr<std::vector<bool>>(new std::vector<bool>(s, false));
+  distances_.resize(unsigned(size_x_) * size_y_);
   if (!cdm_ || (cdm_->resolution_ != resolution_) || (cdm_->max_dist_ != max_occ_dist_))
   {
     cdm_ = std::unique_ptr<CachedDistanceMap>(new CachedDistanceMap(resolution_, max_occ_dist_));
   }
+  iterateObstacleCells();
+  iterateEmptyCells();
+  cspace_created_ = true;
+  ROS_INFO("Done updating Occupancy Map CSpace");
+  q_ = nullptr;
+  marked_ = nullptr;
+}
 
+void OccupancyMap::iterateObstacleCells()
+{
   // Enqueue all the obstacle cells
   CellData cell = CellData(this);
   for (int i = 0; i < size_x_; i++)
@@ -82,51 +72,68 @@ void OccupancyMap::updateCSpace(double max_occ_dist)
       {
         setMapOccDist(i, j, 0.0);
         cell.src_j = cell.j = j;
-        marked[computeCellIndex(i, j)] = true;
-        Q.push(cell);
+        marked_->at(computeCellIndex(i, j)) = true;
+        q_->push(cell);
       }
       else
       {
-        setMapOccDist(i, j, max_occ_dist);
+        setMapOccDist(i, j, max_occ_dist_);
       }
     }
   }
+}
 
-  while (!Q.empty())
+void OccupancyMap::iterateEmptyCells()
+{
+  while (!q_->empty())
   {
-    CellData current_cell = Q.top();
+    CellData current_cell = q_->top();
     if (current_cell.i > 0)
     {
-      int i = current_cell.i - 1, j = current_cell.j;
-      unsigned int index = computeCellIndex(i, j);
-      if (not marked[index])
-        marked[index] = enqueue(i, j, current_cell.src_i, current_cell.src_j, Q);
+      updateNode(current_cell.i - 1, current_cell.j, current_cell);
     }
     if (current_cell.j > 0)
     {
-      int i = current_cell.i, j = current_cell.j - 1;
-      unsigned int index = computeCellIndex(i, j);
-      if (not marked[index])
-        marked[index] = enqueue(i, j, current_cell.src_i, current_cell.src_j, Q);
+      updateNode(current_cell.i, current_cell.j - 1, current_cell);
     }
     if ((int)current_cell.i < size_x_ - 1)
     {
-      int i = current_cell.i + 1, j = current_cell.j;
-      unsigned int index = computeCellIndex(i, j);
-      if (not marked[index])
-        marked[index] = enqueue(i, j, current_cell.src_i, current_cell.src_j, Q);
+      updateNode(current_cell.i + 1, current_cell.j, current_cell);
     }
     if ((int)current_cell.j < size_y_ - 1)
     {
-      int i = current_cell.i, j = current_cell.j + 1;
-      unsigned int index = computeCellIndex(i, j);
-      if (not marked[index])
-        marked[index] = enqueue(i, j, current_cell.src_i, current_cell.src_j, Q);
+      updateNode(current_cell.i, current_cell.j + 1, current_cell);
     }
-    Q.pop();
+    q_->pop();
   }
-  cspace_created_ = true;
-  ROS_INFO("Done updating Occupancy Map CSpace");
+}
+
+void OccupancyMap::updateNode(int i, int j, const CellData& current_cell)
+{
+  unsigned int index = computeCellIndex(i, j);
+  if (not marked_->at(index))
+  {
+    marked_->at(index) = enqueue(i, j, current_cell.src_i, current_cell.src_j);
+  }
+}
+
+bool OccupancyMap::enqueue(int i, int j, int src_i, int src_j)
+{
+  int di = abs(i - src_i);
+  int dj = abs(j - src_j);
+  double distance = cdm_->distances_[di][dj];
+  if (distance > cdm_->cell_radius_)
+  {
+    setMapOccDist(i, j, distance * resolution_);
+    CellData cell = CellData(this);
+    cell.i = i;
+    cell.j = j;
+    cell.src_i = src_i;
+    cell.src_j = src_j;
+    q_->push(cell);
+    return true;
+  }
+  return false;
 }
 
 void OccupancyMap::setMapOccDist(int i, int j, float d)

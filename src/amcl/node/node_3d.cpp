@@ -186,30 +186,31 @@ void Node3D::reconfigure(amcl::AMCLConfig& config)
   scan_filter_ = std::unique_ptr<tf::MessageFilter<sensor_msgs::PointCloud2>>(
       new tf::MessageFilter<sensor_msgs::PointCloud2>(*scan_sub_, tf_, odom_frame_id_, 100));
   scan_filter_->registerCallback(boost::bind(&Node3D::scanReceived, this, _1));
+  pf_ = node_->getPfPtr();
 }
 
 void Node3D::mapMsgReceived(const octomap_msgs::OctomapConstPtr& msg)
 {
   if (first_map_only_ && first_octomap_received_)
   {
+    ROS_DEBUG("Octomap already received");
     return;
   }
-  ROS_INFO("Received a new Octomap");
-  std::lock_guard<std::mutex> cfl(configuration_mutex_);
 
+  std::lock_guard<std::mutex> cfl(configuration_mutex_);
+  ROS_INFO("Received a new Octomap");
   map_ = convertMap(*msg);
   first_octomap_received_ = true;
 
-  // if the OctoMap is a secondary map source
-  if (map_type_ != 3)
-    return;
-
-  // Clear queued point cloud objects because they hold pointers to the existing map
-  scanners_.clear();
-  scanners_update_->clear();
-  frame_to_scanner_.clear();
-  latest_scan_data_ = NULL;
-  initFromNewMap();
+  if (map_type_ == 3)
+  {
+    // Clear queued point cloud objects because they hold pointers to the existing map
+    scanners_.clear();
+    scanners_update_->clear();
+    frame_to_scanner_.clear();
+    latest_scan_data_ = NULL;
+    initFromNewMap();
+  }
 }
 
 void Node3D::initFromNewMap()
@@ -235,6 +236,7 @@ void Node3D::initFromNewMap()
   }
   scanner_.setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
   node_->initFromNewMap(map_);
+  pf_ = node_->getPfPtr();
   // if we are using both maps as bounds
   // and the occupancy map has already arrived
   if (wait_for_occupancy_map_ and occupancy_bounds_received_)
@@ -279,21 +281,22 @@ std::shared_ptr<OctoMap> Node3D::convertMap(const octomap_msgs::Octomap& map_msg
 
 double Node3D::scorePose(const PFVector& p)
 {
-  if (latest_scan_data_ == NULL)
+  // If there is no data to match, return a perfect match
+  double score = 1.0;
+  if (latest_scan_data_ != NULL)
   {
-    // There is no data to match, so return a perfect match
-    return 1.0;
+    // Create a fake "sample set" of just this pose to score it.
+    fake_sample_.pose.v[0] = p.v[0];
+    fake_sample_.pose.v[1] = p.v[1];
+    fake_sample_.pose.v[2] = p.v[2];
+    fake_sample_.weight = 1.0;
+    fake_sample_set_->sample_count = 1;
+    fake_sample_set_->samples = { fake_sample_ };
+    fake_sample_set_->converged = 0;
+    scanner_.applyModelToSampleSet(latest_scan_data_, fake_sample_set_);
+    score = fake_sample_.weight;
   }
-  // Create a fake "sample set" of just this pose to score it.
-  fake_sample_.pose.v[0] = p.v[0];
-  fake_sample_.pose.v[1] = p.v[1];
-  fake_sample_.pose.v[2] = p.v[2];
-  fake_sample_.weight = 1.0;
-  fake_sample_set_->sample_count = 1;
-  fake_sample_set_->samples = { fake_sample_ };
-  fake_sample_set_->converged = 0;
-  scanner_.applyModelToSampleSet(latest_scan_data_, fake_sample_set_);
-  return fake_sample_.weight;
+  return score;
 }
 
 void Node3D::setOctomapBoundsFromOccupancyMap(std::shared_ptr<std::vector<double>> map_min,
@@ -327,115 +330,157 @@ void Node3D::updateFreeSpaceIndices()
 void Node3D::scanReceived(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan)
 {
   latest_scan_received_ts_ = ros::Time::now();
+  if(!isMapInitialized())
+    return;
+
+  std::lock_guard<std::mutex> cfl(configuration_mutex_);
+  if (!global_localization_active_)
+    deactivateGlobalLocalizationParams();
+
+  std::string frame_id = point_cloud_scan->header.frame_id;
+  ros::Time stamp = point_cloud_scan->header.stamp; 
+  int scanner_index = getFrameToScannerIndex(point_cloud_scan->header.frame_id);
+  if(scanner_index >= 0)
+  {
+    bool force_publication = false, resampled = false, success;
+    success = updateNodePf(stamp, scanner_index, &force_publication);
+    if(scanners_update_->at(scanner_index))
+      updateScanner(point_cloud_scan, scanner_index, &resampled);
+    if(force_publication or resampled)
+      success = success and resamplePose(stamp);
+    if(success)
+    {
+      node_->attemptSavePose();
+    }
+  }
+}
+
+bool Node3D::updateNodePf(const ros::Time& stamp, int scanner_index, bool* force_publication)
+{
+  return node_->updatePf(stamp, scanners_update_, scanner_index, &resample_count_,
+                         force_publication, &force_update_);
+}
+
+void Node3D::updateScanner(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan,
+                           int scanner_index, bool* resampled)
+{
+  updateLatestScanData(point_cloud_scan, scanner_index);
+  pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+  makePointCloudFromScan(point_cloud_scan, point_cloud);
+  samplePointCloud(point_cloud, scanner_index);
+  scanners_[scanner_index]->updateSensor(pf_, std::dynamic_pointer_cast<SensorData>(latest_scan_data_));
+  scanners_update_->at(scanner_index) = false;
+  if(!(++resample_count_ % resample_interval_))
+  {
+    resampleParticles();
+    *resampled = true;
+  }
+  if(!force_update_)
+    node_->publishPfCloud();
+}
+
+bool Node3D::isMapInitialized()
+{
   if (map_ == NULL)
   {
     ROS_DEBUG("Map is null");
-    return;
+    return false;
   }
   if (not map_->isCSpaceCreated())
   {
     ROS_DEBUG("CSpace not yet created");
-    return;
+    return false;
   }
+  return true;
+}
 
-  std::lock_guard<std::mutex> cfl(configuration_mutex_);
-  int scanner_index = -1;
-
+void Node3D::deactivateGlobalLocalizationParams()
+{
   // Handle corner cases like getting dynamically reconfigured or getting a
-  // new map by de-activating the global localization parameters here if we are
-  // no longer globally localizing.
-  if (!global_localization_active_)
+  // new map by de-activating the global localization parameters here.
+  node_->setPfDecayRateNormal();
+  scanner_.setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
+  for (auto& l : scanners_)
   {
-    node_->setPfDecayRateNormal();
-    scanner_.setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
-    for (auto& l : scanners_)
-    {
-      l->setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
-    }
+    l->setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
   }
+}
 
+int Node3D::getFrameToScannerIndex(const std::string& frame_id)
+{
+  int scanner_index;
   // Do we have the base->base_lidar Tx yet?
-  if (frame_to_scanner_.find(point_cloud_scan->header.frame_id) == frame_to_scanner_.end())
+  if (frame_to_scanner_.find(frame_id) == frame_to_scanner_.end())
   {
-    if(!initFrameToScanner(point_cloud_scan, &scanner_index))
-      return;
+    tf::Stamped<tf::Pose> scanner_pose;
+    scanner_index = initFrameToScanner(frame_id, &scanner_pose);
+    if(scanner_index >= 0)
+    {
+      frame_to_scanner_[frame_id] = scanner_index;
+      updateScannerPose(scanner_pose, scanner_index);
+    }
   }
   else
   {
     // we have the point cloud scanner pose, retrieve scanner index
-    scanner_index = frame_to_scanner_[point_cloud_scan->header.frame_id];
+    scanner_index = frame_to_scanner_[frame_id];
   }
-
-  bool force_publication = false;
-  if(!node_->updatePf(point_cloud_scan->header.stamp, scanners_update_, scanner_index,
-                      &resample_count_, &force_publication, &force_update_))
-    return;
-  pf_ = node_->getPfPtr();
-  bool resampled = false;
-  // If the robot has moved, update the filter
-  if (scanners_update_->at(scanner_index))
-  {
-    updatePf(point_cloud_scan, scanner_index, &resampled);
-  }
-
-  if (resampled || force_publication)
-  {
-    if(!resamplePf(point_cloud_scan))
-      return;
-  }
-  else
-  {
-    node_->attemptSavePose();
-  }
+  return scanner_index;
 }
 
-bool Node3D::initFrameToScanner(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan, int* scanner_index)
+int Node3D::initFrameToScanner(const std::string& frame_id, tf::Stamped<tf::Pose>* scanner_pose)
 {
   scanners_.push_back(std::make_shared<PointCloudScanner>(scanner_));
   scanners_update_->push_back(true);
-  *scanner_index = frame_to_scanner_.size();
-
+  int scanner_index = frame_to_scanner_.size();
   tf::Stamped<tf::Pose> ident(tf::Transform(tf::createIdentityQuaternion(), tf::Vector3(0, 0, 0)), ros::Time(),
-                              point_cloud_scan->header.frame_id);
-  tf::Stamped<tf::Pose> scanner_pose;
+                              frame_id);
+  bool success = true;
   try
   {
-    tf_.transformPose(base_frame_id_, ident, scanner_pose);
+    tf_.transformPose(base_frame_id_, ident, *scanner_pose);
   }
   catch (tf::TransformException& e)
   {
     ROS_ERROR("Couldn't transform from %s to %s, "
               "even though the message notifier is in use",
-              point_cloud_scan->header.frame_id.c_str(), base_frame_id_.c_str());
-    return false;
+              frame_id.c_str(), base_frame_id_.c_str());
+    scanner_index = -1;
   }
+  return scanner_index;
+}
 
+void Node3D::updateScannerPose(const tf::Stamped<tf::Pose>& scanner_pose, int scanner_index)
+{
   PFVector scanner_pose_v;
   scanner_pose_v.v[0] = scanner_pose.getOrigin().x();
   scanner_pose_v.v[1] = scanner_pose.getOrigin().y();
   // point cloud scanner mounting angle gets computed later -> set to 0 here!
   scanner_pose_v.v[2] = 0;
-  scanners_[*scanner_index]->setPointCloudScannerPose(scanner_pose_v);
-  scanners_[*scanner_index]->setPointCloudScannerToFootprintTF(scanner_to_footprint_tf_);
+  scanners_[scanner_index]->setPointCloudScannerPose(scanner_pose_v);
+  scanners_[scanner_index]->setPointCloudScannerToFootprintTF(scanner_to_footprint_tf_);
   ROS_DEBUG("Received point cloud scanner's pose wrt robot: %.3f %.3f %.3f", scanner_pose_v.v[0],
             scanner_pose_v.v[1], scanner_pose_v.v[2]);
-
-  frame_to_scanner_[point_cloud_scan->header.frame_id] = *scanner_index;
-  return true;
 }
 
-void Node3D::updatePf(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan,
-                      int scanner_index, bool* resampled)
+void Node3D::updateLatestScanData(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan,
+                                  int scanner_index)
 {
   latest_scan_data_ = std::make_shared<PointCloudData>();
   latest_scan_data_->sensor_ = scanners_[scanner_index];
   latest_scan_data_->frame_id_ = point_cloud_scan->header.frame_id;
+}
+
+void Node3D::makePointCloudFromScan(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan,
+                                    pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud)
+{
   pcl::PCLPointCloud2 pc2;
   pcl_conversions::toPCL(*point_cloud_scan, pc2);
-  pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud(new pcl::PointCloud<pcl::PointXYZ>);
   pcl::fromPCLPointCloud2(pc2, *point_cloud);
+}
 
-  // sample point cloud
+void Node3D::samplePointCloud(const pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud, int scanner_index)
+{
   int max_beams = scanners_[scanner_index]->getMaxBeams();
   int data_count = point_cloud->size();
   int step = (data_count - 1) / (max_beams - 1);
@@ -447,29 +492,35 @@ void Node3D::updatePf(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan,
     latest_scan_data_->points_.push_back(point);
   }
   latest_scan_data_->points_.header = point_cloud->header;
-  scanners_[scanner_index]->updateSensor(pf_, std::dynamic_pointer_cast<SensorData>(latest_scan_data_));
-  scanners_update_->at(scanner_index) = false;
+}
 
-  // Resample the particles
-  if (!(++resample_count_ % resample_interval_))
+void Node3D::resampleParticles()
+{
+  pf_->updateResample();
+  if (pf_->isConverged() && global_localization_active_)
   {
-    pf_->updateResample();
-    *resampled = true;
-    if (pf_->isConverged() && global_localization_active_)
-    {
-      ROS_INFO("Global localization converged!");
-      global_localization_active_ = false;
-    }
-  }
-
-  // TODO: set maximum rate for publishing
-  if(!force_update_)
-  {
-    node_->publishPfCloud();
+    ROS_INFO("Global localization converged!");
+    global_localization_active_ = false;
   }
 }
 
-bool Node3D::resamplePf(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan)
+bool Node3D::resamplePose(const ros::Time& stamp)
+{
+  double max_weight = 0.0;
+  PFVector max_pose;
+  getMaxWeightPose(&max_weight, &max_pose);
+  bool success = true;
+  if(max_weight > 0.0)
+    success = updatePose(max_pose, stamp);
+  else
+  {
+    ROS_ERROR("No pose!");
+    success = false;
+  }
+  return success;
+}
+
+void Node3D::getMaxWeightPose(double* max_weight_rtn, PFVector* max_pose)
 {
   // Read out the current hypotheses
   double max_weight = 0.0;
@@ -477,75 +528,55 @@ bool Node3D::resamplePf(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan
   int cluster_count = pf_->getCurrentSet()->cluster_count;
   std::vector<PoseHypothesis> hyps;
   hyps.resize(cluster_count);
-  double weight;
-  PFVector pose_mean;
-  PFMatrix pose_cov;
   for (int hyp_count = 0; hyp_count < cluster_count; hyp_count++)
   {
+    double weight;
+    PFVector pose_mean;
+    PFMatrix pose_cov;
     if (!pf_->getClusterStats(hyp_count, &weight, &pose_mean, &pose_cov))
     {
       ROS_ERROR("Couldn't get stats on cluster %d", hyp_count);
       break;
     }
+
     hyps[hyp_count].weight = weight;
     hyps[hyp_count].mean = pose_mean;
     hyps[hyp_count].covariance = pose_cov;
+
     if (hyps[hyp_count].weight > max_weight)
     {
       max_weight = hyps[hyp_count].weight;
       max_weight_hyp = hyp_count;
     }
   }
-  if (max_weight > 0.0)
+  *max_weight_rtn = max_weight;
+  *max_pose = hyps[max_weight_hyp].mean;
+}
+
+bool Node3D::updatePose(const PFVector& max_pose, const ros::Time& stamp)
+{
+  ROS_DEBUG("Max weight pose: %.3f %.3f %.3f", max_pose.v[0], max_pose.v[1], max_pose.v[2]);
+  node_->updatePose(max_pose, stamp);
+  bool success = true;
+  // subtracting base to odom from map to base and send map to odom instead
+  tf::Stamped<tf::Pose> odom_to_map;
+  try
   {
-    geometry_msgs::PoseWithCovarianceStamped p;
-    // Fill in the header
-    p.header.frame_id = global_frame_id_;
-    p.header.stamp = point_cloud_scan->header.stamp;
-    // Copy in the pose
-    p.pose.pose.position.x = hyps[max_weight_hyp].mean.v[0];
-    p.pose.pose.position.y = hyps[max_weight_hyp].mean.v[1];
-    tf::quaternionTFToMsg(tf::createQuaternionFromYaw(hyps[max_weight_hyp].mean.v[2]),
-                          p.pose.pose.orientation);
-    // Copy in the covariance, converting from 3-D to 6-D
-    std::shared_ptr<PFSampleSet> set = pf_->getCurrentSet();
-    for (int i = 0; i < 2; i++)
-    {
-      for (int j = 0; j < 2; j++)
-      {
-        // Report the overall filter covariance, rather than the
-        // covariance for the highest-weight cluster
-        p.pose.covariance[6 * i + j] = set->cov.m[i][j];
-      }
-    }
-    // Report the overall filter covariance, rather than the
-    // covariance for the highest-weight cluster
-    p.pose.covariance[6 * 5 + 5] = set->cov.m[2][2];
-    node_->publishPose(p);
-    // subtracting base to odom from map to base and send map to odom instead
-    tf::Stamped<tf::Pose> odom_to_map;
-    try
-    {
-      tf::Transform tmp_tf(
-          tf::createQuaternionFromYaw(hyps[max_weight_hyp].mean.v[2]),
-          tf::Vector3(hyps[max_weight_hyp].mean.v[0], hyps[max_weight_hyp].mean.v[1], 0.0));
-      tf::Stamped<tf::Pose> tmp_tf_stamped(tmp_tf.inverse(), point_cloud_scan->header.stamp, base_frame_id_);
-      tf_.waitForTransform(base_frame_id_, odom_frame_id_, point_cloud_scan->header.stamp, ros::Duration(1.0));
-      tf_.transformPose(odom_frame_id_, tmp_tf_stamped, odom_to_map);
-    }
-    catch (tf::TransformException e)
-    {
-      ROS_WARN("Failed to subtract base to odom transform: %s", e.what());
-      return false;
-    }
-    if(!node_->updateTf(odom_to_map))
-      return false;
+    tf::Transform tmp_tf(tf::createQuaternionFromYaw(max_pose.v[2]),
+                         tf::Vector3(max_pose.v[0], max_pose.v[1], 0.0));
+    tf::Stamped<tf::Pose> tmp_tf_stamped(tmp_tf.inverse(), stamp, base_frame_id_);
+    tf_.waitForTransform(base_frame_id_, odom_frame_id_, stamp, ros::Duration(1.0));
+    tf_.transformPose(odom_frame_id_, tmp_tf_stamped, odom_to_map);
   }
-  else
+  catch (tf::TransformException)
   {
-    ROS_ERROR("No pose!");
+    ROS_DEBUG("Failed to subtract base to odom transform");
+    success = false;
   }
-  return true;
+
+  if(!(success and node_->updateTf(odom_to_map)))
+    success = false;
+  return success;
 }
 
 void Node3D::checkScanReceived(const ros::TimerEvent& event)

@@ -99,10 +99,7 @@ public:
   double applyModelToSampleSet(std::shared_ptr<SensorData> data, std::shared_ptr<PFSampleSet> set);
 
   // Set the scanner's pose after construction
-  void setPlanarScannerPose(PFVector& scanner_pose)
-  {
-    planar_scanner_pose_ = scanner_pose;
-  }
+  void setPlanarScannerPose(PFVector& scanner_pose);
 
   // Apply gompertz transform function to given input
   double applyGompertz(double p);

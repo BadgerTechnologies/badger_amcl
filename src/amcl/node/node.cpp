@@ -241,8 +241,8 @@ void Node::reconfigureCB(AMCLConfig& config, uint32_t level)
   tf_broadcast_ = config.tf_broadcast;
   tf_reverse_ = config.tf_reverse;
 
-  std::function<PFVector()> foo = std::bind(&Node::uniformPoseGenerator, this);
-  uniform_pose_generator_fn_ptr_ = std::make_shared<std::function<PFVector()>>(foo);
+  std::function<PFVector()> fn_ptr = std::bind(&Node::uniformPoseGenerator, this);
+  uniform_pose_generator_fn_ptr_ = std::make_shared<std::function<PFVector()>>(fn_ptr);
   pf_ = std::make_shared<ParticleFilter>(min_particles_, max_particles_, alpha_slow_, alpha_fast_,
                                          uniform_pose_generator_fn_ptr_);
   pf_err_ = config.kld_err;
@@ -252,15 +252,15 @@ void Node::reconfigureCB(AMCLConfig& config, uint32_t level)
 
   // Initialize the filter
   PFVector pf_init_pose_mean;
-  pf_init_pose_mean.v[0] = last_published_pose_.pose.pose.position.x;
-  pf_init_pose_mean.v[1] = last_published_pose_.pose.pose.position.y;
-  pf_init_pose_mean.v[2] = tf::getYaw(last_published_pose_.pose.pose.orientation);
+  pf_init_pose_mean.v[0] = last_published_pose_->pose.pose.position.x;
+  pf_init_pose_mean.v[1] = last_published_pose_->pose.pose.position.y;
+  pf_init_pose_mean.v[2] = tf::getYaw(last_published_pose_->pose.pose.orientation);
   PFMatrix pf_init_pose_cov;
-  pf_init_pose_cov.m[0][0] = last_published_pose_.pose.covariance[6 * 0 + 0];
-  pf_init_pose_cov.m[1][1] = last_published_pose_.pose.covariance[6 * 1 + 1];
-  pf_init_pose_cov.m[2][2] = last_published_pose_.pose.covariance[6 * 5 + 5];
+  pf_init_pose_cov.m[0][0] = last_published_pose_->pose.covariance[6 * 0 + 0];
+  pf_init_pose_cov.m[1][1] = last_published_pose_->pose.covariance[6 * 1 + 1];
+  pf_init_pose_cov.m[2][2] = last_published_pose_->pose.covariance[6 * 5 + 5];
   pf_->init(pf_init_pose_mean, pf_init_pose_cov);
-  pf_init_ = false;
+  odom_init_ = false;
 
   // Instantiate the sensor objects
   // Odometry
@@ -294,82 +294,32 @@ void Node::setPfDecayRateNormal()
   pf_->setDecayRates(alpha_slow_, alpha_fast_);
 }
 
-bool Node::updatePf(ros::Time t, std::shared_ptr<std::vector<bool>> scanners_update, int scanner_index,
-                    int* resample_count, bool* force_publication, bool* force_update)
+bool Node::updatePf(const ros::Time& t, std::shared_ptr<std::vector<bool>> scanners_update,
+                    int scanner_index, int* resample_count, bool* force_publication, bool* force_update)
 {
-  // Where was the robot when this scan was taken?
+  // Where the robot was when this scan was taken
   PFVector pose;
-  if (!getOdomPose(t, &pose))
+  if (getOdomPose(t, &pose))
   {
-    ROS_ERROR("Couldn't determine robot's pose associated with planar scan");
-    return false;
-  }
-
-  PFVector delta;
-  if (pf_init_)
-  {
-    // Compute change in pose
-    delta.v[0] = pose.v[0] - pf_odom_pose_.v[0];
-    delta.v[1] = pose.v[1] - pf_odom_pose_.v[1];
-    delta.v[2] = angleDiff(pose.v[2], pf_odom_pose_.v[2]);
-
-    // See if we should update the filter
-    bool update;
-    if (odom_integrator_topic_.size())
+    PFVector delta;
+    if(odom_init_)
     {
-      double abs_trans = sqrt(odom_integrator_absolute_motion_.v[0] * odom_integrator_absolute_motion_.v[0] +
-                              odom_integrator_absolute_motion_.v[1] * odom_integrator_absolute_motion_.v[1]);
-      double abs_rot = odom_integrator_absolute_motion_.v[2];
-      update = abs_trans >= d_thresh_ || abs_rot >= a_thresh_;
+      computeDelta(pose, &delta);
+      setScannersUpdateFlags(delta, scanners_update, force_update);
+      if(scanners_update->at(scanner_index))
+      {
+        updateOdom(pose, delta);
+      }
     }
     else
     {
-      update = fabs(delta.v[0]) > d_thresh_ || fabs(delta.v[1]) > d_thresh_ || fabs(delta.v[2]) > a_thresh_;
-    }
-    update = update || *force_update;
-    *force_update = false;
-
-    // Set the planar scanner update flags
-    if (update)
-      for (unsigned int i = 0; i < scanners_update->size(); i++)
-        scanners_update->at(i) = true;
-
-    if(scanners_update->at(scanner_index))
-    {
-      std::shared_ptr<OdomData> odata = std::make_shared<OdomData>();
-      odata->pose = pose;
-      // HACK
-      // Modify the delta in the action data so the filter gets
-      // updated correctly
-      odata->delta = delta;
-      odata->absolute_motion = odom_integrator_absolute_motion_;
-      if (odom_integrator_topic_.size())
-      {
-        geometry_msgs::Pose2D p;
-        p.x = odata->absolute_motion.v[0];
-        p.y = odata->absolute_motion.v[1];
-        p.theta = odata->absolute_motion.v[2];
-        absolute_motion_pub_.publish(p);
-      }
-
-      // Use the action data to update the filter
-      odom_.updateAction(pf_, std::dynamic_pointer_cast<SensorData>(odata));
-      resetOdomIntegrator();
-      pf_odom_pose_ = pose;
+      initOdom(pose, scanners_update, resample_count, force_publication);
     }
   }
   else
   {
-    // Pose at last filter update
-    pf_odom_pose_ = pose;
-    // Filter is now initialized
-    pf_init_ = true;
-    // Should update sensor data
-    for (unsigned int i = 0; i < scanners_update->size(); i++)
-      scanners_update->at(i) = true;
-    *force_publication = true;
-    resample_count = 0;
-    initOdomIntegrator();
+    ROS_ERROR("Couldn't determine robot's pose associated with planar scan");
+    return false;
   }
   return true;
 }
@@ -402,10 +352,39 @@ void Node::publishPfCloud()
   }
 }
 
-void Node::publishPose(geometry_msgs::PoseWithCovarianceStamped p)
+void Node::updatePose(const PFVector& max_hyp_mean, const ros::Time& stamp)
+{
+  std::shared_ptr<geometry_msgs::PoseWithCovarianceStamped> p = (
+          std::make_shared<geometry_msgs::PoseWithCovarianceStamped>());
+  // Fill in the header
+  p->header.frame_id = global_frame_id_;
+  p->header.stamp = stamp;
+  // Copy in the pose
+  p->pose.pose.position.x = max_hyp_mean.v[0];
+  p->pose.pose.position.y = max_hyp_mean.v[1];
+  tf::quaternionTFToMsg(tf::createQuaternionFromYaw(max_hyp_mean.v[2]),
+                        p->pose.pose.orientation);
+  // Copy in the covariance, converting from 3-D to 6-D
+  std::shared_ptr<PFSampleSet> set = pf_->getCurrentSet();
+  for (int i = 0; i < 2; i++)
+  {
+    for (int j = 0; j < 2; j++)
+    {
+      // Report the overall filter covariance, rather than the
+      // covariance for the highest-weight cluster
+      p->pose.covariance[6 * i + j] = set->cov.m[i][j];
+    }
+  }
+  // Report the overall filter covariance, rather than the
+  // covariance for the highest-weight cluster
+  p->pose.covariance[6 * 5 + 5] = set->cov.m[2][2];
+  publishPose(*p);
+  last_published_pose_ = p;
+}
+
+void Node::publishPose(const geometry_msgs::PoseWithCovarianceStamped& p)
 {
   pose_pub_.publish(p);
-  last_published_pose_ = p;
   if (global_alt_frame_id_.size() > 0)
   {
     geometry_msgs::PoseWithCovarianceStamped alt_p(p);
@@ -682,16 +661,16 @@ void Node::savePoseToServer()
   private_nh_.setParam("initial_pose_x", map_pose.getOrigin().x());
   private_nh_.setParam("initial_pose_y", map_pose.getOrigin().y());
   private_nh_.setParam("initial_pose_a", yaw);
-  private_nh_.setParam("initial_cov_xx", last_published_pose_.pose.covariance[INDEX_XX_]);
-  private_nh_.setParam("initial_cov_yy", last_published_pose_.pose.covariance[INDEX_YY_]);
-  private_nh_.setParam("initial_cov_aa", last_published_pose_.pose.covariance[INDEX_AA_]);
+  private_nh_.setParam("initial_cov_xx", last_published_pose_->pose.covariance[INDEX_XX_]);
+  private_nh_.setParam("initial_cov_yy", last_published_pose_->pose.covariance[INDEX_YY_]);
+  private_nh_.setParam("initial_cov_aa", last_published_pose_->pose.covariance[INDEX_AA_]);
   geometry_msgs::Pose pose;
   tf::poseTFToMsg(map_pose, pose);
   std::lock_guard<std::mutex> lpl(latest_amcl_pose_mutex_);
   latest_amcl_pose_.pose.pose = pose;
-  latest_amcl_pose_.pose.covariance[INDEX_XX_] = last_published_pose_.pose.covariance[INDEX_XX_];
-  latest_amcl_pose_.pose.covariance[INDEX_YY_] = last_published_pose_.pose.covariance[INDEX_YY_];
-  latest_amcl_pose_.pose.covariance[INDEX_AA_] = last_published_pose_.pose.covariance[INDEX_AA_];
+  latest_amcl_pose_.pose.covariance[INDEX_XX_] = last_published_pose_->pose.covariance[INDEX_XX_];
+  latest_amcl_pose_.pose.covariance[INDEX_YY_] = last_published_pose_->pose.covariance[INDEX_YY_];
+  latest_amcl_pose_.pose.covariance[INDEX_AA_] = last_published_pose_->pose.covariance[INDEX_AA_];
   latest_amcl_pose_.header.stamp = ros::Time::now();
   latest_amcl_pose_.header.frame_id = "map";
 }
@@ -767,8 +746,8 @@ void Node::initFromNewMap(std::shared_ptr<Map> new_map)
 {
   map_ = new_map;
   // Create the particle filter
-  std::function<PFVector()> foo = std::bind(&Node::uniformPoseGenerator, this);
-  uniform_pose_generator_fn_ptr_ = std::make_shared<std::function<PFVector()>>(foo);
+  std::function<PFVector()> fn_ptr = std::bind(&Node::uniformPoseGenerator, this);
+  uniform_pose_generator_fn_ptr_ = std::make_shared<std::function<PFVector()>>(fn_ptr);
   pf_ = std::make_shared<ParticleFilter>(min_particles_, max_particles_, alpha_slow_, alpha_fast_,
                                          uniform_pose_generator_fn_ptr_);
   pf_->setPopulationSizeParameters(pf_err_, pf_z_);
@@ -783,7 +762,7 @@ void Node::initFromNewMap(std::shared_ptr<Map> new_map)
   pf_init_pose_cov.m[1][1] = init_cov_[1];
   pf_init_pose_cov.m[2][2] = init_cov_[2];
   pf_->init(pf_init_pose_mean, pf_init_pose_cov);
-  pf_init_ = false;
+  odom_init_ = false;
 
   // Instantiate the sensor objects
   // Odometry
@@ -973,7 +952,7 @@ bool Node::globalLocalizationCallback(std_srvs::Empty::Request& req, std_srvs::E
     node_3d_->globalLocalizationCallback();
   }
   pf_->initModel(uniform_pose_generator_fn_ptr_);
-  pf_init_ = false;
+  odom_init_ = false;
   return true;
 }
 
@@ -1016,22 +995,135 @@ void Node::publishTransform(const ros::TimerEvent& event)
   }
 }
 
-double Node::getYaw(tf::Pose& t)
-{
-  double yaw, pitch, roll;
-  t.getBasis().getEulerYPR(yaw, pitch, roll);
-  return yaw;
-}
-
-void Node::initialPoseReceived(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg)
+void Node::initialPoseReceived(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg_ptr)
 {
   std::lock_guard<std::mutex> cfl(configuration_mutex_);
-  handleInitialPoseMessage(*msg);
+  geometry_msgs::PoseWithCovarianceStamped msg(*msg_ptr);
+  resolveFrameId(msg);
+  if(checkInitialPose(msg))
+  {
+    handleInitialPose(msg);
+  }
 }
 
-void Node::handleInitialPoseMessage(const geometry_msgs::PoseWithCovarianceStamped& orig_msg)
+void Node::handleInitialPose(geometry_msgs::PoseWithCovarianceStamped& msg)
 {
-  geometry_msgs::PoseWithCovarianceStamped msg(orig_msg);
+  setMsgCovarianceVals(&msg);
+  tf::Pose pose;
+  transformMsgToTfPose(msg, &pose);
+  transformPoseToGlobalFrame(msg, pose);
+  applyInitialPose();
+  // disable global localization in case it was active
+  global_localization_active_ = false;
+}
+
+/**
+ * If initial_pose_hyp_ and map_ are both non-null, apply the initial
+ * pose to the particle filter state. Initial_pose_hyp_ is deleted
+ * and set to NULL after it is used.
+ */
+void Node::applyInitialPose()
+{
+  if (initial_pose_hyp_ != NULL && map_ != NULL)
+  {
+    pf_->init(initial_pose_hyp_->mean, initial_pose_hyp_->covariance);
+    odom_init_ = false;
+
+    initial_pose_hyp_ = NULL;
+  }
+}
+
+void Node::newInitialPoseSubscriber(const ros::SingleSubscriberPublisher& single_sub_pub)
+{
+  std::lock_guard<std::mutex> lpl(latest_amcl_pose_mutex_);
+  if (latest_amcl_pose_.header.frame_id.compare("map") == 0)
+  {
+    ROS_INFO("New initial pose subscriber registered. "
+             "Publishing latest amcl pose: (%f, %f).",
+             latest_amcl_pose_.pose.pose.position.x, latest_amcl_pose_.pose.pose.position.y);
+    single_sub_pub.publish(latest_amcl_pose_);
+  }
+  else
+  {
+    ROS_DEBUG("New initial pose subscriber registered. "
+              "Latest amcl pose uninitialized, no pose will be published.");
+  }
+}
+
+void Node::computeDelta(const PFVector& pose, PFVector* delta)
+{
+  // Compute change in pose
+  delta->v[0] = pose.v[0] - pf_odom_pose_.v[0];
+  delta->v[1] = pose.v[1] - pf_odom_pose_.v[1];
+  delta->v[2] = angleDiff(pose.v[2], pf_odom_pose_.v[2]);
+}
+
+void Node::setScannersUpdateFlags(const PFVector& delta, std::shared_ptr<std::vector<bool>> scanners_update,
+                                  bool* force_update)
+{
+    // See if we should update the filter
+    bool update;
+    if (odom_integrator_topic_.size())
+    {
+      double abs_trans = sqrt(odom_integrator_absolute_motion_.v[0] * odom_integrator_absolute_motion_.v[0] +
+                              odom_integrator_absolute_motion_.v[1] * odom_integrator_absolute_motion_.v[1]);
+      double abs_rot = odom_integrator_absolute_motion_.v[2];
+      update = abs_trans >= d_thresh_ || abs_rot >= a_thresh_;
+    }
+    else
+    {
+      update = fabs(delta.v[0]) > d_thresh_ || fabs(delta.v[1]) > d_thresh_ || fabs(delta.v[2]) > a_thresh_;
+    }
+    update = update || *force_update;
+    *force_update = false;
+
+    // Set the planar scanner update flags
+    if (update)
+      for (unsigned int i = 0; i < scanners_update->size(); i++)
+        scanners_update->at(i) = true;
+}
+
+void Node::updateOdom(const PFVector& pose, const PFVector &delta)
+{
+  std::shared_ptr<OdomData> odata = std::make_shared<OdomData>();
+  odata->pose = pose;
+  // HACK
+  // Modify the delta in the action data so the filter gets
+  // updated correctly
+  odata->delta = delta;
+  odata->absolute_motion = odom_integrator_absolute_motion_;
+  if (odom_integrator_topic_.size())
+  {
+    geometry_msgs::Pose2D p;
+    p.x = odata->absolute_motion.v[0];
+    p.y = odata->absolute_motion.v[1];
+    p.theta = odata->absolute_motion.v[2];
+    absolute_motion_pub_.publish(p);
+  }
+
+  // Use the action data to update the filter
+  odom_.updateAction(pf_, std::dynamic_pointer_cast<SensorData>(odata));
+  resetOdomIntegrator();
+  pf_odom_pose_ = pose;
+}
+
+void Node::initOdom(const PFVector& pose, std::shared_ptr<std::vector<bool>> scanners_update,
+                  int* resample_count, bool* force_publication)
+{
+  // Pose at last filter update
+  pf_odom_pose_ = pose;
+  // Filter is now initialized
+  odom_init_ = true;
+  // Should update sensor data
+  for (unsigned int i = 0; i < scanners_update->size(); i++)
+    scanners_update->at(i) = true;
+  *force_publication = true;
+  *resample_count = 0;
+  initOdomIntegrator();
+}
+
+void Node::resolveFrameId(geometry_msgs::PoseWithCovarianceStamped& msg)
+{
   // Rewrite to our global frame if received in the alt frame.
   // This allows us to run with multiple localizers using tf_reverse and pose them all at once.
   // And it is much cheaper to rewrite here than to run a separate topic tool transformer.
@@ -1039,45 +1131,57 @@ void Node::handleInitialPoseMessage(const geometry_msgs::PoseWithCovarianceStamp
   {
     msg.header.frame_id = global_frame_id_;
   }
+}
+
+bool Node::checkInitialPose(const geometry_msgs::PoseWithCovarianceStamped& msg)
+{
   if (msg.header.frame_id == "")
   {
     // This should be removed at some point
     ROS_WARN("Received initial pose with empty frame_id.  You should always supply a frame_id.");
+    return false;
   }
   // We only accept initial pose estimates in the global frame, #5148.
   else if (tf_.resolve(msg.header.frame_id) != tf_.resolve(global_frame_id_))
   {
     ROS_WARN("Ignoring initial pose in frame \"%s\"; initial poses must be in the global frame, \"%s\"",
              msg.header.frame_id.c_str(), global_frame_id_.c_str());
-    return;
+    return false;
   }
 
   if (std::isnan(msg.pose.pose.position.x) or std::isnan(msg.pose.pose.position.y) or
       std::isnan(msg.pose.pose.position.z))
   {
     ROS_WARN("Received initial pose with position value 'NAN'. Ignoring pose.");
-    return;
+    return false;
   }
 
   if (std::isnan(msg.pose.pose.orientation.x) or std::isnan(msg.pose.pose.orientation.y) or
       std::isnan(msg.pose.pose.orientation.z) or std::isnan(msg.pose.pose.orientation.w))
   {
     ROS_WARN("Received initial pose with orientation value 'NAN'. Ignoring pose.");
-    return;
+    return false;
   }
+  return true;
+}
 
+void Node::setMsgCovarianceVals(geometry_msgs::PoseWithCovarianceStamped* msg)
+{
   std::vector<double> default_cov_vals(36, 0.0);
   default_cov_vals[INDEX_XX_] = 0.5 * 0.5;
   default_cov_vals[INDEX_YY_] = 0.5 * 0.5;
   default_cov_vals[INDEX_AA_] = (M_PI / 12.0) * (M_PI / 12.0);
-  for (int i = 0; i < msg.pose.covariance.size(); i++)
+  for (int i = 0; i < msg->pose.covariance.size(); i++)
   {
-    if (std::isnan(msg.pose.covariance[i]))
+    if (std::isnan(msg->pose.covariance[i]))
     {
-      msg.pose.covariance[i] = default_cov_vals[i];
+      msg->pose.covariance[i] = default_cov_vals[i];
     }
   }
+}
 
+void Node::transformMsgToTfPose(const geometry_msgs::PoseWithCovarianceStamped& msg, tf::Pose* pose)
+{
   // In case the client sent us a pose estimate in the past, integrate the
   // intervening odometric change.
   tf::StampedTransform tx_odom;
@@ -1100,21 +1204,22 @@ void Node::handleInitialPoseMessage(const geometry_msgs::PoseWithCovarianceStamp
     tx_odom.setIdentity();
   }
 
-  tf::Pose pose_old, pose_new;
+  tf::Pose pose_old;
   tf::poseMsgToTF(msg.pose.pose, pose_old);
-  pose_new = pose_old * tx_odom;
+  *pose = pose_old * tx_odom;
+}
 
-  // Transform into the global frame
-
-  ROS_DEBUG("Setting pose (%.6f): %.3f %.3f %.3f", ros::Time::now().toSec(), pose_new.getOrigin().x(),
-            pose_new.getOrigin().y(), getYaw(pose_new));
-
-  ROS_INFO("Initial pose received by AMCL: (%.3f, %.3f)", pose_new.getOrigin().x(), pose_new.getOrigin().y());
+void Node::transformPoseToGlobalFrame(const geometry_msgs::PoseWithCovarianceStamped& msg,
+                                      const tf::Pose& pose)
+{
+  ROS_DEBUG("Setting pose (%.6f): %.3f %.3f %.3f", ros::Time::now().toSec(), pose.getOrigin().x(),
+            pose.getOrigin().y(), getYaw(pose));
+  ROS_INFO("Initial pose received by AMCL: (%.3f, %.3f)", pose.getOrigin().x(), pose.getOrigin().y());
   // Re-initialize the filter
   PFVector pf_init_pose_mean;
-  pf_init_pose_mean.v[0] = pose_new.getOrigin().x();
-  pf_init_pose_mean.v[1] = pose_new.getOrigin().y();
-  pf_init_pose_mean.v[2] = getYaw(pose_new);
+  pf_init_pose_mean.v[0] = pose.getOrigin().x();
+  pf_init_pose_mean.v[1] = pose.getOrigin().y();
+  pf_init_pose_mean.v[2] = getYaw(pose);
   PFMatrix pf_init_pose_cov;
   // Copy in the covariance, converting from 6-D to 3-D
   for (int i = 0; i < 2; i++)
@@ -1125,45 +1230,16 @@ void Node::handleInitialPoseMessage(const geometry_msgs::PoseWithCovarianceStamp
     }
   }
   pf_init_pose_cov.m[2][2] = msg.pose.covariance[6 * 5 + 5];
-
   initial_pose_hyp_ = std::make_shared<PoseHypothesis>();
   initial_pose_hyp_->mean = pf_init_pose_mean;
   initial_pose_hyp_->covariance = pf_init_pose_cov;
-  applyInitialPose();
-
-  // disable global localization in case it was active
-  global_localization_active_ = false;
 }
 
-/**
- * If initial_pose_hyp_ and map_ are both non-null, apply the initial
- * pose to the particle filter state. Initial_pose_hyp_ is deleted
- * and set to NULL after it is used.
- */
-void Node::applyInitialPose()
+double Node::getYaw(const tf::Pose& t)
 {
-  if (initial_pose_hyp_ != NULL && map_ != NULL)
-  {
-    pf_->init(initial_pose_hyp_->mean, initial_pose_hyp_->covariance);
-    pf_init_ = false;
-
-    initial_pose_hyp_ = NULL;
-  }
-}
-
-void Node::newInitialPoseSubscriber(const ros::SingleSubscriberPublisher& single_sub_pub)
-{
-  std::lock_guard<std::mutex> lpl(latest_amcl_pose_mutex_);
-  if (latest_amcl_pose_.header.frame_id.compare("map") != 0)
-  {
-    ROS_DEBUG("New initial pose subscriber registered. "
-              "Latest amcl pose uninitialized, no pose will be published.");
-    return;
-  }
-  ROS_INFO("New initial pose subscriber registered. "
-           "Publishing latest amcl pose: (%f, %f).",
-           latest_amcl_pose_.pose.pose.position.x, latest_amcl_pose_.pose.pose.position.y);
-  single_sub_pub.publish(latest_amcl_pose_);
+  double yaw, pitch, roll;
+  t.getBasis().getEulerYPR(yaw, pitch, roll);
+  return yaw;
 }
 
 double Node::normalize(double z)
