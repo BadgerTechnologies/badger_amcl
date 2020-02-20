@@ -76,11 +76,7 @@ public:
   void setMapFactors(double off_map_factor, double non_free_space_factor, double non_free_space_radius);
 
   // Set the scanner's pose after construction
-  void setPointCloudScannerPose(PFVector& scanner_pose)
-  {
-    point_cloud_scanner_pose_ = scanner_pose;
-  }
-
+  void setPointCloudScannerPose(PFVector& scanner_pose);
   void setPointCloudScannerToFootprintTF(tf::Transform lidarToFootprintTF);
 
   int getMaxBeams();

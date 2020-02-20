@@ -101,17 +101,18 @@ private:
     }
   };
 
+  void iterateObstacleCells();
+  void iterateEmptyCells();
+  void updateNode(int i, int j, int k, const CellData& current_cell);
   void setOccDist(int i, int j, int k, double d);
-  bool enqueue(int i, int j, int k, int src_i, int src_j, int src_k, std::priority_queue<CellData>& Q);
+  bool enqueue(int i, int j, int k, int src_i, int src_j, int src_k);
   unsigned int computeCellIndex(int i, int j, int k);
   size_t makeHash(int i, int j, int k);
 
   friend bool operator<(const OctoMap::CellData& a, const OctoMap::CellData& b);
 
-  bool use_hashmap_;
   std::shared_ptr<octomap::OcTree> octree_;
-  std::unique_ptr<octomap::OcTreeDistance> distances_octree_;
-  std::unique_ptr<tsl::sparse_map<size_t, double>> distances_hash_;
+  std::unique_ptr<tsl::sparse_map<size_t, double>> distances_;
   // Map origin; the map is a viewport onto a conceptual larger map.
   std::vector<double> origin_;
   // Map dimensions (number of cells)
@@ -120,6 +121,8 @@ private:
   double lidar_height_;
   bool wait_for_occupancy_map_;
   std::unique_ptr<CachedDistanceMap> cdm_;
+  std::unique_ptr<std::priority_queue<CellData>> q_;
+  std::unique_ptr<octomap::OcTree> marked_;
 };
 
 inline bool operator<(const OctoMap::CellData& a, const OctoMap::CellData& b)

@@ -105,7 +105,10 @@ private:
   };
 
   void setMapOccDist(int i, int j, float d);
-  bool enqueue(int i, int j, int src_i, int src_j, std::priority_queue<CellData>& Q);
+  void iterateObstacleCells();
+  void iterateEmptyCells();
+  void updateNode(int i, int j, const CellData& current_cell);
+  bool enqueue(int i, int j, int src_i, int src_j);
 
   friend bool operator<(const OccupancyMap::CellData& a, const OccupancyMap::CellData& b);
 
@@ -122,6 +125,8 @@ private:
   std::vector<float> distances_;
 
   std::unique_ptr<CachedDistanceMap> cdm_;
+  std::unique_ptr<std::vector<bool>> marked_;
+  std::unique_ptr<std::priority_queue<CellData>> q_;
 };
 
 inline bool operator<(const OccupancyMap::CellData& a, const OccupancyMap::CellData& b)

@@ -49,6 +49,7 @@ namespace amcl
 {
 
 class Node;
+struct PoseHypothesis;
 
 class Node3D
 {
@@ -62,15 +63,32 @@ public:
   double scorePose(const PFVector& p);
 private:
   void scanReceived(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan);
-  void initFromNewMap();
+  bool updateNodePf(const ros::Time& stamp, int scanner_index, bool* force_publication);
   void mapMsgReceived(const octomap_msgs::OctomapConstPtr& msg);
+  void initFromNewMap();
   std::shared_ptr<OctoMap> convertMap(const octomap_msgs::Octomap& map_msg);
-  void checkScanReceived(const ros::TimerEvent& event);
   bool initFrameToScanner(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan,
                           int* scanner_index);
-  void updatePf(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan,
+  bool updatePf(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan,
                 int scanner_index, bool* resampled);
   bool resamplePf(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan);
+  void makePointCloudFromScan(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan,
+                              pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud);
+  void samplePointCloud(const pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud, int scanner_index);
+  void updateScanner(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan,
+                     int scanner_index, bool* resampled);
+  void resampleParticles();
+  bool resamplePose(const ros::Time& stamp);
+  void getMaxWeightPose(double* max_weight, PFVector* max_pose);
+  bool updatePose(const PFVector& max_hyp_mean, const ros::Time& stamp);
+  bool isMapInitialized();
+  void deactivateGlobalLocalizationParams();
+  int getFrameToScannerIndex(const std::string& frame_id);
+  int initFrameToScanner(const std::string& frame_id, tf::Stamped<tf::Pose>* scanner_pose);
+  void updateScannerPose(const tf::Stamped<tf::Pose>& scanner_pose, int scanner_index);
+  void updateLatestScanData(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan,
+                            int scanner_index);
+  void checkScanReceived(const ros::TimerEvent& event);
 
   std::shared_ptr<OctoMap> map_;
   std::shared_ptr<octomap::OcTree> octree_;

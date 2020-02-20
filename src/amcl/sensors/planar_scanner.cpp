@@ -586,6 +586,11 @@ double PlanarScanner::calcLikelihoodFieldModelProb(std::shared_ptr<PlanarData> d
   return total_weight;
 }
 
+void PlanarScanner::setPlanarScannerPose(PFVector& scanner_pose)
+{
+  planar_scanner_pose_ = scanner_pose;
+}
+
 double PlanarScanner::applyGompertz(double p)
 {
   // shift and scale p

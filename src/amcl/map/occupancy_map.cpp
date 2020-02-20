@@ -42,6 +42,8 @@ OccupancyMap::OccupancyMap()
 
   // Allocate storage for main map
   cdm_ = nullptr;
+  q_ = nullptr;
+  marked_ = nullptr;
 }
 
 std::vector<double> OccupancyMap::getOrigin()

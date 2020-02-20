@@ -194,26 +194,31 @@ void Node2D::reconfigure(AMCLConfig& config)
   scan_filter_ = std::unique_ptr<tf::MessageFilter<sensor_msgs::LaserScan>>(
       new tf::MessageFilter<sensor_msgs::LaserScan>(*scan_sub_.get(), tf_, odom_frame_id_, 100));
   scan_filter_->registerCallback(boost::bind(&Node2D::scanReceived, this, _1));
+  pf_ = node_->getPfPtr();
 }
 
 void Node2D::mapMsgReceived(const nav_msgs::OccupancyGridConstPtr& msg)
 {
   if (first_map_only_ && first_map_received_)
   {
-    ROS_DEBUG("occupancy map already received");
+    ROS_DEBUG("Occupancy map already received");
     return;
   }
 
   std::lock_guard<std::mutex> cfl(configuration_mutex_);
-
   ROS_INFO("Received a %d X %d occupancy map @ %.3f m/pix\n", msg->info.width, msg->info.height, msg->info.resolution);
-
   map_ = convertMap(*msg);
   first_map_received_ = true;
 
   if (map_type_ == 2)
   {
     updateFreeSpaceIndices();
+    // Clear queued planar scanner objects because they hold pointers to the existing map
+    scanners_.clear();
+    scanners_update_->clear();
+    frame_to_scanner_.clear();
+    latest_scan_data_ = NULL;
+    initFromNewMap();
   }
   else
   {
@@ -222,15 +227,7 @@ void Node2D::mapMsgReceived(const nav_msgs::OccupancyGridConstPtr& msg)
     map_->convertMapToWorld(map_->getSize(), &map_max);
     node_->updateBoundsFromOccupancyMap(std::make_shared<std::vector<double>>(map_min),
                                         std::make_shared<std::vector<double>>(map_max));
-    return;
   }
-
-  // Clear queued planar scanner objects because they hold pointers to the existing map
-  scanners_.clear();
-  scanners_update_->clear();
-  frame_to_scanner_.clear();
-  latest_scan_data_ = NULL;
-  initFromNewMap();
 }
 
 void Node2D::initFromNewMap()
@@ -266,6 +263,7 @@ void Node2D::initFromNewMap()
   }
   scanner_.setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
   node_->initFromNewMap(map_);
+  pf_ = node_->getPfPtr();
 }
 
 /**
@@ -309,21 +307,22 @@ std::shared_ptr<OccupancyMap> Node2D::convertMap(const nav_msgs::OccupancyGrid& 
 // Helper function to score a pose for uniform pose generation
 double Node2D::scorePose(const PFVector& p)
 {
-  if (latest_scan_data_ == NULL)
+  // There is no data to match, so return a perfect match
+  double score = 1.0;
+  if (latest_scan_data_ != NULL)
   {
-    // There is no data to match, so return a perfect match
-    return 1.0;
+    // Create a fake "sample set" of just this pose to score it.
+    fake_sample_.pose.v[0] = p.v[0];
+    fake_sample_.pose.v[1] = p.v[1];
+    fake_sample_.pose.v[2] = p.v[2];
+    fake_sample_.weight = 1.0;
+    fake_sample_set_->sample_count = 1;
+    fake_sample_set_->samples = { fake_sample_ };
+    fake_sample_set_->converged = 0;
+    scanner_.applyModelToSampleSet(latest_scan_data_, fake_sample_set_);
+    score = fake_sample_.weight;
   }
-  // Create a fake "sample set" of just this pose to score it.
-  fake_sample_.pose.v[0] = p.v[0];
-  fake_sample_.pose.v[1] = p.v[1];
-  fake_sample_.pose.v[2] = p.v[2];
-  fake_sample_.weight = 1.0;
-  fake_sample_set_->sample_count = 1;
-  fake_sample_set_->samples = { fake_sample_ };
-  fake_sample_set_->converged = 0;
-  scanner_.applyModelToSampleSet(latest_scan_data_, fake_sample_set_);
-  return fake_sample_.weight;
+  return score;
 }
 
 void Node2D::updateFreeSpaceIndices()
@@ -344,111 +343,159 @@ void Node2D::updateFreeSpaceIndices()
 void Node2D::scanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan)
 {
   latest_scan_received_ts_ = ros::Time::now();
+  if(!isMapInitialized())
+    return;
+
+  std::lock_guard<std::mutex> cfl(configuration_mutex_);
+  if(!global_localization_active_)
+    deactivateGlobalLocalizationParams();
+
+  std::string frame_id = planar_scan->header.frame_id;
+  ros::Time stamp = planar_scan->header.stamp; 
+  int scanner_index = getFrameToScannerIndex(frame_id);
+  if(scanner_index >= 0)
+  {
+    bool force_publication = false, resampled = false, success;
+    success = updateNodePf(stamp, scanner_index, &force_publication);
+    if(scanners_update_->at(scanner_index))
+      success = success and updateScanner(planar_scan, scanner_index, &resampled);
+    if(force_publication or resampled)
+      success = success and resamplePose(stamp);
+    if(success)
+      node_->attemptSavePose();
+  }
+}
+
+bool Node2D::updateNodePf(const ros::Time& stamp, int scanner_index, bool* force_publication)
+{
+  return node_->updatePf(stamp, scanners_update_, scanner_index, &resample_count_,
+                         force_publication, &force_update_);
+}
+
+bool Node2D::updateScanner(const sensor_msgs::LaserScanConstPtr& planar_scan,
+                           int scanner_index, bool* resampled)
+{
+  updateLatestScanData(planar_scan, scanner_index);
+  double angle_min, angle_increment;
+  bool success = true;
+  if(getAngleStats(planar_scan, &angle_min, &angle_increment))
+  {
+    ROS_DEBUG("Planar scanner %d angles in base frame: min: %.3f inc: %.3f",
+              scanner_index, angle_min, angle_increment);
+    samplePlanarScan(planar_scan, angle_min, angle_increment);
+    scanners_[scanner_index]->updateSensor(pf_, std::dynamic_pointer_cast<SensorData>(latest_scan_data_));
+    scanners_update_->at(scanner_index) = false;
+    if(!(++resample_count_ % resample_interval_))
+    {
+      resampleParticles();
+      *resampled = true;
+    }
+    if(!force_update_)
+       node_->publishPfCloud();
+  }
+  else
+  {
+    success = false;
+  }
+  return success;
+}
+
+bool Node2D::isMapInitialized()
+{
   if (map_ == NULL)
   {
-    return;
+    return false;
   }
   if (not map_->isCSpaceCreated())
   {
     ROS_DEBUG("CSpace not yet created");
-    return;
+    return false;
   }
+  return true;
+}
 
-  std::lock_guard<std::mutex> cfl(configuration_mutex_);
-  int scanner_index = -1;
-
+void Node2D::deactivateGlobalLocalizationParams()
+{
   // Handle corner cases like getting dynamically reconfigured or getting a
   // new map by de-activating the global localization parameters here if we are
   // no longer globally localizing.
-  if (!global_localization_active_)
+  node_->setPfDecayRateNormal();
+  scanner_.setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
+  for (auto& l : scanners_)
   {
-    node_->setPfDecayRateNormal();
-    scanner_.setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
-    for (auto& l : scanners_)
-    {
-      l->setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
-    }
+    l->setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
   }
+}
 
+int Node2D::getFrameToScannerIndex(const std::string& frame_id)
+{
+  int scanner_index;
   // Do we have the base->base_laser Tx yet?
-  if (frame_to_scanner_.find(planar_scan->header.frame_id) == frame_to_scanner_.end())
+  if (frame_to_scanner_.find(frame_id) == frame_to_scanner_.end())
   {
-    initFrameToScanner(planar_scan, &scanner_index);
+    tf::Stamped<tf::Pose> scanner_pose;
+    initFrameToScanner(frame_id, &scanner_pose, &scanner_index);
+    if(scanner_index >= 0)
+    {
+      frame_to_scanner_[frame_id] = scanner_index;
+      updateScannerPose(scanner_pose, scanner_index);
+    }
   }
   else
   {
     // we have the planar scanner pose, retrieve planar scanner index
-    scanner_index = frame_to_scanner_[planar_scan->header.frame_id];
+    scanner_index = frame_to_scanner_[frame_id];
   }
-
-  bool force_publication;
-  if(!node_->updatePf((ros::Time)planar_scan->header.stamp, scanners_update_, scanner_index,
-                      &resample_count_, &force_publication, &force_update_))
-    return;
-  bool resampled = false;
-  pf_ = node_->getPfPtr();
-  // If the robot has moved, update the filter
-  if (scanners_update_->at(scanner_index))
-  {
-    if(!updatePf(planar_scan, scanner_index, &resampled))
-      return;
-  }
-
-  if (resampled || force_publication)
-  {
-    if(!resamplePf(planar_scan))
-      return;
-  }
-  else
-  {
-    node_->attemptSavePose();
-  }
+  return scanner_index;
 }
 
-bool Node2D::initFrameToScanner(const sensor_msgs::LaserScanConstPtr& planar_scan,
+bool Node2D::initFrameToScanner(const std::string& frame_id, tf::Stamped<tf::Pose>* scanner_pose,
                                 int* scanner_index)
 {
   ROS_DEBUG("Setting up planar_scanner %d (frame_id=%s)\n", (int)frame_to_scanner_.size(),
-  planar_scan->header.frame_id.c_str());
+            frame_id.c_str());
   scanners_.push_back(std::make_shared<PlanarScanner>(scanner_));
   scanners_update_->push_back(true);
   *scanner_index = frame_to_scanner_.size();
 
-  tf::Stamped<tf::Pose> ident(tf::Transform(tf::createIdentityQuaternion(), tf::Vector3(0, 0, 0)), ros::Time(),
-                              planar_scan->header.frame_id);
-  tf::Stamped<tf::Pose> scanner_pose;
+  tf::Stamped<tf::Pose> ident(tf::Transform(tf::createIdentityQuaternion(), tf::Vector3(0, 0, 0)),
+                              ros::Time(), frame_id);
   try
   {
-    tf_.transformPose(base_frame_id_, ident, scanner_pose);
+    tf_.transformPose(base_frame_id_, ident, *scanner_pose);
   }
   catch (tf::TransformException& e)
   {
-    ROS_ERROR("Couldn't transform from %s to %s, "
-              "even though the message notifier is in use",
-              planar_scan->header.frame_id.c_str(), base_frame_id_.c_str());
+    ROS_ERROR("Couldn't transform from %s to %s, even though the message notifier is in use",
+              frame_id.c_str(), base_frame_id_.c_str());
     return false;
   }
+  return true;
+}
 
+void Node2D::updateScannerPose(const tf::Stamped<tf::Pose>& scanner_pose, int scanner_index)
+{
   PFVector scanner_pose_v;
   scanner_pose_v.v[0] = scanner_pose.getOrigin().x();
   scanner_pose_v.v[1] = scanner_pose.getOrigin().y();
   // planar scanner mounting angle gets computed later -> set to 0 here!
   scanner_pose_v.v[2] = 0;
-  scanners_[*scanner_index]->setPlanarScannerPose(scanner_pose_v);
+  scanners_[scanner_index]->setPlanarScannerPose(scanner_pose_v);
   ROS_DEBUG("Received planar scanner's pose wrt robot: %.3f %.3f %.3f", scanner_pose_v.v[0],
             scanner_pose_v.v[1], scanner_pose_v.v[2]);
-
-  frame_to_scanner_[planar_scan->header.frame_id] = *scanner_index;
-  return true;
 }
 
-bool Node2D::updatePf(const sensor_msgs::LaserScanConstPtr& planar_scan,
-                      int scanner_index, bool* resampled)
+bool Node2D::updateLatestScanData(const sensor_msgs::LaserScanConstPtr& planar_scan,
+                                  int scanner_index)
 {
   latest_scan_data_ = std::make_shared<PlanarData>();
   latest_scan_data_->sensor_ = scanners_[scanner_index];
   latest_scan_data_->range_count_ = planar_scan->ranges.size();
+}
 
+bool Node2D::getAngleStats(const sensor_msgs::LaserScanConstPtr& planar_scan,
+                           double* angle_min, double* angle_increment)
+{
   // To account for the planar scanners that are mounted upside-down, we determine the
   // min, max, and increment angles of the scanner in the base frame.
   //
@@ -458,6 +505,7 @@ bool Node2D::updatePf(const sensor_msgs::LaserScanConstPtr& planar_scan,
   tf::Stamped<tf::Quaternion> min_q(q, planar_scan->header.stamp, planar_scan->header.frame_id);
   q.setRPY(0.0, 0.0, planar_scan->angle_min + planar_scan->angle_increment);
   tf::Stamped<tf::Quaternion> inc_q(q, planar_scan->header.stamp, planar_scan->header.frame_id);
+  bool success = true;
   try
   {
     tf_.transformQuaternion(base_frame_id_, min_q, min_q);
@@ -466,17 +514,21 @@ bool Node2D::updatePf(const sensor_msgs::LaserScanConstPtr& planar_scan,
   catch (tf::TransformException& e)
   {
     ROS_WARN("Unable to transform min/max planar scanner angles into base frame: %s", e.what());
-    return false;
+    success = false;
   }
+  if(success)
+  {
+    *angle_min = tf::getYaw(min_q);
+    *angle_increment = tf::getYaw(inc_q) - *angle_min;
+    // wrapping angle to [-pi .. pi]
+    *angle_increment = fmod(*angle_increment + 5 * M_PI, 2 * M_PI) - M_PI;
+  }
+  return success;
+}
 
-  double angle_min = tf::getYaw(min_q);
-  double angle_increment = tf::getYaw(inc_q) - angle_min;
-
-  // wrapping angle to [-pi .. pi]
-  angle_increment = fmod(angle_increment + 5 * M_PI, 2 * M_PI) - M_PI;
-
-  ROS_DEBUG("Planar scanner %d angles in base frame: min: %.3f inc: %.3f", scanner_index, angle_min, angle_increment);
-
+void Node2D::samplePlanarScan(const sensor_msgs::LaserScanConstPtr& planar_scan,
+                      double angle_min, double angle_increment)
+{
   // Apply range min/max thresholds, if the user supplied them
   if (sensor_max_range_ > 0.0)
     latest_scan_data_->range_max_ = std::min(planar_scan->range_max, (float)sensor_max_range_);
@@ -487,7 +539,6 @@ bool Node2D::updatePf(const sensor_msgs::LaserScanConstPtr& planar_scan,
     range_min = std::max(planar_scan->range_min, (float)sensor_min_range_);
   else
     range_min = planar_scan->range_min;
-  // The PlanarData destructor will free this memory
   latest_scan_data_->ranges_.resize(latest_scan_data_->range_count_);
   latest_scan_data_->angles_.resize(latest_scan_data_->range_count_);
   for (int i = 0; i < latest_scan_data_->range_count_; i++)
@@ -501,31 +552,35 @@ bool Node2D::updatePf(const sensor_msgs::LaserScanConstPtr& planar_scan,
     // Compute bearing
     latest_scan_data_->angles_[i] = angle_min + (i * angle_increment);
   }
-
-  scanners_[scanner_index]->updateSensor(pf_, std::dynamic_pointer_cast<SensorData>(latest_scan_data_));
-  scanners_update_->at(scanner_index) = false;
-
-  // Resample the particles
-  if (++resample_count_ % resample_interval_ == 0)
-  {
-    pf_->updateResample();
-    *resampled = true;
-    if (pf_->isConverged() && global_localization_active_)
-    {
-      ROS_INFO("Global localization converged!");
-      global_localization_active_ = false;
-    }
-  }
-
-  // TODO: set maximum rate for publishing
-  if(!force_update_)
-  {
-    node_->publishPfCloud();
-  }
-  return true;
 }
 
-bool Node2D::resamplePf(const sensor_msgs::LaserScanConstPtr& planar_scan)
+void Node2D::resampleParticles()
+{
+  pf_->updateResample();
+  if (pf_->isConverged() && global_localization_active_)
+  {
+    ROS_INFO("Global localization converged!");
+    global_localization_active_ = false;
+  }
+}
+
+bool Node2D::resamplePose(const ros::Time& stamp)
+{
+  double max_weight = 0.0;
+  PFVector max_pose;
+  getMaxWeightPose(&max_weight, &max_pose);
+  bool success = true;
+  if(max_weight > 0.0)
+    success = updatePose(max_pose, stamp);
+  else
+  {
+    ROS_ERROR("No pose!");
+    success = false;
+  }
+  return success;
+}
+
+void Node2D::getMaxWeightPose(double* max_weight_rtn, PFVector* max_pose)
 {
   // Read out the current hypotheses
   double max_weight = 0.0;
@@ -554,61 +609,34 @@ bool Node2D::resamplePf(const sensor_msgs::LaserScanConstPtr& planar_scan)
       max_weight_hyp = hyp_count;
     }
   }
+  *max_weight_rtn = max_weight;
+  *max_pose = hyps[max_weight_hyp].mean;
+}
 
-  if (max_weight > 0.0)
+bool Node2D::updatePose(const PFVector& max_pose, const ros::Time& stamp)
+{
+  ROS_DEBUG("Max weight pose: %.3f %.3f %.3f", max_pose.v[0], max_pose.v[1], max_pose.v[2]);
+  node_->updatePose(max_pose, stamp);
+  bool success = true;
+  // subtracting base to odom from map to base and send map to odom instead
+  tf::Stamped<tf::Pose> odom_to_map;
+  try
   {
-    ROS_DEBUG("Max weight pose: %.3f %.3f %.3f", hyps[max_weight_hyp].mean.v[0],
-              hyps[max_weight_hyp].mean.v[1], hyps[max_weight_hyp].mean.v[2]);
-
-    geometry_msgs::PoseWithCovarianceStamped p;
-    // Fill in the header
-    p.header.frame_id = global_frame_id_;
-    p.header.stamp = planar_scan->header.stamp;
-    // Copy in the pose
-    p.pose.pose.position.x = hyps[max_weight_hyp].mean.v[0];
-    p.pose.pose.position.y = hyps[max_weight_hyp].mean.v[1];
-    tf::quaternionTFToMsg(tf::createQuaternionFromYaw(hyps[max_weight_hyp].mean.v[2]),
-                          p.pose.pose.orientation);
-    // Copy in the covariance, converting from 3-D to 6-D
-    std::shared_ptr<PFSampleSet> set = pf_->getCurrentSet();
-    for (int i = 0; i < 2; i++)
-    {
-      for (int j = 0; j < 2; j++)
-      {
-        // Report the overall filter covariance, rather than the
-        // covariance for the highest-weight cluster
-        p.pose.covariance[6 * i + j] = set->cov.m[i][j];
-      }
-    }
-    // Report the overall filter covariance, rather than the
-    // covariance for the highest-weight cluster
-    p.pose.covariance[6 * 5 + 5] = set->cov.m[2][2];
-
-    node_->publishPose(p);
-
-    // subtracting base to odom from map to base and send map to odom instead
-    tf::Stamped<tf::Pose> odom_to_map;
-    try
-    {
-      tf::Transform tmp_tf(tf::createQuaternionFromYaw(hyps[max_weight_hyp].mean.v[2]),
-                           tf::Vector3(hyps[max_weight_hyp].mean.v[0], hyps[max_weight_hyp].mean.v[1], 0.0));
-      tf::Stamped<tf::Pose> tmp_tf_stamped(tmp_tf.inverse(), planar_scan->header.stamp, base_frame_id_);
-      tf_.transformPose(odom_frame_id_, tmp_tf_stamped, odom_to_map);
-    }
-    catch (tf::TransformException)
-    {
-      ROS_DEBUG("Failed to subtract base to odom transform");
-      return false;
-    }
-
-    if(!node_->updateTf(odom_to_map))
-      return false;
+    tf::Transform tmp_tf(tf::createQuaternionFromYaw(max_pose.v[2]),
+                         tf::Vector3(max_pose.v[0], max_pose.v[1], 0.0));
+    tf::Stamped<tf::Pose> tmp_tf_stamped(tmp_tf.inverse(), stamp, base_frame_id_);
+    tf_.waitForTransform(base_frame_id_, odom_frame_id_, stamp, ros::Duration(1.0));
+    tf_.transformPose(odom_frame_id_, tmp_tf_stamped, odom_to_map);
   }
-  else
+  catch (tf::TransformException)
   {
-    ROS_ERROR("No pose!");
+    ROS_DEBUG("Failed to subtract base to odom transform");
+    success = false;
   }
-  return true;
+
+  if(!(success and node_->updateTf(odom_to_map)))
+    success = false;
+  return success;
 }
 
 void Node2D::checkScanReceived(const ros::TimerEvent& event)
