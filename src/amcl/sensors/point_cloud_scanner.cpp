@@ -43,8 +43,10 @@ PointCloudScanner::PointCloudScanner() : Sensor()
   non_free_space_factor_ = 1.0;
   non_free_space_radius_ = 0.0;
 
-  if (map_vec_.size() != 3)
+  if(map_vec_.size() != 3)
     map_vec_ = { 0, 0, 0 };
+  if(world_vec_.size() != 3)
+    world_vec_ = {0.0, 0.0, 0.0};
 }
 
 void PointCloudScanner::init(size_t max_beams, std::shared_ptr<OctoMap> map, double point_cloud_scanner_height)
@@ -121,7 +123,8 @@ double PointCloudScanner::applyModelToSampleSet(std::shared_ptr<SensorData> data
   int j;
   PFSample* sample;
   PFVector pose;
-  int mi, mj;
+  std::vector<double> vec2d = {0.0, 0.0};
+  std::vector<int> vec2i = {0, 0};
 
   self = std::dynamic_pointer_cast<PointCloudScanner>(data->sensor_);
   if (self->max_beams_ < 2)
@@ -146,12 +149,14 @@ double PointCloudScanner::applyModelToSampleSet(std::shared_ptr<SensorData> data
       pose = sample->pose;
 
       // Convert to map grid coords.
-      self->map_->convertWorldToMap({ pose.v[0], pose.v[1] }, &self->map_vec_);
-      mi = self->map_vec_[0];
-      mj = self->map_vec_[1];
+      vec2d[0] = pose.v[0];
+      vec2d[1] = pose.v[1];
+      self->map_->convertWorldToMap(vec2d, &self->map_vec_);
+      vec2i[0] = self->map_vec_[0];
+      vec2i[1] = self->map_vec_[1];
 
       // Apply off map factor
-      if (!self->map_->isValid({ mi, mj }))
+      if (!self->map_->isValid(vec2i))
       {
         sample->weight *= self->off_map_factor_;
       }
@@ -185,7 +190,10 @@ double PointCloudScanner::calcPointCloudModel(std::shared_ptr<PointCloudData> da
       return 0.0;
     for (it = map_cloud.begin(); it != map_cloud.end(); ++it)
     {
-      self->map_->convertWorldToMap({ it->x, it->y, it->z }, &self->map_vec_);
+      self->world_vec_[0] = it->x;
+      self->world_vec_[1] = it->y;
+      self->world_vec_[2] = it->z;
+      self->map_->convertWorldToMap(self->world_vec_, &self->map_vec_);
       z = self->map_->getOccDist(self->map_vec_[0], self->map_vec_[1], self->map_vec_[2]);
       pz = self->z_hit_ * exp(-(z * z) / z_hit_denom);
       pz += self->z_rand_ * z_rand_mult;
@@ -216,12 +224,18 @@ double PointCloudScanner::calcPointCloudModelGompertz(std::shared_ptr<PointCloud
     pcl::PointCloud<pcl::PointXYZ>::iterator it;
     pcl::PointCloud<pcl::PointXYZ> map_cloud;
     if (!getMapCloud(self, data, pose, map_cloud))
-      return 0.0;
+    {
+      total_weight = 0.0;
+      break;
+    }
     sum_pz = 0;
     int count = 0;
     for (it = map_cloud.begin(); it != map_cloud.end(); ++it)
     {
-      self->map_->convertWorldToMap({ it->x, it->y, it->z }, &self->map_vec_);
+      self->world_vec_[0] = it->x;
+      self->world_vec_[1] = it->y;
+      self->world_vec_[2] = it->z;
+      self->map_->convertWorldToMap(self->world_vec_, &self->map_vec_);
       z = self->map_->getOccDist(self->map_vec_[0], self->map_vec_[1], self->map_vec_[2]);
       pz = self->z_hit_ * exp(-(z * z) / z_hit_denom);
       pz += self->z_rand_;
