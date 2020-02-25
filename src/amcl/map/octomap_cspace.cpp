@@ -61,6 +61,7 @@ void OctoMap::updateCSpace()
   }
   iterateObstacleCells();
   iterateEmptyCells();
+  distances_end_ = distances_->end();
   cspace_created_ = true;
   ROS_INFO("Done updating OctoMap CSpace");
   q_ = nullptr;
@@ -184,10 +185,10 @@ void OctoMap::setOccDist(int i, int j, int k, double d)
 double OctoMap::getOccDist(int i, int j, int k)
 {
   size_t hash = makeHash(i, j, k);
-  tsl::sparse_map<size_t, double>::iterator it = distances_->find(hash);
-  if(it != distances_->end())
+  hashmap_iterator_ = distances_->find(hash);
+  if(hashmap_iterator_ != distances_end_)
   {
-    return it->second;
+    return hashmap_iterator_->second;
   }
   return max_occ_dist_;
 }

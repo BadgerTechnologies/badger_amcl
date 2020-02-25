@@ -113,6 +113,8 @@ private:
 
   std::shared_ptr<octomap::OcTree> octree_;
   std::unique_ptr<tsl::sparse_map<size_t, double>> distances_;
+  tsl::sparse_map<size_t, double>::iterator distances_end_;
+  tsl::sparse_map<size_t, double>::iterator hashmap_iterator_;
   // Map origin; the map is a viewport onto a conceptual larger map.
   std::vector<double> origin_;
   // Map dimensions (number of cells)
