@@ -66,7 +66,6 @@ class PlanarScanner : public Sensor
   // Default constructor
 public:
   PlanarScanner();
-  ~PlanarScanner();
 
   void init(size_t max_beams, std::shared_ptr<OccupancyMap> map);
 
@@ -106,18 +105,19 @@ public:
 
 private:
   // Determine the probability for the given pose
-  static double calcBeamModel(std::shared_ptr<PlanarData> data, std::shared_ptr<PFSampleSet> set);
+  double calcBeamModel(std::shared_ptr<PlanarData> data, std::shared_ptr<PFSampleSet> set);
 
   // Determine the probability for the given pose
-  static double calcLikelihoodFieldModel(std::shared_ptr<PlanarData> data, std::shared_ptr<PFSampleSet> set);
+  double calcLikelihoodFieldModel(std::shared_ptr<PlanarData> data, std::shared_ptr<PFSampleSet> set);
 
   // Determine the probability for the given pose - more probablistic model
-  static double calcLikelihoodFieldModelProb(std::shared_ptr<PlanarData> data, std::shared_ptr<PFSampleSet> set);
+  double calcLikelihoodFieldModelProb(std::shared_ptr<PlanarData> data, std::shared_ptr<PFSampleSet> set);
 
   // Determine the probability for the given pose and apply a Gompertz function
-  static double calcLikelihoodFieldModelGompertz(std::shared_ptr<PlanarData> data, std::shared_ptr<PFSampleSet> set);
+  double calcLikelihoodFieldModelGompertz(std::shared_ptr<PlanarData> data, std::shared_ptr<PFSampleSet> set);
 
-  void reallocTempData(int max_samples, int max_obs);
+  double recalcWeight(std::shared_ptr<PFSampleSet> set);
+  void clearTempData(int max_samples, int max_obs);
 
   PlanarModelType model_type_;
 
@@ -141,7 +141,7 @@ private:
   // temp data that is kept before observations are integrated to each particle (requried for beam skipping)
   int max_samples_;
   int max_obs_;
-  double** temp_obs_;
+  std::vector<std::vector<double>> temp_obs_;
 
   // Scanner model params
   // Mixture params for the components of the model; must sum to 1

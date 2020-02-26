@@ -139,6 +139,8 @@ private:
 
   // Odometry integrator
   void integrateOdom(const nav_msgs::OdometryConstPtr& msg);
+  void calcTfPose(const nav_msgs::OdometryConstPtr& msg, PFVector* pose);
+  void calcOdomDelta(const PFVector& pose);
   void resetOdomIntegrator();
   void publishTransform(const ros::TimerEvent& event);
   double normalize(double z);
