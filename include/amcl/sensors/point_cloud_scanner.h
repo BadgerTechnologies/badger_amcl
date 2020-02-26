@@ -84,10 +84,11 @@ public:
 
 private:
   // Determine the probability for the given pose
-  static double calcPointCloudModel(std::shared_ptr<PointCloudData> data, std::shared_ptr<PFSampleSet> set);
-  static double calcPointCloudModelGompertz(std::shared_ptr<PointCloudData> data, std::shared_ptr<PFSampleSet> set);
-  static bool getMapCloud(std::shared_ptr<PointCloudScanner> self, std::shared_ptr<PointCloudData> data, PFVector pose,
-                          pcl::PointCloud<pcl::PointXYZ>& map_cloud);
+  double calcPointCloudModel(std::shared_ptr<PointCloudData> data, std::shared_ptr<PFSampleSet> set);
+  double calcPointCloudModelGompertz(std::shared_ptr<PointCloudData> data, std::shared_ptr<PFSampleSet> set);
+  double recalcWeight(std::shared_ptr<PFSampleSet> set);
+  bool getMapCloud(std::shared_ptr<PointCloudData> data, PFVector pose,
+                   pcl::PointCloud<pcl::PointXYZ>& map_cloud);
 
   std::shared_ptr<OctoMap> map_;
   PFVector point_cloud_scanner_pose_;

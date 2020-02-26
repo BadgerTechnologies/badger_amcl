@@ -801,14 +801,8 @@ void Node::integrateOdom(const nav_msgs::OdometryConstPtr& msg)
   // Integrate absolute motion relative to the base,
   // by finding the delta from one odometry message to another.
   // NOTE: assume this odom topic is from our odom frame to our base frame.
-  tf::Pose tf_pose;
-  poseMsgToTF(msg->pose.pose, tf_pose);
   PFVector pose;
-  pose.v[0] = tf_pose.getOrigin().x();
-  pose.v[1] = tf_pose.getOrigin().y();
-  double yaw, pitch, roll;
-  tf_pose.getBasis().getEulerYPR(yaw, pitch, roll);
-  pose.v[2] = yaw;
+  calcTfPose(msg, &pose);
 
   if (!odom_integrator_ready_)
   {
@@ -817,39 +811,55 @@ void Node::integrateOdom(const nav_msgs::OdometryConstPtr& msg)
   }
   else
   {
-    PFVector delta;
-
-    delta.v[0] = pose.v[0] - odom_integrator_last_pose_.v[0];
-    delta.v[1] = pose.v[1] - odom_integrator_last_pose_.v[1];
-    delta.v[2] = angleDiff(pose.v[2], odom_integrator_last_pose_.v[2]);
-
-    // project bearing change onto average orientation, x is forward translation, y is strafe
-    double delta_trans, delta_rot, delta_bearing;
-    delta_trans = sqrt(delta.v[0] * delta.v[0] + delta.v[1] * delta.v[1]);
-    delta_rot = delta.v[2];
-    if (delta_trans < 1e-6)
-    {
-      // For such a small translation, we either didn't move or rotated in place.
-      // Assume the very small motion was forward, not strafe.
-      delta_bearing = 0;
-    }
-    else
-    {
-      delta_bearing = angleDiff(atan2(delta.v[1], delta.v[0]), odom_integrator_last_pose_.v[2] + delta_rot / 2);
-    }
-    double cs_bearing = cos(delta_bearing);
-    double sn_bearing = sin(delta_bearing);
-
-    // Accumulate absolute motion
-    odom_integrator_absolute_motion_.v[0] += fabs(delta_trans * cs_bearing);
-    odom_integrator_absolute_motion_.v[1] += fabs(delta_trans * sn_bearing);
-    odom_integrator_absolute_motion_.v[2] += fabs(delta_rot);
-
-    // We could also track velocity and acceleration here, for motion models that adjust for velocity/acceleration.
-    // We could also track the covariance of the odometry message and accumulate a total covariance across the time
-    // region for a motion model that uses the reported covariance directly.
+    calcOdomDelta(pose);
   }
   odom_integrator_last_pose_ = pose;
+}
+
+void Node::calcTfPose(const nav_msgs::OdometryConstPtr& msg, PFVector* pose)
+{
+  tf::Pose tf_pose;
+  poseMsgToTF(msg->pose.pose, tf_pose);
+  pose->v[0] = tf_pose.getOrigin().x();
+  pose->v[1] = tf_pose.getOrigin().y();
+  double yaw, pitch, roll;
+  tf_pose.getBasis().getEulerYPR(yaw, pitch, roll);
+  pose->v[2] = yaw;
+}
+
+void Node::calcOdomDelta(const PFVector& pose)
+{
+  PFVector delta;
+
+  delta.v[0] = pose.v[0] - odom_integrator_last_pose_.v[0];
+  delta.v[1] = pose.v[1] - odom_integrator_last_pose_.v[1];
+  delta.v[2] = angleDiff(pose.v[2], odom_integrator_last_pose_.v[2]);
+
+  // project bearing change onto average orientation, x is forward translation, y is strafe
+  double delta_trans, delta_rot, delta_bearing;
+  delta_trans = sqrt(delta.v[0] * delta.v[0] + delta.v[1] * delta.v[1]);
+  delta_rot = delta.v[2];
+  if (delta_trans < 1e-6)
+  {
+    // For such a small translation, we either didn't move or rotated in place.
+    // Assume the very small motion was forward, not strafe.
+    delta_bearing = 0;
+  }
+  else
+  {
+    delta_bearing = angleDiff(atan2(delta.v[1], delta.v[0]), odom_integrator_last_pose_.v[2] + delta_rot / 2);
+  }
+  double cs_bearing = cos(delta_bearing);
+  double sn_bearing = sin(delta_bearing);
+
+  // Accumulate absolute motion
+  odom_integrator_absolute_motion_.v[0] += fabs(delta_trans * cs_bearing);
+  odom_integrator_absolute_motion_.v[1] += fabs(delta_trans * sn_bearing);
+  odom_integrator_absolute_motion_.v[2] += fabs(delta_rot);
+
+  // We could also track velocity and acceleration here, for motion models that adjust for velocity/acceleration.
+  // We could also track the covariance of the odometry message and accumulate a total covariance across the time
+  // region for a motion model that uses the reported covariance directly.
 }
 
 bool Node::getOdomPose(const ros::Time& t, PFVector* map_pose)

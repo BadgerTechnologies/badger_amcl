@@ -206,7 +206,8 @@ bool ParticleFilter::updateConverged()
   for (i = 0; i < set->sample_count; i++)
   {
     sample = &(set->samples[i]);
-    if (fabs(sample->pose.v[0] - mean_x) > dist_threshold_ || fabs(sample->pose.v[1] - mean_y) > dist_threshold_)
+    if (fabs(sample->pose.v[0] - mean_x) > dist_threshold_
+        || fabs(sample->pose.v[1] - mean_y) > dist_threshold_)
     {
       set->converged = 0;
       converged_ = false;
@@ -220,7 +221,8 @@ bool ParticleFilter::updateConverged()
 
 // Update the filter with some new sensor observation
 void ParticleFilter::updateSensor(std::shared_ptr<std::function<double(std::shared_ptr<SensorData>,
-                                                                       std::shared_ptr<PFSampleSet>)>> sensor_fn_ptr,
+                                                                       std::shared_ptr<PFSampleSet>)>
+                                                 > sensor_fn_ptr,
                                   std::shared_ptr<SensorData> sensor_data)
 {
   int i;
