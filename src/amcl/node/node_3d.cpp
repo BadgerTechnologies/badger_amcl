@@ -336,7 +336,7 @@ void Node3D::scanReceived(const sensor_msgs::PointCloud2ConstPtr& point_cloud_sc
     deactivateGlobalLocalizationParams();
 
   std::string frame_id = point_cloud_scan->header.frame_id;
-  ros::Time stamp = point_cloud_scan->header.stamp; 
+  ros::Time stamp = point_cloud_scan->header.stamp;
   int scanner_index = getFrameToScannerIndex(point_cloud_scan->header.frame_id);
   if(scanner_index >= 0)
   {
@@ -362,10 +362,10 @@ bool Node3D::updateNodePf(const ros::Time& stamp, int scanner_index, bool* force
 void Node3D::updateScanner(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan,
                            int scanner_index, bool* resampled)
 {
-  updateLatestScanData(point_cloud_scan, scanner_index);
+  initLatestScanData(point_cloud_scan, scanner_index);
   pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud(new pcl::PointCloud<pcl::PointXYZ>);
   makePointCloudFromScan(point_cloud_scan, point_cloud);
-  samplePointCloud(point_cloud, scanner_index);
+  updateLatestScanData(point_cloud, scanner_index);
   scanners_[scanner_index]->updateSensor(pf_, std::dynamic_pointer_cast<SensorData>(latest_scan_data_));
   scanners_update_->at(scanner_index) = false;
   if(!(++resample_count_ % resample_interval_))
@@ -461,7 +461,7 @@ void Node3D::updateScannerPose(const tf::Stamped<tf::Pose>& scanner_pose, int sc
             scanner_pose_v.v[1], scanner_pose_v.v[2]);
 }
 
-void Node3D::updateLatestScanData(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan,
+void Node3D::initLatestScanData(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan,
                                   int scanner_index)
 {
   latest_scan_data_ = std::make_shared<PointCloudData>();
@@ -477,7 +477,8 @@ void Node3D::makePointCloudFromScan(const sensor_msgs::PointCloud2ConstPtr& poin
   pcl::fromPCLPointCloud2(pc2, *point_cloud);
 }
 
-void Node3D::samplePointCloud(const pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud, int scanner_index)
+void Node3D::updateLatestScanData(const pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud,
+                                  int scanner_index)
 {
   int max_beams = scanners_[scanner_index]->getMaxBeams();
   int data_count = point_cloud->size();

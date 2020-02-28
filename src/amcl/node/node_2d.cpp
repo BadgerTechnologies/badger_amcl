@@ -375,14 +375,14 @@ bool Node2D::updateNodePf(const ros::Time& stamp, int scanner_index, bool* force
 bool Node2D::updateScanner(const sensor_msgs::LaserScanConstPtr& planar_scan,
                            int scanner_index, bool* resampled)
 {
-  updateLatestScanData(planar_scan, scanner_index);
+  initLatestScanData(planar_scan, scanner_index);
   double angle_min, angle_increment;
   bool success = true;
   if(getAngleStats(planar_scan, &angle_min, &angle_increment))
   {
     ROS_DEBUG("Planar scanner %d angles in base frame: min: %.3f inc: %.3f",
               scanner_index, angle_min, angle_increment);
-    samplePlanarScan(planar_scan, angle_min, angle_increment);
+    updateLatestScanData(planar_scan, angle_min, angle_increment);
     scanners_[scanner_index]->updateSensor(pf_, std::dynamic_pointer_cast<SensorData>(latest_scan_data_));
     scanners_update_->at(scanner_index) = false;
     if(!(++resample_count_ % resample_interval_))
@@ -485,8 +485,8 @@ void Node2D::updateScannerPose(const tf::Stamped<tf::Pose>& scanner_pose, int sc
             scanner_pose_v.v[1], scanner_pose_v.v[2]);
 }
 
-bool Node2D::updateLatestScanData(const sensor_msgs::LaserScanConstPtr& planar_scan,
-                                  int scanner_index)
+bool Node2D::initLatestScanData(const sensor_msgs::LaserScanConstPtr& planar_scan,
+                                int scanner_index)
 {
   latest_scan_data_ = std::make_shared<PlanarData>();
   latest_scan_data_->sensor_ = scanners_[scanner_index];
@@ -526,8 +526,8 @@ bool Node2D::getAngleStats(const sensor_msgs::LaserScanConstPtr& planar_scan,
   return success;
 }
 
-void Node2D::samplePlanarScan(const sensor_msgs::LaserScanConstPtr& planar_scan,
-                      double angle_min, double angle_increment)
+void Node2D::updateLatestScanData(const sensor_msgs::LaserScanConstPtr& planar_scan,
+                                  double angle_min, double angle_increment)
 {
   // Apply range min/max thresholds, if the user supplied them
   if (sensor_max_range_ > 0.0)
