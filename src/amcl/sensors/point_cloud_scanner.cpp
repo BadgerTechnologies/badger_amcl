@@ -37,7 +37,6 @@ PointCloudScanner::PointCloudScanner() : Sensor()
 {
   max_beams_ = 0;
   map_ = nullptr;
-  point_cloud_scanner_height_ = 0;
 
   off_map_factor_ = 1.0;
   non_free_space_factor_ = 1.0;
@@ -49,11 +48,10 @@ PointCloudScanner::PointCloudScanner() : Sensor()
     world_vec_ = {0.0, 0.0, 0.0};
 }
 
-void PointCloudScanner::init(size_t max_beams, std::shared_ptr<OctoMap> map, double point_cloud_scanner_height)
+void PointCloudScanner::init(size_t max_beams, std::shared_ptr<OctoMap> map)
 {
   max_beams_ = max_beams;
   map_ = map;
-  point_cloud_scanner_height_ = point_cloud_scanner_height;
 }
 
 void PointCloudScanner::setPointCloudModel(double z_hit, double z_rand, double sigma_hit, double max_occ_dist)
@@ -263,7 +261,6 @@ bool PointCloudScanner::getMapCloud(std::shared_ptr<PointCloudData> data,
   tf::Transform footprint_to_map_tf(footprint_to_map_q, footprint_to_map_origin);
   try
   {
-    tf::Matrix3x3 m = point_cloud_scanner_to_footprint_tf_.getBasis();
     pcl_ros::transformPointCloud(data->points_, footprint_cloud, point_cloud_scanner_to_footprint_tf_);
     pcl_ros::transformPointCloud(footprint_cloud, map_cloud, footprint_to_map_tf);
   }

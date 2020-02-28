@@ -193,17 +193,6 @@ double OctoMap::getOccDist(int i, int j, int k)
   return max_occ_dist_;
 }
 
-// returns the distance from the 2d pose to the nearest object in a 2.5d view
-double OctoMap::getOccDist(int i, int j)
-{
-  double distance = max_occ_dist_;
-  for (int k = 0; k < lidar_height_ / resolution_; k++)
-  {
-    distance = std::min(distance, getOccDist(i, j, k));
-  }
-  return distance;
-}
-
 size_t OctoMap::makeHash(int i, int j, int k)
 {
   std::size_t hash(0);

@@ -57,9 +57,8 @@ public:
   // Update the cspace distance values
   void updateCSpace();
   void updateMaxOccDist(double max_occ_dist);
-  void initFromOctree(std::shared_ptr<octomap::OcTree> octree, double lidar_height);
+  void initFromOctree(std::shared_ptr<octomap::OcTree> octree);
   double getOccDist(int i, int j, int k);
-  double getOccDist(int i, int j);
   double getMaxOccDist();
 
 private:
@@ -120,7 +119,6 @@ private:
   // Map dimensions (number of cells)
   std::vector<double> map_min_bounds_, map_max_bounds_;
   std::vector<int> cropped_min_cells_, cropped_max_cells_, full_cells_;
-  double lidar_height_;
   bool wait_for_occupancy_map_;
   std::unique_ptr<CachedDistanceMap> cdm_;
   std::unique_ptr<std::priority_queue<CellData>> q_;
