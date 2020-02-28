@@ -81,7 +81,6 @@ Node3D::Node3D(Node* node, int map_type, std::mutex& configuration_mutex)
   private_nh_.param("global_localization_scanner_off_map_factor", global_localization_off_map_factor_, 1.0);
   private_nh_.param("global_localization_scanner_non_free_space_factor",
                     global_localization_non_free_space_factor_, 1.0);
-  private_nh_.param("point_cloud_scanner_height", scanner_height_, 1.8);
   const std::string default_point_cloud_scan_topic = "/scans/top/points_filtered";
   private_nh_.param("point_cloud_scan_topic", scan_topic_, default_point_cloud_scan_topic);
   std::string tmp_model_type;
@@ -150,7 +149,6 @@ void Node3D::reconfigure(amcl::AMCLConfig& config)
   non_free_space_radius_ = config.point_cloud_scanner_non_free_space_radius;
   global_localization_off_map_factor_ = config.global_localization_point_cloud_scanner_off_map_factor;
   global_localization_non_free_space_factor_ = config.global_localization_point_cloud_scanner_non_free_space_factor;
-  scanner_height_ = config.point_cloud_scanner_height;
   if (config.point_cloud_model_type == "point cloud")
   {
     model_type_ = POINT_CLOUD_MODEL;
@@ -159,7 +157,7 @@ void Node3D::reconfigure(amcl::AMCLConfig& config)
   {
     model_type_ = POINT_CLOUD_MODEL_GOMPERTZ;
   }
-  scanner_.init(max_beams_, map_, scanner_height_);
+  scanner_.init(max_beams_, map_);
   if (model_type_ == POINT_CLOUD_MODEL)
   {
     ROS_WARN("setting point cloud model type from reconfigure 3d");
@@ -215,7 +213,7 @@ void Node3D::mapMsgReceived(const octomap_msgs::OctomapConstPtr& msg)
 
 void Node3D::initFromNewMap()
 {
-  scanner_.init(max_beams_, map_, scanner_height_);
+  scanner_.init(max_beams_, map_);
   if (model_type_ == POINT_CLOUD_MODEL)
   {
     scanner_.setPointCloudModel(z_hit_, z_rand_, sigma_hit_, sensor_likelihood_max_dist_);
@@ -275,7 +273,7 @@ std::shared_ptr<OctoMap> Node3D::convertMap(const octomap_msgs::Octomap& map_msg
     octree_ = std::shared_ptr<octomap::OcTree>(dynamic_cast<octomap::OcTree*>(absoctree));
   }
   octomap->setResolution(resolution);
-  octomap->initFromOctree(octree_, scanner_height_);
+  octomap->initFromOctree(octree_);
   return octomap;
 }
 

@@ -58,7 +58,7 @@ public:
   PointCloudScanner();
   ~PointCloudScanner(){};
 
-  void init(size_t max_beams, std::shared_ptr<OctoMap> map, double lidar_height);
+  void init(size_t max_beams, std::shared_ptr<OctoMap> map);
 
   void setPointCloudModel(double z_hit, double z_rand, double sigma_hit, double max_occ_dist);
   void setPointCloudModelGompertz(double z_hit, double z_rand, double sigma_hit, double max_occ_dist, double gompertz_a,
@@ -114,7 +114,6 @@ private:
   double sigma_hit_;
   // Max beams to consider
   int max_beams_;
-  double point_cloud_scanner_height_;
 
   tf::Transform point_cloud_scanner_to_footprint_tf_;
 

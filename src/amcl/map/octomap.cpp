@@ -48,10 +48,9 @@ OctoMap::OctoMap(bool wait_for_occupancy_map)
 }
 
 // initialize octomap from octree
-void OctoMap::initFromOctree(std::shared_ptr<octomap::OcTree> octree, double lidar_height)
+void OctoMap::initFromOctree(std::shared_ptr<octomap::OcTree> octree)
 {
   octree_ = octree;
-  lidar_height_ = lidar_height;
   // set size
   double x_meters, y_meters, z_meters;
   octree_->getMetricSize(x_meters, y_meters, z_meters);
