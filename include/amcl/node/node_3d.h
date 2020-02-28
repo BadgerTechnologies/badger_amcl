@@ -74,7 +74,7 @@ private:
   bool resamplePf(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan);
   void makePointCloudFromScan(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan,
                               pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud);
-  void samplePointCloud(const pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud, int scanner_index);
+  void updateLatestScanData(const pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud, int scanner_index);
   void updateScanner(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan,
                      int scanner_index, bool* resampled);
   void resampleParticles();
@@ -86,7 +86,7 @@ private:
   int getFrameToScannerIndex(const std::string& frame_id);
   int initFrameToScanner(const std::string& frame_id, tf::Stamped<tf::Pose>* scanner_pose);
   void updateScannerPose(const tf::Stamped<tf::Pose>& scanner_pose, int scanner_index);
-  void updateLatestScanData(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan,
+  void initLatestScanData(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan,
                             int scanner_index);
   void checkScanReceived(const ros::TimerEvent& event);
 
