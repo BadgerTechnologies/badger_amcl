@@ -26,6 +26,7 @@
 #include "pf/pdf_gaussian.h"
 
 #include <math.h>
+#include <ros/console.h>
 #include <stdlib.h>
 
 // Random number generator seed value
@@ -71,7 +72,6 @@ PFVector PDFGaussian::sample()
     for (j = 0; j < 3; j++)
       v.v[i] += cr_.m[i][j] * r.v[j];
   }
-
   return v;
 }
 

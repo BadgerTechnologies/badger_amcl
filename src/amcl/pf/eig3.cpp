@@ -9,9 +9,9 @@
 #include "pf/eig3.h"
 
 #include <math.h>
+#include <ros/console.h>
 
 #include <algorithm>
-#include <cmath>
 
 using namespace amcl;
 
@@ -22,7 +22,7 @@ double EIG3::hypot2(double x, double y)
 
 // Symmetric Householder reduction to tridiagonal form.
 
-void EIG3::tred2(std::vector<std::vector<double>> V, std::vector<double> d, std::vector<double> e)
+void EIG3::tred2(PFMatrix& V, PFVector* d, PFVector* e)
 {
   //  This is derived from the Algol procedures tred2 by
   //  Bowdler, Martin, Reinsch, and Wilkinson, Handbook for
@@ -33,7 +33,7 @@ void EIG3::tred2(std::vector<std::vector<double>> V, std::vector<double> d, std:
   double f, g, h, hh;
   for (j = 0; j < N; j++)
   {
-    d[j] = V[N - 1][j];
+    d->v[j] = V.m[N - 1][j];
   }
 
   // Householder reduction to tridiagonal form.
@@ -46,16 +46,16 @@ void EIG3::tred2(std::vector<std::vector<double>> V, std::vector<double> d, std:
     double h = 0.0;
     for (k = 0; k < i; k++)
     {
-      scale = scale + fabs(d[k]);
+      scale = scale + fabs(d->v[k]);
     }
     if (scale == 0.0)
     {
-      e[i] = d[i - 1];
+      e->v[i] = d->v[i - 1];
       for (j = 0; j < i; j++)
       {
-        d[j] = V[i - 1][j];
-        V[i][j] = 0.0;
-        V[j][i] = 0.0;
+        d->v[j] = V.m[i - 1][j];
+        V.m[i][j] = 0.0;
+        V.m[j][i] = 0.0;
       }
     }
     else
@@ -64,106 +64,106 @@ void EIG3::tred2(std::vector<std::vector<double>> V, std::vector<double> d, std:
 
       for (k = 0; k < i; k++)
       {
-        d[k] /= scale;
-        h += d[k] * d[k];
+        d->v[k] /= scale;
+        h += d->v[k] * d->v[k];
       }
-      f = d[i - 1];
+      f = d->v[i - 1];
       g = sqrt(h);
       if (f > 0)
       {
         g = -g;
       }
-      e[i] = scale * g;
+      e->v[i] = scale * g;
       h = h - f * g;
-      d[i - 1] = f - g;
+      d->v[i - 1] = f - g;
       for (j = 0; j < i; j++)
       {
-        e[j] = 0.0;
+        e->v[j] = 0.0;
       }
 
       // Apply similarity transformation to remaining columns.
 
       for (j = 0; j < i; j++)
       {
-        f = d[j];
-        V[j][i] = f;
-        g = e[j] + V[j][j] * f;
+        f = d->v[j];
+        V.m[j][i] = f;
+        g = e->v[j] + V.m[j][j] * f;
         for (k = j + 1; k <= i - 1; k++)
         {
-          g += V[k][j] * d[k];
-          e[k] += V[k][j] * f;
+          g += V.m[k][j] * d->v[k];
+          e->v[k] += V.m[k][j] * f;
         }
-        e[j] = g;
+        e->v[j] = g;
       }
       f = 0.0;
       for (j = 0; j < i; j++)
       {
-        e[j] /= h;
-        f += e[j] * d[j];
+        e->v[j] /= h;
+        f += e->v[j] * d->v[j];
       }
       hh = f / (h + h);
       for (j = 0; j < i; j++)
       {
-        e[j] -= hh * d[j];
+        e->v[j] -= hh * d->v[j];
       }
       for (j = 0; j < i; j++)
       {
-        f = d[j];
-        g = e[j];
+        f = d->v[j];
+        g = e->v[j];
         for (k = j; k <= i - 1; k++)
         {
-          V[k][j] -= (f * e[k] + g * d[k]);
+          V.m[k][j] -= (f * e->v[k] + g * d->v[k]);
         }
-        d[j] = V[i - 1][j];
-        V[i][j] = 0.0;
+        d->v[j] = V.m[i - 1][j];
+        V.m[i][j] = 0.0;
       }
     }
-    d[i] = h;
+    d->v[i] = h;
   }
 
   // Accumulate transformations.
 
   for (i = 0; i < N - 1; i++)
   {
-    V[N - 1][i] = V[i][i];
-    V[i][i] = 1.0;
-    h = d[i + 1];
+    V.m[N - 1][i] = V.m[i][i];
+    V.m[i][i] = 1.0;
+    h = d->v[i + 1];
     if (h != 0.0)
     {
       for (k = 0; k <= i; k++)
       {
-        d[k] = V[k][i + 1] / h;
+        d->v[k] = V.m[k][i + 1] / h;
       }
       for (j = 0; j <= i; j++)
       {
         g = 0.0;
         for (k = 0; k <= i; k++)
         {
-          g += V[k][i + 1] * V[k][j];
+          g += V.m[k][i + 1] * V.m[k][j];
         }
         for (k = 0; k <= i; k++)
         {
-          V[k][j] -= g * d[k];
+          V.m[k][j] -= g * d->v[k];
         }
       }
     }
     for (k = 0; k <= i; k++)
     {
-      V[k][i + 1] = 0.0;
+      V.m[k][i + 1] = 0.0;
     }
   }
   for (j = 0; j < N; j++)
   {
-    d[j] = V[N - 1][j];
-    V[N - 1][j] = 0.0;
+    d->v[j] = V.m[N - 1][j];
+    V.m[N - 1][j] = 0.0;
   }
-  V[N - 1][N - 1] = 1.0;
-  e[0] = 0.0;
+  V.m[N - 1][N - 1] = 1.0;
+  e->v[0] = 0.0;
 }
 
 // Symmetric tridiagonal QL algorithm.
 
-void EIG3::tql2(std::vector<std::vector<double>> V, std::vector<double> d, std::vector<double> e)
+void EIG3::tql2(PFMatrix& V, PFVector& d, PFVector& e)
 {
   //  This is derived from the Algol procedures tql2, by
   //  Bowdler, Martin, Reinsch, and Wilkinson, Handbook for
@@ -176,9 +176,9 @@ void EIG3::tql2(std::vector<std::vector<double>> V, std::vector<double> d, std::
 
   for (i = 1; i < N; i++)
   {
-    e[i - 1] = e[i];
+    e.v[i - 1] = e.v[i];
   }
-  e[N - 1] = 0.0;
+  e.v[N - 1] = 0.0;
 
   f = 0.0;
   tst1 = 0.0;
@@ -187,11 +187,11 @@ void EIG3::tql2(std::vector<std::vector<double>> V, std::vector<double> d, std::
   {
     // Find small subdiagonal element
 
-    tst1 = std::max(fabs(d[l]) + fabs(e[l]), tst1);
+    tst1 = std::max(fabs(d.v[l]) + fabs(e.v[l]), tst1);
     m = l;
     while (m < N)
     {
-      if (fabs(e[m]) <= eps * tst1)
+      if (fabs(e.v[m]) <= eps * tst1)
       {
         break;
       }
@@ -210,30 +210,30 @@ void EIG3::tql2(std::vector<std::vector<double>> V, std::vector<double> d, std::
 
         // Compute implicit shift
 
-        g = d[l];
-        p = (d[l + 1] - g) / (2.0 * e[l]);
+        g = d.v[l];
+        p = (d.v[l + 1] - g) / (2.0 * e.v[l]);
         r = hypot2(p, 1.0);
         if (p < 0)
         {
           r = -r;
         }
-        d[l] = e[l] / (p + r);
-        d[l + 1] = e[l] * (p + r);
-        dl1 = d[l + 1];
-        h = g - d[l];
+        d.v[l] = e.v[l] / (p + r);
+        d.v[l + 1] = e.v[l] * (p + r);
+        dl1 = d.v[l + 1];
+        h = g - d.v[l];
         for (i = l + 2; i < N; i++)
         {
-          d[i] -= h;
+          d.v[i] -= h;
         }
         f = f + h;
 
         // Implicit QL transformation.
 
-        p = d[m];
+        p = d.v[m];
         c = 1.0;
         c2 = c;
         c3 = c;
-        el1 = e[l + 1];
+        el1 = e.v[l + 1];
         s = 0.0;
         s2 = 0.0;
         for (i = m - 1; i >= l; i--)
@@ -241,34 +241,34 @@ void EIG3::tql2(std::vector<std::vector<double>> V, std::vector<double> d, std::
           c3 = c2;
           c2 = c;
           s2 = s;
-          g = c * e[i];
+          g = c * e.v[i];
           h = c * p;
-          r = hypot2(p, e[i]);
-          e[i + 1] = s * r;
-          s = e[i] / r;
+          r = hypot2(p, e.v[i]);
+          e.v[i + 1] = s * r;
+          s = e.v[i] / r;
           c = p / r;
-          p = c * d[i] - s * g;
-          d[i + 1] = h + s * (c * g + s * d[i]);
+          p = c * d.v[i] - s * g;
+          d.v[i + 1] = h + s * (c * g + s * d.v[i]);
 
           // Accumulate transformation.
 
           for (k = 0; k < N; k++)
           {
-            h = V[k][i + 1];
-            V[k][i + 1] = s * V[k][i] + c * h;
-            V[k][i] = c * V[k][i] - s * h;
+            h = V.m[k][i + 1];
+            V.m[k][i + 1] = s * V.m[k][i] + c * h;
+            V.m[k][i] = c * V.m[k][i] - s * h;
           }
         }
-        p = -s * s2 * c3 * el1 * e[l] / dl1;
-        e[l] = s * p;
-        d[l] = c * p;
+        p = -s * s2 * c3 * el1 * e.v[l] / dl1;
+        e.v[l] = s * p;
+        d.v[l] = c * p;
 
         // Check for convergence.
 
-      } while (fabs(e[l]) > eps * tst1);
+      } while (fabs(e.v[l]) > eps * tst1);
     }
-    d[l] = d[l] + f;
-    e[l] = 0.0;
+    d.v[l] = d.v[l] + f;
+    e.v[l] = 0.0;
   }
 
   // Sort eigenvalues and corresponding vectors.
@@ -276,41 +276,40 @@ void EIG3::tql2(std::vector<std::vector<double>> V, std::vector<double> d, std::
   for (i = 0; i < N - 1; i++)
   {
     k = i;
-    p = d[i];
+    p = d.v[i];
     for (j = i + 1; j < N; j++)
     {
-      if (d[j] < p)
+      if (d.v[j] < p)
       {
         k = j;
-        p = d[j];
+        p = d.v[j];
       }
     }
     if (k != i)
     {
-      d[k] = d[i];
-      d[i] = p;
+      d.v[k] = d.v[i];
+      d.v[i] = p;
       for (j = 0; j < N; j++)
       {
-        p = V[j][i];
-        V[j][i] = V[j][k];
-        V[j][k] = p;
+        p = V.m[j][i];
+        V.m[j][i] = V.m[j][k];
+        V.m[j][k] = p;
       }
     }
   }
 }
 
-void EIG3::eigenDecomposition(std::vector<std::vector<double>> A, std::vector<std::vector<double>> V,
-                              std::vector<double> d)
+void EIG3::eigenDecomposition(const PFMatrix& A, PFMatrix* V, PFVector* d)
 {
   int i, j;
-  std::vector<double> e(N, 0.0);
+  PFVector e;
   for (i = 0; i < N; i++)
   {
     for (j = 0; j < N; j++)
     {
-      V[i][j] = A[i][j];
+      V->m[i][j] = A.m[i][j];
     }
   }
-  EIG3::tred2(V, d, e);
-  EIG3::tql2(V, d, e);
+  EIG3::tred2(*V, d, &e);
+  EIG3::tql2(*V, *d, e);
 }

@@ -120,27 +120,27 @@ void PFMatrix::decompose(PFMatrix* r, PFMatrix* d)
 {
   int i, j;
 
-  std::vector<std::vector<double>> aa(3, std::vector<double>(3, 0.0));
-  std::vector<double> eval(3, 0.0);
-  std::vector<std::vector<double>> evec(3, std::vector<double>(3, 0.0));
+  PFMatrix aa;
+  PFVector eval;
+  PFMatrix evec;
 
   for (i = 0; i < 3; i++)
   {
     for (j = 0; j < 3; j++)
     {
-      aa[i][j] = m[i][j];
+      aa.m[i][j] = m[i][j];
     }
   }
 
-  EIG3::eigenDecomposition(aa, evec, eval);
+  EIG3::eigenDecomposition(aa, &evec, &eval);
 
   *d = PFMatrix();
   for (i = 0; i < 3; i++)
   {
-    d->m[i][i] = eval[i];
+    d->m[i][i] = eval.v[i];
     for (j = 0; j < 3; j++)
     {
-      r->m[i][j] = evec[i][j];
+      r->m[i][j] = evec.m[i][j];
     }
   }
 }
