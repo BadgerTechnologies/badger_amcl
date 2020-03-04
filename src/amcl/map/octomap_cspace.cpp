@@ -118,7 +118,7 @@ void OctoMap::iterateEmptyCells()
     }
     if (current_cell.k > cropped_min_cells_[2])
     {
-      updateNode(current_cell.i, current_cell.j, current_cell.k - 1, current_cell);  
+      updateNode(current_cell.i, current_cell.j, current_cell.k - 1, current_cell);
     }
     if (current_cell.i < cropped_max_cells_[0] - 1)
     {
@@ -157,7 +157,7 @@ bool OctoMap::enqueue(int i, int j, int k, int src_i, int src_j, int src_k)
   int dk = abs(k - src_k);
   double distance = cdm_->distances_[di][dj][dk];
 
-  if (distance > cdm_->cell_radius_)
+  if (distance <= cdm_->cell_radius_)
   {
     setOccDist(i, j, k, distance * resolution_);
     CellData cell = CellData(*this);

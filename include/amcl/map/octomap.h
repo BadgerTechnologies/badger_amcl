@@ -38,6 +38,20 @@
 
 namespace amcl
 {
+
+class CachedDistanceMap
+{
+public:
+  CachedDistanceMap(double resolution, double max_dist);
+
+  std::vector<std::vector<std::vector<double>>> distances_;
+  double resolution_;
+  double max_dist_;
+  int cell_radius_;
+};
+
+struct CellData;
+
 class OctoMap : public Map
 {
 public:
@@ -63,42 +77,6 @@ public:
 
 private:
   static constexpr double EPSILON = std::numeric_limits<double>::epsilon();
-  struct CellData
-  {
-    OctoMap* octo_map;
-    CellData(OctoMap& o_map) : octo_map(&o_map)
-    {
-    }
-    int i, j, k;
-    int src_i, src_j, src_k;
-  };
-
-  class CachedDistanceMap
-  {
-  public:
-    std::vector<std::vector<std::vector<double>>> distances_;
-    double resolution_;
-    double max_dist_;
-    int cell_radius_;
-
-    CachedDistanceMap(double resolution, double max_dist) : resolution_(resolution), max_dist_(max_dist)
-    {
-      cell_radius_ = max_dist / resolution;
-      distances_.resize(cell_radius_ + 2);
-      for (int i = 0; i <= cell_radius_ + 1; i++)
-      {
-        distances_[i].resize(cell_radius_ + 2);
-        for (int j = 0; j <= cell_radius_ + 1; j++)
-        {
-          distances_[i][j].resize(cell_radius_ + 2);
-          for (int k = 0; k <= cell_radius_ + 1; k++)
-          {
-            distances_[i][j][k] = sqrt(i * i + j * j + k * k);
-          }
-        }
-      }
-    }
-  };
 
   void iterateObstacleCells();
   void iterateEmptyCells();
@@ -107,8 +85,6 @@ private:
   bool enqueue(int i, int j, int k, int src_i, int src_j, int src_k);
   unsigned int computeCellIndex(int i, int j, int k);
   size_t makeHash(int i, int j, int k);
-
-  friend bool operator<(const OctoMap::CellData& a, const OctoMap::CellData& b);
 
   std::shared_ptr<octomap::OcTree> octree_;
   std::unique_ptr<tsl::sparse_map<size_t, double>> distances_;
@@ -125,10 +101,19 @@ private:
   std::unique_ptr<octomap::OcTree> marked_;
 };
 
-inline bool operator<(const OctoMap::CellData& a, const OctoMap::CellData& b)
+struct CellData
 {
-  return a.octo_map->getOccDist(a.i, a.j, a.k) > b.octo_map->getOccDist(b.i, b.j, b.k);
-}
+  OctoMap* octo_map;
+  CellData(OctoMap& o_map) : octo_map(&o_map)
+  {
+  }
+  int i, j, k;
+  int src_i, src_j, src_k;
+  inline bool operator<(const CellData& b) const
+  {
+    return octo_map->getOccDist(i, j, k) > b.octo_map->getOccDist(b.i, b.j, b.k);
+  }
+};
 }  // namespace amcl
 
 #endif  // AMCL_MAP_OCTOMAP_H
