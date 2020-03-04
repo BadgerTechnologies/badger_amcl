@@ -168,3 +168,22 @@ void OctoMap::setMapBounds(std::shared_ptr<std::vector<double>> map_min,
   }
   updateCSpace();
 }
+
+CachedDistanceMap::CachedDistanceMap(double resolution, double max_dist)
+    : resolution_(resolution), max_dist_(max_dist)
+{
+  cell_radius_ = max_dist / resolution;
+  distances_.resize(cell_radius_ + 2);
+  for (int i = 0; i <= cell_radius_ + 1; i++)
+  {
+    distances_[i].resize(cell_radius_ + 2);
+    for (int j = 0; j <= cell_radius_ + 1; j++)
+    {
+      distances_[i][j].resize(cell_radius_ + 2);
+      for (int k = 0; k <= cell_radius_ + 1; k++)
+      {
+        distances_[i][j][k] = sqrt(i * i + j * j + k * k);
+      }
+    }
+  }
+}
