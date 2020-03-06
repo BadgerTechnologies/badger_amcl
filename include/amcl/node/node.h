@@ -55,8 +55,8 @@
 #include <vector>
 
 #include "amcl/AMCLConfig.h"
-#include "node/node_2d.h"
-#include "node/node_3d.h"
+#include "map/map.h"
+#include "node/node_nd.h"
 #include "pf/particle_filter.h"
 #include "pf/pf_vector.h"
 #include "sensors/odom.h"
@@ -77,8 +77,6 @@ class Node
 public:
   Node();
   void initFromNewMap(std::shared_ptr<Map> new_map);
-  void updateBoundsFromOccupancyMap(std::shared_ptr<std::vector<double>> map_min,
-                                    std::shared_ptr<std::vector<double>> map_max);
   void updateFreeSpaceIndices(std::shared_ptr<std::vector<std::pair<int, int>>> fsi);
   void initOdomIntegrator();
   bool getOdomPose(const ros::Time& t, PFVector* map_pose);
@@ -173,8 +171,7 @@ private:
   int map_type_;
   std::shared_ptr<Map> map_;
   bool wait_for_occupancy_map_;
-  std::shared_ptr<Node2D> node_2d_;
-  std::shared_ptr<Node3D> node_3d_;
+  std::shared_ptr<NodeND> node_;
 
   tf::TransformBroadcaster tfb_;
   tf::TransformListener tf_;

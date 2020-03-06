@@ -24,6 +24,8 @@
 #ifndef AMCL_NODE_NODE_2D_H
 #define AMCL_NODE_NODE_2D_H
 
+#include "node/node_nd.h"
+
 #include <message_filters/subscriber.h>
 #include <nav_msgs/OccupancyGrid.h>
 #include <sensor_msgs/LaserScan.h>
@@ -49,19 +51,19 @@ namespace amcl
 
 class Node;
 
-class Node2D
+class Node2D : public NodeND
 {
 public:
   Node2D(Node* node, int map_type, std::mutex& configuration_mutex);
-  void reconfigure(amcl::AMCLConfig& config);
-  void updateFreeSpaceIndices();
-  void globalLocalizationCallback();
-  double scorePose(const PFVector& p);
+  void reconfigure(amcl::AMCLConfig& config) override;
+  void globalLocalizationCallback() override;
+  double scorePose(const PFVector& p) override;
 private:
   void scanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan);
   bool updateNodePf(const ros::Time& stamp, int scanner_index, bool* force_publication);
   bool updateScanner(const sensor_msgs::LaserScanConstPtr& planar_scan,
                      int scanner_index, bool* resampled);
+  void updateFreeSpaceIndices();
   void resampleParticles();
   bool resamplePose(const ros::Time& stamp);
   void getMaxWeightPose(double* max_weight_rtn, PFVector* max_pose);
