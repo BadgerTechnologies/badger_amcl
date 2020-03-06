@@ -39,6 +39,9 @@
 #include <cstdlib>
 #include <functional>
 
+#include "node/node_2d.h"
+#include "node/node_3d.h"
+
 using namespace amcl;
 
 Node::Node()
@@ -146,10 +149,13 @@ Node::Node()
   map_odom_transform_pub_ = nh_.advertise<nav_msgs::Odometry>("amcl_map_odom_transform", 1);
   global_loc_srv_ = nh_.advertiseService("global_localization", &Node::globalLocalizationCallback, this);
   loadPose();
-  node_2d_ = std::make_shared<Node2D>(this, map_type_, configuration_mutex_);
+  if(map_type_ == 2)
+  {
+    node_ = std::make_shared<Node2D>(this, map_type_, configuration_mutex_);
+  }
   if(map_type_ == 3)
   {
-    node_3d_ = std::make_shared<Node3D>(this, map_type_, configuration_mutex_);
+    node_ = std::make_shared<Node3D>(this, map_type_, configuration_mutex_);
   }
 
   if (odom_integrator_topic_.size())
@@ -268,24 +274,11 @@ void Node::reconfigureCB(AMCLConfig& config, uint32_t level)
   odom_frame_id_ = config.odom_frame_id;
   base_frame_id_ = config.base_frame_id;
   global_frame_id_ = config.global_frame_id;
-
-  ROS_INFO("before reconfigure types");
-  if(map_type_ == 2)
-  {
-    node_2d_->reconfigure(config);
-  }
-  else if (map_type_ == 3)
-  {
-    node_3d_->reconfigure(config);
-  }
-  ROS_INFO("after reconfigure types");
-
+  node_->reconfigure(config);
   save_pose_ = config.save_pose;
   const std::string filename = config.saved_pose_filename;
   saved_pose_filepath_ = makeFilepathFromName(filename);
-
   initial_pose_sub_ = nh_.subscribe("initialpose", 2, &Node::initialPoseReceived, this);
-
   publish_transform_timer_ = nh_.createTimer(transform_publish_period_, boost::bind(&Node::publishTransform, this, _1));
 }
 
@@ -772,15 +765,6 @@ void Node::initFromNewMap(std::shared_ptr<Map> new_map)
   publishInitialPose();
 }
 
-void Node::updateBoundsFromOccupancyMap(std::shared_ptr<std::vector<double>> map_min,
-                                        std::shared_ptr<std::vector<double>> map_max)
-{
-  if(map_type_ == 3 and wait_for_occupancy_map_)
-  {
-    node_3d_->setOctomapBoundsFromOccupancyMap(map_min, map_max);
-  }
-}
-
 void Node::updateFreeSpaceIndices(std::shared_ptr<std::vector<std::pair<int, int>>> fsi)
 {
   free_space_indices_ = fsi;
@@ -906,19 +890,7 @@ PFVector Node::randomFreeSpacePose()
 // Helper function to score a pose for uniform pose generation
 double Node::scorePose(const PFVector& p)
 {
-  if (map_type_ == 2)
-  {
-    return node_2d_->scorePose(p);
-  }
-  else if (map_type_ == 3)
-  {
-    return node_3d_->scorePose(p);
-  }
-  else
-  {
-    ROS_ERROR("invalid map type");
-    return -1;
-  }
+  return node_->scorePose(p);
 }
 
 PFVector Node::uniformPoseGenerator()
@@ -953,14 +925,7 @@ bool Node::globalLocalizationCallback(std_srvs::Empty::Request& req, std_srvs::E
   std::lock_guard<std::mutex> cfl(configuration_mutex_);
   global_localization_active_ = true;
   pf_->setDecayRates(global_localization_alpha_slow_, global_localization_alpha_fast_);
-  if (map_type_ == 2)
-  {
-    node_2d_->globalLocalizationCallback();
-  }
-  else if (map_type_ == 3)
-  {
-    node_3d_->globalLocalizationCallback();
-  }
+  node_->globalLocalizationCallback();
   pf_->initModel(uniform_pose_generator_fn_ptr_);
   odom_init_ = false;
   return true;

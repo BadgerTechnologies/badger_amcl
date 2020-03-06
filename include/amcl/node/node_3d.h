@@ -24,7 +24,10 @@
 #ifndef AMCL_NODE_NODE_3D_H
 #define AMCL_NODE_NODE_3D_H
 
+#include "node/node_nd.h"
+
 #include <message_filters/subscriber.h>
+#include <nav_msgs/OccupancyGrid.h>
 #include <octomap_msgs/Octomap.h>
 #include <ros/duration.h>
 #include <ros/node_handle.h>
@@ -51,20 +54,18 @@ namespace amcl
 class Node;
 struct PoseHypothesis;
 
-class Node3D
+class Node3D : public NodeND
 {
 public:
   Node3D(Node* node, int map_type, std::mutex& configuration_mutex);
-  void reconfigure(amcl::AMCLConfig& config);
-  void setOctomapBoundsFromOccupancyMap(std::shared_ptr<std::vector<double>> map_min,
-                                        std::shared_ptr<std::vector<double>> map_max);
-  void updateFreeSpaceIndices();
-  void globalLocalizationCallback();
-  double scorePose(const PFVector& p);
+  void reconfigure(amcl::AMCLConfig& config) override;
+  void globalLocalizationCallback() override;
+  double scorePose(const PFVector& p) override;
 private:
   void scanReceived(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan);
   bool updateNodePf(const ros::Time& stamp, int scanner_index, bool* force_publication);
-  void mapMsgReceived(const octomap_msgs::OctomapConstPtr& msg);
+  void occupancyMapMsgReceived(const nav_msgs::OccupancyGridConstPtr& msg);
+  void octoMapMsgReceived(const octomap_msgs::OctomapConstPtr& msg);
   void initFromNewMap();
   std::shared_ptr<OctoMap> convertMap(const octomap_msgs::Octomap& map_msg);
   bool initFrameToScanner(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan,
@@ -74,9 +75,12 @@ private:
   bool resamplePf(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan);
   void makePointCloudFromScan(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan,
                               pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud);
+  void updateFreeSpaceIndices();
   void updateLatestScanData(const pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud, int scanner_index);
   void updateScanner(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan,
                      int scanner_index, bool* resampled);
+  void setOctomapBoundsFromOccupancyMap(std::shared_ptr<std::vector<double>> map_min,
+                                        std::shared_ptr<std::vector<double>> map_max);
   void resampleParticles();
   bool resamplePose(const ros::Time& stamp);
   void getMaxWeightPose(double* max_weight, PFVector* max_pose);
@@ -113,13 +117,15 @@ private:
   Node* node_;
   ros::NodeHandle nh_;
   ros::NodeHandle private_nh_;
-  ros::Subscriber map_sub_;
+  ros::Subscriber occupancy_map_sub_;
+  ros::Subscriber octo_map_sub_;
   ros::Duration scanner_check_interval_;
   ros::Timer check_scanner_timer_;
   ros::Time latest_scan_received_ts_;
   tf::TransformListener tf_;
   tf::StampedTransform scanner_to_footprint_tf_;
   int map_type_;
+  int occupancy_map_scale_up_factor_;
   int max_beams_;
   int resample_interval_;
   int resample_count_;

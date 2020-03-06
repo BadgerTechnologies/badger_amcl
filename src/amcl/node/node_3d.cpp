@@ -99,6 +99,7 @@ Node3D::Node3D(Node* node, int map_type, std::mutex& configuration_mutex)
              tmp_model_type.c_str());
     model_type_ = POINT_CLOUD_MODEL;
   }
+  private_nh_.param("map_scale_up_factor", occupancy_map_scale_up_factor_, 1);
 
   if (map_type_ == 3)
   {
@@ -127,7 +128,8 @@ Node3D::Node3D(Node* node, int map_type, std::mutex& configuration_mutex)
   scanners_update_ = std::make_shared<std::vector<bool>>();
   force_update_ = false;
   first_octomap_received_ = false;
-  map_sub_ = nh_.subscribe("octomap_binary", 1, &Node3D::mapMsgReceived, this);
+  octo_map_sub_ = nh_.subscribe("octomap_binary", 1, &Node3D::octoMapMsgReceived, this);
+  occupancy_map_sub_ = nh_.subscribe("map", 1, &Node3D::occupancyMapMsgReceived, this);
 }
 
 void Node3D::reconfigure(amcl::AMCLConfig& config)
@@ -187,7 +189,29 @@ void Node3D::reconfigure(amcl::AMCLConfig& config)
   pf_ = node_->getPfPtr();
 }
 
-void Node3D::mapMsgReceived(const octomap_msgs::OctomapConstPtr& msg)
+void Node3D::occupancyMapMsgReceived(const nav_msgs::OccupancyGridConstPtr& msg)
+{
+  std::lock_guard<std::mutex> cfl(configuration_mutex_);
+  if(not wait_for_occupancy_map_)
+    return;
+
+  std::vector<int> size_vec;
+  double resolution = (*msg).info.resolution / occupancy_map_scale_up_factor_;
+  size_vec.push_back((*msg).info.width * occupancy_map_scale_up_factor_);
+  size_vec.push_back((*msg).info.height * occupancy_map_scale_up_factor_);
+  occupancy_map_min_ = std::make_shared<std::vector<double>>(std::vector<double>({0.0, 0.0}));
+  occupancy_map_max_ = std::make_shared<std::vector<double>>(std::vector<double>(
+                                                               {size_vec[0] * resolution,
+                                                                size_vec[1] * resolution}));
+  occupancy_bounds_received_ = true;
+  if(first_octomap_received_)
+  {
+    map_->setMapBounds(occupancy_map_min_, occupancy_map_max_);
+    updateFreeSpaceIndices();
+  }
+}
+
+void Node3D::octoMapMsgReceived(const octomap_msgs::OctomapConstPtr& msg)
 {
   if (first_map_only_ && first_octomap_received_)
   {
@@ -200,15 +224,12 @@ void Node3D::mapMsgReceived(const octomap_msgs::OctomapConstPtr& msg)
   map_ = convertMap(*msg);
   first_octomap_received_ = true;
 
-  if (map_type_ == 3)
-  {
-    // Clear queued point cloud objects because they hold pointers to the existing map
-    scanners_.clear();
-    scanners_update_->clear();
-    frame_to_scanner_.clear();
-    latest_scan_data_ = NULL;
-    initFromNewMap();
-  }
+  // Clear queued point cloud objects because they hold pointers to the existing map
+  scanners_.clear();
+  scanners_update_->clear();
+  frame_to_scanner_.clear();
+  latest_scan_data_ = NULL;
+  initFromNewMap();
 }
 
 void Node3D::initFromNewMap()
@@ -295,19 +316,6 @@ double Node3D::scorePose(const PFVector& p)
     score = fake_sample_.weight;
   }
   return score;
-}
-
-void Node3D::setOctomapBoundsFromOccupancyMap(std::shared_ptr<std::vector<double>> map_min,
-                                              std::shared_ptr<std::vector<double>> map_max)
-{
-  occupancy_map_min_ = map_min;
-  occupancy_map_max_ = map_max;
-  occupancy_bounds_received_ = true;
-  if(wait_for_occupancy_map_ and first_octomap_received_)
-  {
-    map_->setMapBounds(map_min, map_max);
-    updateFreeSpaceIndices();
-  }
 }
 
 void Node3D::updateFreeSpaceIndices()

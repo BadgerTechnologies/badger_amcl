@@ -209,25 +209,13 @@ void Node2D::mapMsgReceived(const nav_msgs::OccupancyGridConstPtr& msg)
   ROS_INFO("Received a %d X %d occupancy map @ %.3f m/pix\n", msg->info.width, msg->info.height, msg->info.resolution);
   map_ = convertMap(*msg);
   first_map_received_ = true;
-
-  if (map_type_ == 2)
-  {
-    updateFreeSpaceIndices();
-    // Clear queued planar scanner objects because they hold pointers to the existing map
-    scanners_.clear();
-    scanners_update_->clear();
-    frame_to_scanner_.clear();
-    latest_scan_data_ = NULL;
-    initFromNewMap();
-  }
-  else
-  {
-    std::vector<double> map_min, map_max(2);
-    map_min = { 0.0, 0.0 };
-    map_->convertMapToWorld(map_->getSize(), &map_max);
-    node_->updateBoundsFromOccupancyMap(std::make_shared<std::vector<double>>(map_min),
-                                        std::make_shared<std::vector<double>>(map_max));
-  }
+  updateFreeSpaceIndices();
+  // Clear queued planar scanner objects because they hold pointers to the existing map
+  scanners_.clear();
+  scanners_update_->clear();
+  frame_to_scanner_.clear();
+  latest_scan_data_ = NULL;
+  initFromNewMap();
 }
 
 void Node2D::initFromNewMap()
