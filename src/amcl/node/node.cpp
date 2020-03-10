@@ -311,7 +311,7 @@ bool Node::updatePf(const ros::Time& t, std::shared_ptr<std::vector<bool>> scann
   }
   else
   {
-    ROS_ERROR("Couldn't determine robot's pose associated with planar scan");
+    ROS_ERROR("Couldn't determine robot's pose associated with scan");
     return false;
   }
   return true;
