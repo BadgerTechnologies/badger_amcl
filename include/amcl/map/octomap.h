@@ -34,7 +34,6 @@
 #include <tsl/sparse_map.h>
 
 #include <octomap/OcTree.h>
-#include <octomap/OcTreeDistance.h>
 
 namespace amcl
 {
