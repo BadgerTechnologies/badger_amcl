@@ -26,12 +26,11 @@
 #ifndef AMCL_SENSORS_ODOM_H
 #define AMCL_SENSORS_ODOM_H
 
-#include "sensors/sensor.h"
-
 #include <memory>
 
 #include "pf/particle_filter.h"
 #include "pf/pf_vector.h"
+#include "sensors/sensor.h"
 
 namespace amcl
 {

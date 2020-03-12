@@ -23,8 +23,6 @@
 #ifndef AMCL_SENSORS_POINT_CLOUD_SCANNER_H
 #define AMCL_SENSORS_POINT_CLOUD_SCANNER_H
 
-#include "sensors/sensor.h"
-
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
 #include <tf/transform_broadcaster.h>
@@ -34,6 +32,7 @@
 #include "map/octomap.h"
 #include "pf/particle_filter.h"
 #include "pf/pf_vector.h"
+#include "sensors/sensor.h"
 
 namespace amcl
 {

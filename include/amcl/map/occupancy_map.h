@@ -25,13 +25,13 @@
 #ifndef AMCL_MAP_OCCUPANCY_MAP_H
 #define AMCL_MAP_OCCUPANCY_MAP_H
 
-#include "map/map.h"
-
 #include <cmath>
 #include <cstdint>
 #include <memory>
 #include <queue>
 #include <vector>
+
+#include "map/map.h"
 
 namespace amcl
 {

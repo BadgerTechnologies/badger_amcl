@@ -23,8 +23,6 @@
 #ifndef AMCL_NODE_NODE_2D_H
 #define AMCL_NODE_NODE_2D_H
 
-#include "node/node_nd.h"
-
 #include <message_filters/subscriber.h>
 #include <nav_msgs/OccupancyGrid.h>
 #include <sensor_msgs/LaserScan.h>
@@ -42,6 +40,7 @@
 
 #include "amcl/AMCLConfig.h"
 #include "map/occupancy_map.h"
+#include "node/node_nd.h"
 #include "pf/pf_vector.h"
 #include "sensors/planar_scanner.h"
 
