@@ -53,8 +53,6 @@ public:
   void convertWorldToMap(const std::vector<double>& world_coords, std::vector<int>* map_coords);
   // Test to see if the given map coords lie within the absolute map bounds.
   bool isValid(const std::vector<int>& coords);
-  std::vector<double> getOrigin();
-  void setOrigin(const std::vector<double>& origin);
   std::vector<int> getSize();
   void setSize(std::vector<int> size_vec);
   // Update the cspace distance values
@@ -111,9 +109,6 @@ private:
   bool enqueue(int i, int j, int src_i, int src_j);
 
   friend bool operator<(const OccupancyMap::CellData& a, const OccupancyMap::CellData& b);
-
-  // Map origin; the map is a viewport onto a conceptual larger map.
-  double origin_x_, origin_y_;
 
   // Map dimensions (number of cells)
   int size_x_, size_y_;

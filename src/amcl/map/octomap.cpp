@@ -33,7 +33,6 @@ using namespace amcl;
 OctoMap::OctoMap(bool wait_for_occupancy_map)
 {
   wait_for_occupancy_map_ = wait_for_occupancy_map;
-  origin_ = std::vector<double>(3);
   full_cells_ = std::vector<int>(3);
   cropped_min_cells_ = std::vector<int>(3);
   cropped_max_cells_ = std::vector<int>(3);
@@ -60,21 +59,10 @@ void OctoMap::initFromOctree(std::shared_ptr<octomap::OcTree> octree)
   double min_x, min_y, min_z, max_x, max_y, max_z;
   octree_->getMetricMin(min_x, min_y, min_z);
   octree_->getMetricMax(max_x, max_y, max_z);
-  setOrigin({ min_x, min_y, min_z });
+  setOrigin(pcl::PointXYZ(min_x, min_y, min_z));
   // crop values here if required
   convertWorldToMap({ min_x, min_y, min_z }, &cropped_min_cells_);
   convertWorldToMap({ max_x, max_y, max_z }, &cropped_max_cells_);
-}
-
-// getter and setter for global origin of octomap
-std::vector<double> OctoMap::getOrigin()
-{
-  return origin_;
-}
-
-void OctoMap::setOrigin(const std::vector<double>& origin)
-{
-  origin_ = origin;
 }
 
 // returns vector of map size in voxels
@@ -96,12 +84,12 @@ void OctoMap::convertMapToWorld(const std::vector<int>& map_coords, std::vector<
   std::vector<double> return_vals;
   int i = map_coords[0];
   int j = map_coords[1];
-  (*world_coords)[0] = origin_[0] + i * resolution_;
-  (*world_coords)[1] = origin_[1] + j * resolution_;
+  (*world_coords)[0] = origin_.x + i * resolution_;
+  (*world_coords)[1] = origin_.y + j * resolution_;
   if (map_coords.size() > 2)
   {
     int k = map_coords[2];
-    (*world_coords)[2] = origin_[2] + k * resolution_;
+    (*world_coords)[2] = origin_.z + k * resolution_;
   }
 }
 
@@ -110,12 +98,12 @@ void OctoMap::convertWorldToMap(const std::vector<double>& world_coords, std::ve
 {
   double x = world_coords[0];
   double y = world_coords[1];
-  (*map_coords)[0] = floor((x - origin_[0]) / resolution_ + 0.5);
-  (*map_coords)[1] = floor((y - origin_[1]) / resolution_ + 0.5);
+  (*map_coords)[0] = floor((x - origin_.x) / resolution_ + 0.5);
+  (*map_coords)[1] = floor((y - origin_.y) / resolution_ + 0.5);
   if (world_coords.size() > 2)
   {
     double z = world_coords[2];
-    (*map_coords)[2] = floor((z - origin_[2]) / resolution_ + 0.5);
+    (*map_coords)[2] = floor((z - origin_.z) / resolution_ + 0.5);
   }
 }
 

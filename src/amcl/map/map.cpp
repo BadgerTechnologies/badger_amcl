@@ -30,8 +30,19 @@ using namespace amcl;
 // Create a new map
 Map::Map()
 {
+  origin_ = pcl::PointXYZ();
   resolution_ = 0;
   cspace_created_ = false;
+}
+
+pcl::PointXYZ Map::getOrigin()
+{
+  return origin_;
+}
+
+void Map::setOrigin(const pcl::PointXYZ& origin)
+{
+  origin_ = origin;
 }
 
 void Map::setResolution(double resolution)

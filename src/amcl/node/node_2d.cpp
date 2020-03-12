@@ -268,10 +268,10 @@ std::shared_ptr<OccupancyMap> Node2D::convertMap(const nav_msgs::OccupancyGrid& 
   size_vec.push_back(map_msg.info.height * map_scale_up_factor_);
   occupancy_map->setSize(size_vec);
   occupancy_map->setResolution(resolution);
-  std::vector<double> origin;
-  origin.push_back(map_msg.info.origin.position.x + (size_vec[0] / 2) * resolution);
-  origin.push_back(map_msg.info.origin.position.y + (size_vec[1] / 2) * resolution);
-  occupancy_map->setOrigin(origin);
+  double x_origin, y_origin;
+  x_origin = map_msg.info.origin.position.x + (size_vec[0] / 2) * resolution;
+  y_origin = map_msg.info.origin.position.y + (size_vec[1] / 2) * resolution;
+  occupancy_map->setOrigin(pcl::PointXYZ(x_origin, y_origin, 0.0));
   occupancy_map->initCells(size_vec[0] * size_vec[1]);
   for (int y = 0; y < size_vec[1]; y++)
   {
