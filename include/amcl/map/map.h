@@ -26,6 +26,8 @@
 #ifndef AMCL_MAP_MAP_H
 #define AMCL_MAP_MAP_H
 
+#include <pcl/point_types.h>
+
 #include <atomic>
 #include <vector>
 
@@ -42,12 +44,14 @@ public:
   // Test to see if the given map coords lie within the absolute map bounds.
   virtual bool isValid(const std::vector<int>& coords) = 0;
   virtual std::vector<int> getSize() = 0;
-  virtual std::vector<double> getOrigin() = 0;
-  virtual void setOrigin(const std::vector<double>& origin) = 0;
   virtual bool isCSpaceCreated();
   virtual void setResolution(double resolution);
+  virtual pcl::PointXYZ getOrigin();
+  virtual void setOrigin(const pcl::PointXYZ& origin);
 
 protected:
+  // Map origin; the map is a viewport onto a conceptual larger map.
+  pcl::PointXYZ origin_;
   double resolution_;
   // Max distance at which we care about obstacles, for constructing
   // likelihood field

@@ -63,8 +63,6 @@ public:
   bool isValid(const std::vector<int>& coords);
   std::vector<int> getSize();
   void getMinMaxCells(std::vector<int>* min_cells, std::vector<int>* max_cells);
-  std::vector<double> getOrigin();
-  void setOrigin(const std::vector<double>& origin);
   void setMapBounds(std::shared_ptr<std::vector<double>> map_min,
                     std::shared_ptr<std::vector<double>> map_max);
   // Update the cspace distance values
@@ -89,8 +87,6 @@ private:
   std::unique_ptr<tsl::sparse_map<size_t, double>> distances_;
   tsl::sparse_map<size_t, double>::iterator distances_end_;
   tsl::sparse_map<size_t, double>::iterator hashmap_iterator_;
-  // Map origin; the map is a viewport onto a conceptual larger map.
-  std::vector<double> origin_;
   // Map dimensions (number of cells)
   std::vector<double> map_min_bounds_, map_max_bounds_;
   std::vector<int> cropped_min_cells_, cropped_max_cells_, full_cells_;
