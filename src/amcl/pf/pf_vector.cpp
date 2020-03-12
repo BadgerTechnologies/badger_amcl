@@ -20,7 +20,6 @@
 /**************************************************************************
  * Desc: Vector functions
  * Author: Andrew Howard
- * Maintainer: Tyler Buchman (tyler_buchman@jabil.com)
  *************************************************************************/
 
 #include "pf/pf_vector.h"

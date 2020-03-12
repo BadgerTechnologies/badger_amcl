@@ -20,7 +20,6 @@
 /**************************************************************************
  * Desc: Global map (grid-based)
  * Author: Andrew Howard
- * Mainainer: Tyler Buchman (tyler_buchman@jabil.com)
  **************************************************************************/
 
 #ifndef AMCL_MAP_MAP_H

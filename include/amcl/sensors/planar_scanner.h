@@ -20,7 +20,6 @@
 //
 // Desc: 2D LIDAR sensor model for AMCL
 // Author: Andrew Howard
-// Maintainter: Tyler Buchman (tyler_buchman@jabil.com)
 //
 ///////////////////////////////////////////////////////////////////////////
 

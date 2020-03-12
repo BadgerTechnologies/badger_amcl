@@ -20,7 +20,6 @@
 /**************************************************************************
  * Desc: Simple particle filter for localization.
  * Author: Andrew Howard
- * Maintainter: Tyler Buchman (tyler_buchman@jabil.com)
  *************************************************************************/
 
 #ifndef AMCL_PF_PARTICLE_FILTER_H

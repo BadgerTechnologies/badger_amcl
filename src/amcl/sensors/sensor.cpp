@@ -20,7 +20,6 @@
 /*************************************************************************
  * Desc: AMCL sensor
  * Author: Andrew Howard
- * Maintainer: Tyler Buchman (tyler_buchman@jabil.com)
  *************************************************************************/
 
 #include "sensors/sensor.h"

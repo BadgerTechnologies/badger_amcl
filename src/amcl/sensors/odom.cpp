@@ -20,7 +20,6 @@
 /************************************************************************
  * Desc: AMCL odometry routines
  * Author: Andrew Howard
- * Maintainer: Tyler Buchman (tyler_buchman@jabil.com)
  ************************************************************************/
 
 #include "sensors/odom.h"

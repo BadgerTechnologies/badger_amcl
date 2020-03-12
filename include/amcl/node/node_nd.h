@@ -18,7 +18,6 @@
  */
 /* *************************************************************
  * Desc: AMCL Node for 3D AMCL
- * Author: Tyler Buchman (tyler_buchman@jabil.com)
  ***************************************************************/
 
 #ifndef AMCL_NODE_NODE_ND_H
