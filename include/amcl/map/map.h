@@ -36,6 +36,8 @@ class Map
 {
 public:
   Map();
+  virtual ~Map() {};
+
   // Convert from map index to world coords
   virtual void convertMapToWorld(const std::vector<int>& map_coords, std::vector<double>* world_coords) = 0;
   // Convert from world coords to map coords
@@ -43,6 +45,7 @@ public:
   // Test to see if the given map coords lie within the absolute map bounds.
   virtual bool isValid(const std::vector<int>& coords) = 0;
   virtual std::vector<int> getSize() = 0;
+
   virtual bool isCSpaceCreated();
   virtual void setResolution(double resolution);
   virtual pcl::PointXYZ getOrigin();
