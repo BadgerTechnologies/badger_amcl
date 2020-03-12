@@ -22,10 +22,10 @@
 
 #include "map/octomap.h"
 
-#include <algorithm>
-#include <cmath>
 #include <ros/console.h>
 
+#include <algorithm>
+#include <cmath>
 
 using namespace amcl;
 

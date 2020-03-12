@@ -26,8 +26,6 @@
 #ifndef AMCL_SENSORS_PLANAR_SCANNER_H
 #define AMCL_SENSORS_PLANAR_SCANNER_H
 
-#include "sensors/sensor.h"
-
 #include <stddef.h>
 
 #include <memory>
@@ -36,6 +34,7 @@
 #include "map/occupancy_map.h"
 #include "pf/particle_filter.h"
 #include "pf/pf_vector.h"
+#include "sensors/sensor.h"
 
 namespace amcl
 {

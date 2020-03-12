@@ -23,8 +23,6 @@
 #ifndef AMCL_NODE_NODE_3D_H
 #define AMCL_NODE_NODE_3D_H
 
-#include "node/node_nd.h"
-
 #include <message_filters/subscriber.h>
 #include <nav_msgs/OccupancyGrid.h>
 #include <octomap_msgs/Octomap.h>
@@ -44,6 +42,7 @@
 
 #include "amcl/AMCLConfig.h"
 #include "map/octomap.h"
+#include "node/node_nd.h"
 #include "pf/pf_vector.h"
 #include "sensors/point_cloud_scanner.h"
 
