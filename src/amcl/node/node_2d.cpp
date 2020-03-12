@@ -124,42 +124,42 @@ Node2D::Node2D(Node* node, int map_type, std::mutex& configuration_mutex)
 
 void Node2D::reconfigure(AMCLConfig& config)
 {
-  scan_topic_ = config.planar_scan_topic;
+  scan_topic_ = config.scan_topic;
   odom_frame_id_ = config.odom_frame_id;
   base_frame_id_ = config.base_frame_id;
   global_frame_id_ = config.global_frame_id;
-  sensor_min_range_ = config.planar_scanner_min_range;
-  sensor_max_range_ = config.planar_scanner_max_range;
-  z_hit_ = config.planar_scanner_z_hit;
-  z_short_ = config.planar_scanner_z_short;
-  z_max_ = config.planar_scanner_z_max;
-  z_rand_ = config.planar_scanner_z_rand;
-  sigma_hit_ = config.planar_scanner_sigma_hit;
-  lambda_short_ = config.planar_scanner_lambda_short;
-  sensor_likelihood_max_dist_ = config.planar_scanner_likelihood_max_dist;
-  off_map_factor_ = config.planar_scanner_off_map_factor;
-  non_free_space_factor_ = config.planar_scanner_non_free_space_factor;
-  non_free_space_radius_ = config.planar_scanner_non_free_space_radius;
-  global_localization_off_map_factor_ = config.global_localization_planar_scanner_off_map_factor;
-  global_localization_non_free_space_factor_ = config.global_localization_planar_scanner_non_free_space_factor;
+  sensor_min_range_ = config.laser_min_range;
+  sensor_max_range_ = config.laser_max_range;
+  z_hit_ = config.laser_z_hit;
+  z_short_ = config.laser_z_short;
+  z_max_ = config.laser_z_max;
+  z_rand_ = config.laser_z_rand;
+  sigma_hit_ = config.laser_sigma_hit;
+  lambda_short_ = config.laser_lambda_short;
+  sensor_likelihood_max_dist_ = config.laser_likelihood_max_dist;
+  off_map_factor_ = config.laser_off_map_factor;
+  non_free_space_factor_ = config.laser_non_free_space_factor;
+  non_free_space_radius_ = config.laser_non_free_space_radius;
+  global_localization_off_map_factor_ = config.global_localization_laser_off_map_factor;
+  global_localization_non_free_space_factor_ = config.global_localization_laser_non_free_space_factor;
   resample_interval_ = config.resample_interval;
   do_beamskip_ = config.do_beamskip;
   beam_skip_distance_ = config.beam_skip_distance;
   beam_skip_threshold_ = config.beam_skip_threshold;
-  gompertz_a_ = config.planar_gompertz_a;
-  gompertz_b_ = config.planar_gompertz_b;
-  gompertz_c_ = config.planar_gompertz_c;
-  gompertz_input_shift_ = config.planar_gompertz_input_shift;
-  gompertz_input_scale_ = config.planar_gompertz_input_scale;
-  gompertz_output_shift_ = config.planar_gompertz_output_shift;
-  max_beams_ = config.planar_scanner_max_beams;
-  if (config.planar_model_type == "beam")
+  gompertz_a_ = config.laser_gompertz_a;
+  gompertz_b_ = config.laser_gompertz_b;
+  gompertz_c_ = config.laser_gompertz_c;
+  gompertz_input_shift_ = config.laser_gompertz_input_shift;
+  gompertz_input_scale_ = config.laser_gompertz_input_scale;
+  gompertz_output_shift_ = config.laser_gompertz_output_shift;
+  max_beams_ = config.laser_max_beams;
+  if (config.laser_model_type == "beam")
     model_type_ = PLANAR_MODEL_BEAM;
-  else if (config.planar_model_type == "likelihood_field")
+  else if (config.laser_model_type == "likelihood_field")
     model_type_ = PLANAR_MODEL_LIKELIHOOD_FIELD;
-  else if (config.planar_model_type == "likelihood_field_prob")
+  else if (config.laser_model_type == "likelihood_field_prob")
     model_type_ = PLANAR_MODEL_LIKELIHOOD_FIELD_PROB;
-  else if (config.planar_model_type == "likelihood_field_gompertz")
+  else if (config.laser_model_type == "likelihood_field_gompertz")
     model_type_ = PLANAR_MODEL_LIKELIHOOD_FIELD_GOMPERTZ;
   scanner_.init(max_beams_, map_);
   if (model_type_ == PLANAR_MODEL_BEAM)
