@@ -134,28 +134,28 @@ Node3D::Node3D(Node* node, int map_type, std::mutex& configuration_mutex)
 
 void Node3D::reconfigure(amcl::AMCLConfig& config)
 {
-  scan_topic_ = config.point_cloud_scan_topic;
+  scan_topic_ = config.cloud_topic;
   odom_frame_id_ = config.odom_frame_id;
   base_frame_id_ = config.base_frame_id;
   global_frame_id_ = config.global_frame_id;
   resample_interval_ = config.resample_interval;
-  max_beams_ = config.point_cloud_scanner_max_beams;
-  z_hit_ = config.point_cloud_scanner_z_hit;
-  z_short_ = config.point_cloud_scanner_z_short;
-  z_max_ = config.point_cloud_scanner_z_max;
-  z_rand_ = config.point_cloud_scanner_z_rand;
-  sigma_hit_ = config.point_cloud_scanner_sigma_hit;
-  sensor_likelihood_max_dist_ = config.point_cloud_scanner_likelihood_max_dist;
-  off_map_factor_ = config.point_cloud_scanner_off_map_factor;
-  non_free_space_factor_ = config.point_cloud_scanner_non_free_space_factor;
-  non_free_space_radius_ = config.point_cloud_scanner_non_free_space_radius;
-  global_localization_off_map_factor_ = config.global_localization_point_cloud_scanner_off_map_factor;
-  global_localization_non_free_space_factor_ = config.global_localization_point_cloud_scanner_non_free_space_factor;
-  if (config.point_cloud_model_type == "point cloud")
+  max_beams_ = config.laser_max_beams;
+  z_hit_ = config.laser_z_hit;
+  z_short_ = config.laser_z_short;
+  z_max_ = config.laser_z_max;
+  z_rand_ = config.laser_z_rand;
+  sigma_hit_ = config.laser_sigma_hit;
+  sensor_likelihood_max_dist_ = config.laser_likelihood_max_dist;
+  off_map_factor_ = config.laser_off_map_factor;
+  non_free_space_factor_ = config.laser_non_free_space_factor;
+  non_free_space_radius_ = config.laser_non_free_space_radius;
+  global_localization_off_map_factor_ = config.global_localization_laser_off_map_factor;
+  global_localization_non_free_space_factor_ = config.global_localization_laser_non_free_space_factor;
+  if (config.laser_model_type == "likelihood_field")
   {
     model_type_ = POINT_CLOUD_MODEL;
   }
-  else if (config.point_cloud_model_type == "point cloud gompertz")
+  else if (config.laser_model_type == "likelihood_field_gompertz")
   {
     model_type_ = POINT_CLOUD_MODEL_GOMPERTZ;
   }
