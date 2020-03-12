@@ -20,7 +20,6 @@
 //
 // Desc: Odometry sensor model for AMCL
 // Author: Andrew Howard
-// Maintainer: Tyler Buchman (tyler_buchman@jabil.com)
 //
 ///////////////////////////////////////////////////////////////////////////
 

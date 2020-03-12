@@ -20,7 +20,6 @@
 /**************************************************************************
  * Desc: KD tree functions
  * Author: Andrew Howard
- * Maintainter: Tyler Buchman (tyler_buchman@jabil.com)
  *************************************************************************/
 
 #ifndef AMCL_PF_PF_KDTREE_H

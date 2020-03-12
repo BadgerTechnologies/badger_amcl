@@ -20,7 +20,6 @@
 /**************************************************************************
  * Desc: Global map (grid-based)
  * Author: Andrew Howard
- * Maintainter: Tyler Buchman (tyler_buchman@jabil.com)
  ***********************************************************************/
 
 #include "map/map.h"

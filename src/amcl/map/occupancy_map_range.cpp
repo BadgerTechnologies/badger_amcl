@@ -20,7 +20,6 @@
 /**************************************************************************
  * Desc: Range routines
  * Author: Andrew Howard
- * Maintainter: Tyler Buchman (tyler_buchman@jabil.com)
  *************************************************************************/
 
 #include "map/occupancy_map.h"

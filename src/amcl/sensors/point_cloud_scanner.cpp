@@ -18,7 +18,6 @@
  */
 /*************************************************************************
  * Desc: Point Cloud Scanner sensor model for 3D AMCL
- * Author: Tyler Buchman (tyler_buchman@jabil.com)
  *************************************************************************/
 
 #include "sensors/point_cloud_scanner.h"

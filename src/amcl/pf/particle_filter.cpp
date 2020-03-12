@@ -20,7 +20,6 @@
 /**************************************************************************
  * Desc: Simple particle filter for localization.
  * Author: Andrew Howard
- * Maintainter: Tyler Buchman (tyler_buchman@jabil.com)
  *************************************************************************/
 
 #include "pf/particle_filter.h"

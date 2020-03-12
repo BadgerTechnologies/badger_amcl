@@ -20,7 +20,6 @@
 /**************************************************************************
  * Desc: Useful pdf functions
  * Author: Andrew Howard
- * Maintainter: Tyler Buchman (tyler_buchman@jabil.com)
  *************************************************************************/
 
 #ifndef AMCL_PF_PDF_GAUSSIAN_H

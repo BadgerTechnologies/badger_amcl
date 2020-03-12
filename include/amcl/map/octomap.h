@@ -18,7 +18,6 @@
  */
 /*****************************************************
  * Desc: Octomap for 3D AMCL
- * Author: Tyler Buchman (tyler_buchman@jabil.com)
  *****************************************************/
 
 #ifndef AMCL_MAP_OCTOMAP_H

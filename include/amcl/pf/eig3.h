@@ -1,6 +1,5 @@
 /**************************************************************************
  * Desc: Eigen-decomposition functions
- * Maintainter: Tyler Buchman (tyler_buchman@jabil.com)
  *************************************************************************/
 
 /* Eigen-decomposition for symmetric 3x3 real matrices.

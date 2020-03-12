@@ -20,7 +20,6 @@
 /**************************************************************************
  * Desc: Useful pdf functions
  * Author: Andrew Howard
- * Maintainer: Tyler Buchman (tyler_buchman@jabil.com)
  *************************************************************************/
 
 #include "pf/pdf_gaussian.h"
