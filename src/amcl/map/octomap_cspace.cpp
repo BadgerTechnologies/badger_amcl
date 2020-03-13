@@ -51,12 +51,13 @@ void OctoMap::updateCSpace()
   }
 
   ROS_INFO("Updating OctoMap CSpace");
-  q_ = std::unique_ptr<std::priority_queue<CellData>>(new std::priority_queue<CellData>);
+  q_ = std::unique_ptr<std::priority_queue<OctoMapCellData>>(new std::priority_queue<OctoMapCellData>);
   marked_ = std::unique_ptr<octomap::OcTree>(new octomap::OcTree(resolution_));
   distances_ = std::unique_ptr<tsl::sparse_map<size_t, double>>(new tsl::sparse_map<size_t, double>());
   if (!cdm_ || (cdm_->resolution_ != resolution_) || (std::fabs(cdm_->max_dist_ - max_occ_dist_) > EPSILON))
   {
-    cdm_ = std::unique_ptr<CachedDistanceMap>(new CachedDistanceMap(resolution_, max_occ_dist_));
+    cdm_ = std::unique_ptr<CachedDistanceOctoMap>(
+            new CachedDistanceOctoMap(resolution_, max_occ_dist_));
   }
   iterateObstacleCells();
   iterateEmptyCells();
@@ -70,7 +71,7 @@ void OctoMap::updateCSpace()
 void OctoMap::iterateObstacleCells()
 {
   // Enqueue all the obstacle cells
-  CellData cell = CellData(*this);
+  OctoMapCellData cell = OctoMapCellData(*this);
   std::vector<double> world_coords(3);
   std::vector<int> map_coords(3);
 
@@ -106,7 +107,7 @@ void OctoMap::iterateEmptyCells()
 {
   while (!q_->empty())
   {
-    CellData current_cell = q_->top();
+    OctoMapCellData current_cell = q_->top();
     if (current_cell.i > cropped_min_cells_[0])
     {
       updateNode(current_cell.i - 1, current_cell.j, current_cell.k, current_cell);
@@ -135,7 +136,7 @@ void OctoMap::iterateEmptyCells()
   }
 }
 
-void OctoMap::updateNode(int i, int j, int k, const CellData& current_cell)
+void OctoMap::updateNode(int i, int j, int k, const OctoMapCellData& current_cell)
 {
   double occThresh = octree_->getOccupancyThres();
   octomap::OcTreeKey key(i, j, k);
@@ -159,7 +160,7 @@ bool OctoMap::enqueue(int i, int j, int k, int src_i, int src_j, int src_k)
   if (distance <= cdm_->cell_radius_)
   {
     setOccDist(i, j, k, distance * resolution_);
-    CellData cell = CellData(*this);
+    OctoMapCellData cell = OctoMapCellData(*this);
     cell.i = i;
     cell.j = j;
     cell.k = k;

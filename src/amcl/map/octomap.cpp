@@ -156,7 +156,7 @@ void OctoMap::setMapBounds(std::shared_ptr<std::vector<double>> map_min,
   updateCSpace();
 }
 
-CachedDistanceMap::CachedDistanceMap(double resolution, double max_dist)
+CachedDistanceOctoMap::CachedDistanceOctoMap(double resolution, double max_dist)
     : resolution_(resolution), max_dist_(max_dist)
 {
   cell_radius_ = (int)floor(max_dist / resolution);

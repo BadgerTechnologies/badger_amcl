@@ -36,10 +36,10 @@
 namespace amcl
 {
 
-class CachedDistanceMap
+class CachedDistanceOctoMap
 {
 public:
-  CachedDistanceMap(double resolution, double max_dist);
+  CachedDistanceOctoMap(double resolution, double max_dist);
 
   std::vector<std::vector<std::vector<double>>> distances_;
   double resolution_;
@@ -47,7 +47,7 @@ public:
   int cell_radius_;
 };
 
-struct CellData;
+struct OctoMapCellData;
 
 class OctoMap : public Map
 {
@@ -78,7 +78,7 @@ protected:
 
   void iterateObstacleCells();
   void iterateEmptyCells();
-  void updateNode(int i, int j, int k, const CellData& current_cell);
+  void updateNode(int i, int j, int k, const OctoMapCellData& current_cell);
   void setOccDist(int i, int j, int k, double d);
   bool enqueue(int i, int j, int k, int src_i, int src_j, int src_k);
   unsigned int computeCellIndex(int i, int j, int k);
@@ -92,20 +92,18 @@ protected:
   std::vector<double> map_min_bounds_, map_max_bounds_;
   std::vector<int> cropped_min_cells_, cropped_max_cells_, full_cells_;
   bool wait_for_occupancy_map_;
-  std::unique_ptr<CachedDistanceMap> cdm_;
-  std::unique_ptr<std::priority_queue<CellData>> q_;
+  std::unique_ptr<CachedDistanceOctoMap> cdm_;
+  std::unique_ptr<std::priority_queue<OctoMapCellData>> q_;
   std::unique_ptr<octomap::OcTree> marked_;
 };
 
-struct CellData
+struct OctoMapCellData
 {
   OctoMap* octo_map;
-  CellData(OctoMap& o_map) : octo_map(&o_map)
-  {
-  }
+  OctoMapCellData(OctoMap& o_map) : octo_map(&o_map) {}
   int i, j, k;
   int src_i, src_j, src_k;
-  inline bool operator<(const CellData& b) const
+  inline bool operator<(const OctoMapCellData& b) const
   {
     return octo_map->getOccDist(i, j, k) > b.octo_map->getOccDist(b.i, b.j, b.k);
   }
