@@ -67,7 +67,7 @@ void OccupancyMap::iterateObstacleCells()
     cell.src_i = cell.i = i;
     for (int j = 0; j < size_y_; j++)
     {
-      if (getOccState(i, j) == +1)
+      if (getCellOccState(i, j) == MapCellState::CELL_OCCUPIED)
       {
         setMapOccDist(i, j, 0.0);
         cell.src_j = cell.j = j;
