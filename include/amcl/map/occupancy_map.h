@@ -59,7 +59,7 @@ public:
   virtual std::vector<int> getSize();
   virtual void setSize(std::vector<int> size_vec);
   // Update the cspace distance values
-  virtual void updateObjectsDistances(double max_occ_dist);
+  virtual void updateCSpace(double max_occ_dist);
   // Extract a single range reading from the map
   virtual double calcRange(double ox, double oy, double oa, double max_range);
   // Find the distance to nearest occupied cell
@@ -68,8 +68,8 @@ public:
   virtual unsigned int computeCellIndex(int i, int j);
   virtual double getMaxOccDist();
   virtual void initCells(int num);
-  virtual MapCellState getCellOccState(int i, int j);
-  virtual void setCellOccState(int index, MapCellState state);
+  virtual MapCellState getCellState(int i, int j);
+  virtual void setCellState(int index, MapCellState state);
 
 protected:
   struct CellData
