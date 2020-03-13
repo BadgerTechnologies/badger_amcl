@@ -42,13 +42,14 @@ void OccupancyMap::updateCSpace(double max_occ_dist)
   }
 
   ROS_INFO("Updating Occupancy Map CSpace");
-  q_ = std::unique_ptr<std::priority_queue<CellData>>(new std::priority_queue<CellData>());
+  q_ = std::unique_ptr<std::priority_queue<OccupancyMapCellData>>(new std::priority_queue<OccupancyMapCellData>());
   unsigned s = unsigned(size_x_) * size_y_;
   marked_ = std::unique_ptr<std::vector<bool>>(new std::vector<bool>(s, false));
   distances_.resize(unsigned(size_x_) * size_y_);
   if (!cdm_ || (cdm_->resolution_ != resolution_) || (cdm_->max_dist_ != max_occ_dist_))
   {
-    cdm_ = std::unique_ptr<CachedDistanceMap>(new CachedDistanceMap(resolution_, max_occ_dist_));
+    cdm_ = std::unique_ptr<CachedDistanceOccupancyMap>(
+            new CachedDistanceOccupancyMap(resolution_, max_occ_dist_));
   }
   iterateObstacleCells();
   iterateEmptyCells();
@@ -61,7 +62,7 @@ void OccupancyMap::updateCSpace(double max_occ_dist)
 void OccupancyMap::iterateObstacleCells()
 {
   // Enqueue all the obstacle cells
-  CellData cell = CellData(this);
+  OccupancyMapCellData cell = OccupancyMapCellData(this);
   for (int i = 0; i < size_x_; i++)
   {
     cell.src_i = cell.i = i;
@@ -86,7 +87,7 @@ void OccupancyMap::iterateEmptyCells()
 {
   while (!q_->empty())
   {
-    CellData current_cell = q_->top();
+    OccupancyMapCellData current_cell = q_->top();
     if (current_cell.i > 0)
     {
       updateNode(current_cell.i - 1, current_cell.j, current_cell);
@@ -107,7 +108,7 @@ void OccupancyMap::iterateEmptyCells()
   }
 }
 
-void OccupancyMap::updateNode(int i, int j, const CellData& current_cell)
+void OccupancyMap::updateNode(int i, int j, const OccupancyMapCellData& current_cell)
 {
   unsigned int index = computeCellIndex(i, j);
   if (not marked_->at(index))
@@ -124,7 +125,7 @@ bool OccupancyMap::enqueue(int i, int j, int src_i, int src_j)
   if (distance > cdm_->cell_radius_)
   {
     setMapOccDist(i, j, distance * resolution_);
-    CellData cell = CellData(this);
+    OccupancyMapCellData cell = OccupancyMapCellData(this);
     cell.i = i;
     cell.j = j;
     cell.src_i = src_i;

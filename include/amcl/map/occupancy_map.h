@@ -35,6 +35,7 @@
 
 namespace amcl
 {
+
 // Description for a single map cell.
 enum MapCellState
 {
@@ -42,6 +43,19 @@ enum MapCellState
   CELL_UNKNOWN = 0,
   CELL_OCCUPIED = 1
 };
+
+class CachedDistanceOccupancyMap
+{
+public:
+  CachedDistanceOccupancyMap(double resolution, double max_dist);
+
+  std::vector<std::vector<double>> distances_;
+  double resolution_;
+  double max_dist_;
+  int cell_radius_;
+};
+
+struct OccupancyMapCellData;
 
 class OccupancyMap : public Map
 {
@@ -72,46 +86,11 @@ public:
   virtual void setCellState(int index, MapCellState state);
 
 protected:
-  struct CellData
-  {
-    OccupancyMap* occ_map;
-    CellData(OccupancyMap* o_map) : occ_map(o_map)
-    {
-    }
-    int i, j;
-    int src_i, src_j;
-  };
-
-  class CachedDistanceMap
-  {
-  public:
-    std::vector<std::vector<double>> distances_;
-    double resolution_;
-    double max_dist_;
-    int cell_radius_;
-
-    CachedDistanceMap(double resolution, double max_dist) : resolution_(resolution), max_dist_(max_dist)
-    {
-      cell_radius_ = (int)floor(max_dist / resolution);
-      distances_.resize(cell_radius_ + 2);
-      for (int i = 0; i <= cell_radius_ + 1; i++)
-      {
-        distances_[i].resize(cell_radius_ + 2);
-        for (int j = 0; j <= cell_radius_ + 1; j++)
-        {
-          distances_[i][j] = sqrt(i * i + j * j);
-        }
-      }
-    }
-  };
-
   void setMapOccDist(int i, int j, float d);
   void iterateObstacleCells();
   void iterateEmptyCells();
-  void updateNode(int i, int j, const CellData& current_cell);
+  void updateNode(int i, int j, const OccupancyMapCellData& current_cell);
   bool enqueue(int i, int j, int src_i, int src_j);
-
-  friend bool operator<(const OccupancyMap::CellData& a, const OccupancyMap::CellData& b);
 
   // Map dimensions (number of cells)
   int size_x_, size_y_;
@@ -122,15 +101,22 @@ protected:
   // The map distance data, stored as a grid
   std::vector<float> distances_;
 
-  std::unique_ptr<CachedDistanceMap> cdm_;
+  std::unique_ptr<CachedDistanceOccupancyMap> cdm_;
   std::unique_ptr<std::vector<bool>> marked_;
-  std::unique_ptr<std::priority_queue<CellData>> q_;
+  std::unique_ptr<std::priority_queue<OccupancyMapCellData>> q_;
 };
 
-inline bool operator<(const OccupancyMap::CellData& a, const OccupancyMap::CellData& b)
+struct OccupancyMapCellData
 {
-  return a.occ_map->getOccDist(a.i, a.j) > b.occ_map->getOccDist(b.i, b.j);
-}
+  OccupancyMap* occ_map;
+  OccupancyMapCellData(OccupancyMap* o_map) : occ_map(o_map) {}
+  int i, j;
+  int src_i, src_j;
+  inline bool operator<(const OccupancyMapCellData& b) const
+  {
+    return occ_map->getOccDist(i, j) > b.occ_map->getOccDist(b.i, b.j);
+  }
+};
 }  // namespace amcl
 
 #endif  // AMCL_MAP_OCCUPANCY_MAP_H

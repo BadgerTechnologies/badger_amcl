@@ -110,3 +110,18 @@ MapCellState OccupancyMap::getCellState(int i, int j)
 {
   return cells_[computeCellIndex(i, j)];
 }
+
+CachedDistanceOccupancyMap::CachedDistanceOccupancyMap(double resolution, double max_dist)
+    : resolution_(resolution), max_dist_(max_dist)
+{
+  cell_radius_ = (int)floor(max_dist / resolution);
+  distances_.resize(cell_radius_ + 2);
+  for (int i = 0; i <= cell_radius_ + 1; i++)
+  {
+    distances_[i].resize(cell_radius_ + 2);
+    for (int j = 0; j <= cell_radius_ + 1; j++)
+    {
+      distances_[i][j] = sqrt(i * i + j * j);
+    }
+  }
+}
