@@ -62,9 +62,9 @@ void OccupancyMap::initCells(int num)
   cells_.resize(num);
 }
 
-void OccupancyMap::setCellOccState(int index, int8_t state)
+void OccupancyMap::setCellOccState(int index, MapCellState state)
 {
-  cells_[index].occ_state = state;
+  cells_[index] = state;
 }
 
 float OccupancyMap::getOccDist(int i, int j)
@@ -106,7 +106,7 @@ unsigned int OccupancyMap::computeCellIndex(int i, int j)
   return i + j * unsigned(size_x_);
 }
 
-int8_t OccupancyMap::getOccState(int i, int j)
+MapCellState OccupancyMap::getCellOccState(int i, int j)
 {
-  return cells_[computeCellIndex(i, j)].occ_state;
+  return cells_[computeCellIndex(i, j)];
 }

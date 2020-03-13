@@ -84,12 +84,12 @@ double OccupancyMap::calcRange(double ox, double oy, double oa, double max_range
 
   if (steep)
   {
-    if (!isValid({ y, x }) || cells_[computeCellIndex(y, x)].occ_state > -1)
+    if (!isValid({ y, x }) || cells_[computeCellIndex(y, x)] != MapCellState::CELL_FREE)
       return sqrt((x - x0) * (x - x0) + (y - y0) * (y - y0)) * resolution_;
   }
   else
   {
-    if (!isValid({ x, y }) || cells_[computeCellIndex(x, y)].occ_state > -1)
+    if (!isValid({ x, y }) || cells_[computeCellIndex(x, y)] != MapCellState::CELL_FREE)
       return sqrt((x - x0) * (x - x0) + (y - y0) * (y - y0)) * resolution_;
   }
 
@@ -105,12 +105,12 @@ double OccupancyMap::calcRange(double ox, double oy, double oa, double max_range
 
     if (steep)
     {
-      if (!isValid({ y, x }) || cells_[computeCellIndex(y, x)].occ_state > -1)
+      if (!isValid({ y, x }) || cells_[computeCellIndex(y, x)] != MapCellState::CELL_FREE)
         return sqrt((x - x0) * (x - x0) + (y - y0) * (y - y0)) * resolution_;
     }
     else
     {
-      if (!isValid({ x, y }) || cells_[computeCellIndex(x, y)].occ_state > -1)
+      if (!isValid({ x, y }) || cells_[computeCellIndex(x, y)] != MapCellState::CELL_FREE)
         return sqrt((x - x0) * (x - x0) + (y - y0) * (y - y0)) * resolution_;
     }
   }

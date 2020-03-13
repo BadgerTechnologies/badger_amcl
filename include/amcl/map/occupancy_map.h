@@ -36,10 +36,11 @@
 namespace amcl
 {
 // Description for a single map cell.
-struct MapCell
+enum MapCellState
 {
-  // Occupancy state (-1 = free, 0 = unknown, +1 = occ)
-  int8_t occ_state;
+  CELL_FREE = -1,
+  CELL_UNKNOWN = 0,
+  CELL_OCCUPIED = 1
 };
 
 class OccupancyMap : public Map
@@ -62,10 +63,10 @@ public:
   float getOccDist(int i, int j);
   // Compute the cell index for the given map coords.
   unsigned int computeCellIndex(int i, int j);
-  int8_t getOccState(int i, int j);
   double getMaxOccDist();
   void initCells(int num);
-  void setCellOccState(int index, int8_t state);
+  MapCellState getCellOccState(int i, int j);
+  void setCellOccState(int index, MapCellState state);
 
 private:
   struct CellData
@@ -113,7 +114,7 @@ private:
   int size_x_, size_y_;
 
   // The map occupancy data, stored as a grid
-  std::vector<MapCell> cells_;
+  std::vector<MapCellState> cells_;
 
   // The map distance data, stored as a grid
   std::vector<float> distances_;

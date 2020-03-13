@@ -281,11 +281,11 @@ std::shared_ptr<OccupancyMap> Node2D::convertMap(const nav_msgs::OccupancyGrid& 
       const int msg_i = msg_row + x / map_scale_up_factor_;
 
       if (map_msg.data[msg_i] == 0)
-        occupancy_map->setCellOccState(i, -1);
+        occupancy_map->setCellOccState(i, MapCellState::CELL_FREE);
       else if (map_msg.data[msg_i] == 100)
-        occupancy_map->setCellOccState(i, +1);
+        occupancy_map->setCellOccState(i, MapCellState::CELL_OCCUPIED);
       else
-        occupancy_map->setCellOccState(i, 0);
+        occupancy_map->setCellOccState(i, MapCellState::CELL_UNKNOWN);
     }
   }
   return occupancy_map;
@@ -321,7 +321,7 @@ void Node2D::updateFreeSpaceIndices()
   std::vector<int> size_vec = map_->getSize();
   for (int i = 0; i < size_vec[0]; i++)
     for (int j = 0; j < size_vec[1]; j++)
-      if (map_->getOccState(i, j) == -1)
+      if (map_->getCellOccState(i, j) == MapCellState::CELL_FREE)
         if (map_->getOccDist(i, j) > non_free_space_radius_)
           fsi->push_back(std::make_pair(i, j));
   node_->updateFreeSpaceIndices(fsi);
