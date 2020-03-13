@@ -47,28 +47,31 @@ class OccupancyMap : public Map
 {
 public:
   OccupancyMap();
+  virtual ~OccupancyMap() {};
   // Convert from map index to world coords
-  void convertMapToWorld(const std::vector<int>& map_coords, std::vector<double>* world_coords);
+  virtual void convertMapToWorld(const std::vector<int>& map_coords,
+                                 std::vector<double>* world_coords);
   // Convert from world coords to map coords
-  void convertWorldToMap(const std::vector<double>& world_coords, std::vector<int>* map_coords);
+  virtual void convertWorldToMap(const std::vector<double>& world_coords,
+                                 std::vector<int>* map_coords);
   // Test to see if the given map coords lie within the absolute map bounds.
-  bool isValid(const std::vector<int>& coords);
-  std::vector<int> getSize();
-  void setSize(std::vector<int> size_vec);
+  virtual bool isValid(const std::vector<int>& coords);
+  virtual std::vector<int> getSize();
+  virtual void setSize(std::vector<int> size_vec);
   // Update the cspace distance values
-  void updateCSpace(double max_occ_dist);
+  virtual void updateObjectsDistances(double max_occ_dist);
   // Extract a single range reading from the map
-  double calcRange(double ox, double oy, double oa, double max_range);
+  virtual double calcRange(double ox, double oy, double oa, double max_range);
   // Find the distance to nearest occupied cell
-  float getOccDist(int i, int j);
+  virtual float getOccDist(int i, int j);
   // Compute the cell index for the given map coords.
-  unsigned int computeCellIndex(int i, int j);
-  double getMaxOccDist();
-  void initCells(int num);
-  MapCellState getCellOccState(int i, int j);
-  void setCellOccState(int index, MapCellState state);
+  virtual unsigned int computeCellIndex(int i, int j);
+  virtual double getMaxOccDist();
+  virtual void initCells(int num);
+  virtual MapCellState getCellOccState(int i, int j);
+  virtual void setCellOccState(int index, MapCellState state);
 
-private:
+protected:
   struct CellData
   {
     OccupancyMap* occ_map;
