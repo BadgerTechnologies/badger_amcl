@@ -655,7 +655,7 @@ double PlanarScanner::recalcWeight(std::shared_ptr<PFSampleSet> set)
       sample->weight *= off_map_factor_;
     }
     // Apply non free space factor
-    else if (map_->getCellOccState(mi, mj) != MapCellState::CELL_FREE)
+    else if (map_->getCellState(mi, mj) != MapCellState::CELL_FREE)
     {
       sample->weight *= non_free_space_factor_;
     }
