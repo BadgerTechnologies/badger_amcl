@@ -53,24 +53,27 @@ class OctoMap : public Map
 {
 public:
   OctoMap(bool wait_for_occupancy_map);
+  virtual ~OctoMap() {};
   // Convert from map index to world coords
-  void convertMapToWorld(const std::vector<int>& map_coords, std::vector<double>* world_coords);
+  virtual void convertMapToWorld(const std::vector<int>& map_coords,
+                                 std::vector<double>* world_coords);
   // Convert from world coords to map coords
-  void convertWorldToMap(const std::vector<double>& world_coords, std::vector<int>* map_coords);
+  virtual void convertWorldToMap(const std::vector<double>& world_coords,
+                                 std::vector<int>* map_coords);
   // Test to see if the given map coords lie within the absolute map bounds.
-  bool isValid(const std::vector<int>& coords);
-  std::vector<int> getSize();
-  void getMinMaxCells(std::vector<int>* min_cells, std::vector<int>* max_cells);
-  void setMapBounds(std::shared_ptr<std::vector<double>> map_min,
-                    std::shared_ptr<std::vector<double>> map_max);
+  virtual bool isValid(const std::vector<int>& coords);
+  virtual std::vector<int> getSize();
+  virtual void getMinMaxCells(std::vector<int>* min_cells, std::vector<int>* max_cells);
+  virtual void setMapBounds(std::shared_ptr<std::vector<double>> map_min,
+                            std::shared_ptr<std::vector<double>> map_max);
   // Update the cspace distance values
-  void updateCSpace();
-  void updateMaxOccDist(double max_occ_dist);
-  void initFromOctree(std::shared_ptr<octomap::OcTree> octree);
-  double getOccDist(int i, int j, int k);
-  double getMaxOccDist();
+  virtual void updateCSpace();
+  virtual void updateMaxOccDist(double max_occ_dist);
+  virtual void initFromOctree(std::shared_ptr<octomap::OcTree> octree);
+  virtual double getOccDist(int i, int j, int k);
+  virtual double getMaxOccDist();
 
-private:
+protected:
   static constexpr double EPSILON = std::numeric_limits<double>::epsilon();
 
   void iterateObstacleCells();
