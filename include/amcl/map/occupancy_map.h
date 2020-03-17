@@ -60,7 +60,7 @@ struct OccupancyMapCellData;
 class OccupancyMap : public Map
 {
 public:
-  OccupancyMap();
+  OccupancyMap(double resolution);
   virtual ~OccupancyMap() {};
   // Convert from map index to world coords
   virtual void convertMapToWorld(const std::vector<int>& map_coords,
@@ -101,9 +101,9 @@ protected:
   // The map distance data, stored as a grid
   std::vector<float> distances_;
 
-  std::unique_ptr<CachedDistanceOccupancyMap> cdm_;
-  std::unique_ptr<std::vector<bool>> marked_;
-  std::unique_ptr<std::priority_queue<OccupancyMapCellData>> q_;
+  CachedDistanceOccupancyMap cdm_;
+  std::priority_queue<OccupancyMapCellData> q_;
+  std::vector<bool> marked_;
 };
 
 struct OccupancyMapCellData

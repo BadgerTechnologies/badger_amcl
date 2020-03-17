@@ -259,14 +259,13 @@ void Node2D::initFromNewMap()
  */
 std::shared_ptr<OccupancyMap> Node2D::convertMap(const nav_msgs::OccupancyGrid& map_msg)
 {
-  std::shared_ptr<OccupancyMap> occupancy_map = std::make_shared<OccupancyMap>();
+  double resolution = map_msg.info.resolution / map_scale_up_factor_;
+  std::shared_ptr<OccupancyMap> occupancy_map = std::make_shared<OccupancyMap>(resolution);
   ROS_ASSERT(occupancy_map);
   std::vector<int> size_vec;
-  double resolution = map_msg.info.resolution / map_scale_up_factor_;
   size_vec.push_back(map_msg.info.width * map_scale_up_factor_);
   size_vec.push_back(map_msg.info.height * map_scale_up_factor_);
   occupancy_map->setSize(size_vec);
-  occupancy_map->setResolution(resolution);
   double x_origin, y_origin;
   x_origin = map_msg.info.origin.position.x + (size_vec[0] / 2) * resolution;
   y_origin = map_msg.info.origin.position.y + (size_vec[1] / 2) * resolution;

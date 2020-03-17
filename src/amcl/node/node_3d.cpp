@@ -275,10 +275,7 @@ void Node3D::initFromNewMap()
  */
 std::shared_ptr<OctoMap> Node3D::convertMap(const octomap_msgs::Octomap& map_msg)
 {
-  std::shared_ptr<OctoMap> octomap = std::make_shared<OctoMap>(wait_for_occupancy_map_);
-  ROS_ASSERT(octomap);
   octomap::AbstractOcTree* absoctree;
-  double resolution = map_msg.resolution;
   bool binary = map_msg.binary;
   if (binary)
   {
@@ -292,7 +289,10 @@ std::shared_ptr<OctoMap> Node3D::convertMap(const octomap_msgs::Octomap& map_msg
   {
     octree_ = std::shared_ptr<octomap::OcTree>(dynamic_cast<octomap::OcTree*>(absoctree));
   }
-  octomap->setResolution(resolution);
+  double resolution = map_msg.resolution;
+  std::shared_ptr<OctoMap> octomap = std::make_shared<OctoMap>(resolution,
+                                                               wait_for_occupancy_map_);
+  ROS_ASSERT(octomap);
   octomap->initFromOctree(octree_);
   return octomap;
 }

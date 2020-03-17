@@ -29,9 +29,12 @@
 
 using namespace amcl;
 
-OctoMap::OctoMap(bool wait_for_occupancy_map)
+OctoMap::OctoMap(double resolution, bool wait_for_occupancy_map) :
+    Map(resolution),
+    wait_for_occupancy_map_(wait_for_occupancy_map_),
+    cdm_(resolution, 0.0),
+    marked_(resolution)
 {
-  wait_for_occupancy_map_ = wait_for_occupancy_map;
   full_cells_ = std::vector<int>(3);
   cropped_min_cells_ = std::vector<int>(3);
   cropped_max_cells_ = std::vector<int>(3);
@@ -39,10 +42,6 @@ OctoMap::OctoMap(bool wait_for_occupancy_map)
   map_max_bounds_ = std::vector<double>(2);
   max_occ_dist_ = 0.0;
   octree_ = std::make_shared<octomap::OcTree>(resolution_);
-  distances_ = nullptr;
-  cdm_ = nullptr;
-  q_ = nullptr;
-  marked_ = nullptr;
 }
 
 // initialize octomap from octree

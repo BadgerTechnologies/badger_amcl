@@ -52,7 +52,7 @@ struct OctoMapCellData;
 class OctoMap : public Map
 {
 public:
-  OctoMap(bool wait_for_occupancy_map);
+  OctoMap(double resolution, bool wait_for_occupancy_map);
   virtual ~OctoMap() {};
   // Convert from map index to world coords
   virtual void convertMapToWorld(const std::vector<int>& map_coords,
@@ -85,16 +85,16 @@ protected:
   size_t makeHash(int i, int j, int k);
 
   std::shared_ptr<octomap::OcTree> octree_;
-  std::unique_ptr<tsl::sparse_map<size_t, double>> distances_;
+  tsl::sparse_map<size_t, double> distances_;
   tsl::sparse_map<size_t, double>::iterator distances_end_;
   tsl::sparse_map<size_t, double>::iterator hashmap_iterator_;
   // Map dimensions (number of cells)
   std::vector<double> map_min_bounds_, map_max_bounds_;
   std::vector<int> cropped_min_cells_, cropped_max_cells_, full_cells_;
   bool wait_for_occupancy_map_;
-  std::unique_ptr<CachedDistanceOctoMap> cdm_;
-  std::unique_ptr<std::priority_queue<OctoMapCellData>> q_;
-  std::unique_ptr<octomap::OcTree> marked_;
+  CachedDistanceOctoMap cdm_;
+  std::priority_queue<OctoMapCellData> q_;
+  octomap::OcTree marked_;
 };
 
 struct OctoMapCellData
