@@ -35,7 +35,7 @@ namespace amcl
 class Map
 {
 public:
-  Map();
+  Map(double resolution);
   virtual ~Map() {};
 
   // Convert from map index to world coords
@@ -47,7 +47,6 @@ public:
   virtual std::vector<int> getSize() = 0;
 
   virtual bool isCSpaceCreated();
-  virtual void setResolution(double resolution);
   virtual pcl::PointXYZ getOrigin();
   virtual void setOrigin(const pcl::PointXYZ& origin);
 

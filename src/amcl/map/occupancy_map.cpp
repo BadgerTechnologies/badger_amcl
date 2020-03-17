@@ -27,18 +27,13 @@
 using namespace amcl;
 
 // Create a new map
-OccupancyMap::OccupancyMap()
+OccupancyMap::OccupancyMap(double resolution) :
+    Map(resolution),
+    size_x_(0),
+    size_y_(0),
+    cdm_(resolution, 0.0)
 {
-  // Make the size odd
-  size_x_ = 0;
-  size_y_ = 0;
-
-  max_occ_dist_ = 0;
-
-  // Allocate storage for main map
-  cdm_ = nullptr;
-  q_ = nullptr;
-  marked_ = nullptr;
+  max_occ_dist_ = 0.0;
 }
 
 std::vector<int> OccupancyMap::getSize()
