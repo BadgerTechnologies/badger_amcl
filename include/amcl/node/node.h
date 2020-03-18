@@ -60,6 +60,11 @@
 namespace amcl
 {
 
+// Convenience constants for covariance indices.
+constexpr int COVARIANCE_XX = 6 * 0 + 0;
+constexpr int COVARIANCE_YY = 6 * 1 + 1;
+constexpr int COVARIANCE_AA = 6 * 5 + 5;
+
 // Pose hypothesis
 struct PoseHypothesis
 {
@@ -98,10 +103,6 @@ private:
       return tf2_buffer_;
     }
   };
-
-  const int INDEX_XX_ = 6 * 0 + 0;
-  const int INDEX_YY_ = 6 * 1 + 1;
-  const int INDEX_AA_ = 6 * 5 + 5;
 
   void reconfigureCB(amcl::AMCLConfig& config, uint32_t level);
   bool globalLocalizationCallback(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
