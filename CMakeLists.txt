@@ -14,6 +14,7 @@ find_package(catkin REQUIRED
             pcl_ros
             eigen_conversions
             octomap_msgs
+            angles
         )
 
 find_package(Boost REQUIRED)
@@ -36,6 +37,7 @@ catkin_package(
         pcl_ros
         eigen_conversions
         octomap_msgs
+        angles
   INCLUDE_DIRS include
   LIBRARIES amcl_sensors amcl_map amcl_pf amcl_node
   DEPENDS

@@ -38,6 +38,7 @@
     <depend>octomap_msgs</depend>
     <depend>pcl_ros</depend>
     <depend>eigen_conversions</depend>
+    <depend>angles</depend>
     <build_depend>message_filters</build_depend>
     <build_depend>rostest</build_depend>
     <build_depend>std_srvs</build_depend>

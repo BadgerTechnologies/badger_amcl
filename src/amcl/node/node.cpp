@@ -23,6 +23,7 @@
 
 #include "node/node.h"
 
+#include <angles/angles.h>
 #include <badger_file_lib/atomic_ofstream.h>
 #include <boost/bind.hpp>
 #include <geometry_msgs/PoseArray.h>
@@ -816,7 +817,7 @@ void Node::calcOdomDelta(const PFVector& pose)
 
   delta.v[0] = pose.v[0] - odom_integrator_last_pose_.v[0];
   delta.v[1] = pose.v[1] - odom_integrator_last_pose_.v[1];
-  delta.v[2] = angleDiff(pose.v[2], odom_integrator_last_pose_.v[2]);
+  delta.v[2] = angles::shortest_angular_distance(odom_integrator_last_pose_.v[2], pose.v[2]);
 
   // project bearing change onto average orientation, x is forward translation, y is strafe
   double delta_trans, delta_rot, delta_bearing;
@@ -830,7 +831,9 @@ void Node::calcOdomDelta(const PFVector& pose)
   }
   else
   {
-    delta_bearing = angleDiff(atan2(delta.v[1], delta.v[0]), odom_integrator_last_pose_.v[2] + delta_rot / 2);
+    double angle_b = odom_integrator_last_pose_.v[2] + delta_rot / 2;
+    double angle_a = atan2(delta.v[1], delta.v[2]);
+    angles::shortest_angular_distance(angle_b, angle_a);
   }
   double cs_bearing = cos(delta_bearing);
   double sn_bearing = sin(delta_bearing);
@@ -1029,7 +1032,7 @@ void Node::computeDelta(const PFVector& pose, PFVector* delta)
   // Compute change in pose
   delta->v[0] = pose.v[0] - pf_odom_pose_.v[0];
   delta->v[1] = pose.v[1] - pf_odom_pose_.v[1];
-  delta->v[2] = angleDiff(pose.v[2], pf_odom_pose_.v[2]);
+  delta->v[2] = angles::shortest_angular_distance(pf_odom_pose_.v[2], pose.v[2]);
 }
 
 void Node::setScannersUpdateFlags(const PFVector& delta, std::shared_ptr<std::vector<bool>> scanners_update,
@@ -1214,24 +1217,4 @@ double Node::getYaw(const tf::Pose& t)
   double yaw, pitch, roll;
   t.getBasis().getEulerYPR(yaw, pitch, roll);
   return yaw;
-}
-
-double Node::normalize(double z)
-{
-  return atan2(sin(z), cos(z));
-}
-
-double Node::angleDiff(double a, double b)
-{
-  double d1, d2;
-  a = normalize(a);
-  b = normalize(b);
-  d1 = a - b;
-  d2 = 2 * M_PI - fabs(d1);
-  if (d1 > 0)
-    d2 *= -1.0;
-  if (fabs(d1) < fabs(d2))
-    return d1;
-  else
-    return d2;
 }
