@@ -458,9 +458,9 @@ void Node::publishInitialPose()
   pose.pose.pose.position.z = 0.0;
   pose.pose.pose.orientation = tf::createQuaternionMsgFromYaw(init_pose_[2]);
   std::vector<double> cov_vals(36, 0.0);
-  cov_vals[INDEX_XX_] = init_cov_[0];
-  cov_vals[INDEX_YY_] = init_cov_[1];
-  cov_vals[INDEX_AA_] = init_cov_[2];
+  cov_vals[COVARIANCE_XX] = init_cov_[0];
+  cov_vals[COVARIANCE_YY] = init_cov_[1];
+  cov_vals[COVARIANCE_AA] = init_cov_[2];
   for (int i = 0; i < cov_vals.size(); i++)
   {
     pose.pose.covariance[i] = cov_vals[i];
@@ -557,9 +557,9 @@ bool Node::loadPoseFromFile()
     tf::Quaternion q(0.0, 0.0, z, w);
     tf::Matrix3x3 m(q);
     m.getRPY(roll, pitch, yaw);
-    xx = config["pose"]["covariance"][INDEX_XX_].as<double>();
-    yy = config["pose"]["covariance"][INDEX_YY_].as<double>();
-    aa = config["pose"]["covariance"][INDEX_AA_].as<double>();
+    xx = config["pose"]["covariance"][COVARIANCE_XX].as<double>();
+    yy = config["pose"]["covariance"][COVARIANCE_YY].as<double>();
+    aa = config["pose"]["covariance"][COVARIANCE_AA].as<double>();
   }
   catch (std::exception& e)
   {
@@ -610,9 +610,9 @@ YAML::Node Node::loadYamlFromFile()
       pose_pose_node["position"] = position_node;
       pose_pose_node["orientation"] = orientation_node;
       YAML::Node pose_covariance_node;
-      pose_covariance_node[INDEX_XX_] = node["state"][1]["state"][1][INDEX_XX_];
-      pose_covariance_node[INDEX_YY_] = node["state"][1]["state"][1][INDEX_YY_];
-      pose_covariance_node[INDEX_AA_] = node["state"][1]["state"][1][INDEX_AA_];
+      pose_covariance_node[COVARIANCE_XX] = node["state"][1]["state"][1][COVARIANCE_XX];
+      pose_covariance_node[COVARIANCE_YY] = node["state"][1]["state"][1][COVARIANCE_YY];
+      pose_covariance_node[COVARIANCE_AA] = node["state"][1]["state"][1][COVARIANCE_AA];
       YAML::Node pose_node;
       pose_node["pose"] = pose_pose_node;
       pose_node["covariance"] = pose_covariance_node;
@@ -653,16 +653,16 @@ void Node::savePoseToServer()
   private_nh_.setParam("initial_pose_x", map_pose.getOrigin().x());
   private_nh_.setParam("initial_pose_y", map_pose.getOrigin().y());
   private_nh_.setParam("initial_pose_a", yaw);
-  private_nh_.setParam("initial_cov_xx", last_published_pose_->pose.covariance[INDEX_XX_]);
-  private_nh_.setParam("initial_cov_yy", last_published_pose_->pose.covariance[INDEX_YY_]);
-  private_nh_.setParam("initial_cov_aa", last_published_pose_->pose.covariance[INDEX_AA_]);
+  private_nh_.setParam("initial_cov_xx", last_published_pose_->pose.covariance[COVARIANCE_XX]);
+  private_nh_.setParam("initial_cov_yy", last_published_pose_->pose.covariance[COVARIANCE_YY]);
+  private_nh_.setParam("initial_cov_aa", last_published_pose_->pose.covariance[COVARIANCE_AA]);
   geometry_msgs::Pose pose;
   tf::poseTFToMsg(map_pose, pose);
   std::lock_guard<std::mutex> lpl(latest_amcl_pose_mutex_);
   latest_amcl_pose_.pose.pose = pose;
-  latest_amcl_pose_.pose.covariance[INDEX_XX_] = last_published_pose_->pose.covariance[INDEX_XX_];
-  latest_amcl_pose_.pose.covariance[INDEX_YY_] = last_published_pose_->pose.covariance[INDEX_YY_];
-  latest_amcl_pose_.pose.covariance[INDEX_AA_] = last_published_pose_->pose.covariance[INDEX_AA_];
+  latest_amcl_pose_.pose.covariance[COVARIANCE_XX] = last_published_pose_->pose.covariance[COVARIANCE_XX];
+  latest_amcl_pose_.pose.covariance[COVARIANCE_YY] = last_published_pose_->pose.covariance[COVARIANCE_YY];
+  latest_amcl_pose_.pose.covariance[COVARIANCE_AA] = last_published_pose_->pose.covariance[COVARIANCE_AA];
   latest_amcl_pose_.header.stamp = ros::Time::now();
   latest_amcl_pose_.header.frame_id = "map";
 }
@@ -702,9 +702,9 @@ void Node::savePoseToFile()
 
   YAML::Node pose_covariance_node;
   std::vector<double> covariance(36, 0.0);
-  covariance[INDEX_XX_] = latest_amcl_pose_.pose.covariance[INDEX_XX_];
-  covariance[INDEX_YY_] = latest_amcl_pose_.pose.covariance[INDEX_YY_];
-  covariance[INDEX_AA_] = latest_amcl_pose_.pose.covariance[INDEX_AA_];
+  covariance[COVARIANCE_XX] = latest_amcl_pose_.pose.covariance[COVARIANCE_XX];
+  covariance[COVARIANCE_YY] = latest_amcl_pose_.pose.covariance[COVARIANCE_YY];
+  covariance[COVARIANCE_AA] = latest_amcl_pose_.pose.covariance[COVARIANCE_AA];
   for (int i = 0; i < covariance.size(); i++)
   {
     pose_covariance_node[i] = covariance[i];
@@ -1142,9 +1142,9 @@ bool Node::checkInitialPose(const geometry_msgs::PoseWithCovarianceStamped& msg)
 void Node::setMsgCovarianceVals(geometry_msgs::PoseWithCovarianceStamped* msg)
 {
   std::vector<double> default_cov_vals(36, 0.0);
-  default_cov_vals[INDEX_XX_] = 0.5 * 0.5;
-  default_cov_vals[INDEX_YY_] = 0.5 * 0.5;
-  default_cov_vals[INDEX_AA_] = (M_PI / 12.0) * (M_PI / 12.0);
+  default_cov_vals[COVARIANCE_XX] = 0.5 * 0.5;
+  default_cov_vals[COVARIANCE_YY] = 0.5 * 0.5;
+  default_cov_vals[COVARIANCE_AA] = (M_PI / 12.0) * (M_PI / 12.0);
   for (int i = 0; i < msg->pose.covariance.size(); i++)
   {
     if (std::isnan(msg->pose.covariance[i]))
