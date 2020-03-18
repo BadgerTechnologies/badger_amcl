@@ -104,7 +104,7 @@ private:
     }
   };
 
-  void reconfigureCB(amcl::AMCLConfig& config, uint32_t level);
+  void reconfigureCB(AMCLConfig& config, uint32_t level);
   bool globalLocalizationCallback(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
   // Generate a random pose in a free space on the map
   PFVector randomFreeSpacePose();
