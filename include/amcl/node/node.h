@@ -139,8 +139,6 @@ private:
   void calcOdomDelta(const PFVector& pose);
   void resetOdomIntegrator();
   void publishTransform(const ros::TimerEvent& event);
-  double normalize(double z);
-  double angleDiff(double a, double b);
 
   // Update PF helper functions
   void computeDelta(const PFVector& pose, PFVector* delta);
