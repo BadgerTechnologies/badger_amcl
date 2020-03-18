@@ -16,9 +16,6 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
-/* *************************************************************
- * Desc: AMCL Node for 3D AMCL
- ***************************************************************/
 
 #ifndef AMCL_NODE_NODE_2D_H
 #define AMCL_NODE_NODE_2D_H

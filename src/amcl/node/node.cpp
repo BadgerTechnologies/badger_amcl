@@ -321,7 +321,7 @@ std::shared_ptr<ParticleFilter> Node::getPfPtr()
   return pf_;
 }
 
-void Node::publishPfCloud()
+void Node::publishParticleCloud()
 {
   std::shared_ptr<PFSampleSet> set = pf_->getCurrentSet();
   ROS_DEBUG("Num samples: %d\n", set->sample_count);
@@ -385,7 +385,7 @@ void Node::publishPose(const geometry_msgs::PoseWithCovarianceStamped& p)
   }
 }
 
-bool Node::updateTf(const tf::Stamped<tf::Pose>& odom_to_map)
+bool Node::updateOdomToMapTransform(const tf::Stamped<tf::Pose>& odom_to_map)
 {
   std::lock_guard<std::mutex> tfl(tf_mutex_);
   latest_tf_ = tf::Transform(tf::Quaternion(odom_to_map.getRotation()),

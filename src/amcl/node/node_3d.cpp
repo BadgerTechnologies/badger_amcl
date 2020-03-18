@@ -381,7 +381,7 @@ void Node3D::updateScanner(const sensor_msgs::PointCloud2ConstPtr& point_cloud_s
     *resampled = true;
   }
   if(!force_update_)
-    node_->publishPfCloud();
+    node_->publishParticleCloud();
 }
 
 bool Node3D::isMapInitialized()
@@ -580,7 +580,7 @@ bool Node3D::updatePose(const PFVector& max_pose, const ros::Time& stamp)
     success = false;
   }
 
-  if(!(success and node_->updateTf(odom_to_map)))
+  if(!(success and node_->updateOdomToMapTransform(odom_to_map)))
     success = false;
   return success;
 }

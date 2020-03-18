@@ -16,9 +16,6 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
-/* *************************************************************
- * Desc: AMCL Node for 3D AMCL
- ***************************************************************/
 
 #ifndef AMCL_NODE_NODE_H
 #define AMCL_NODE_NODE_H
@@ -62,6 +59,7 @@
 
 namespace amcl
 {
+
 // Pose hypothesis
 struct PoseHypothesis
 {
@@ -80,9 +78,9 @@ public:
   void initOdomIntegrator();
   bool getOdomPose(const ros::Time& t, PFVector* map_pose);
   std::shared_ptr<ParticleFilter> getPfPtr();
-  void publishPfCloud();
+  void publishParticleCloud();
   void updatePose(const PFVector& max_hyp_mean, const ros::Time& stamp);
-  bool updateTf(const tf::Stamped<tf::Pose>& odom_to_map);
+  bool updateOdomToMapTransform(const tf::Stamped<tf::Pose>& odom_to_map);
   bool updatePf(const ros::Time& t, std::shared_ptr<std::vector<bool>> scanners_update,
                 int scanner_index, int* resample_count, bool* force_publication,
                 bool* force_update);
