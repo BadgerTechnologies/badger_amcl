@@ -377,7 +377,7 @@ bool Node2D::updateScanner(const sensor_msgs::LaserScanConstPtr& planar_scan,
       *resampled = true;
     }
     if(!force_update_)
-       node_->publishPfCloud();
+       node_->publishParticleCloud();
   }
   else
   {
@@ -620,7 +620,7 @@ bool Node2D::updatePose(const PFVector& max_pose, const ros::Time& stamp)
     success = false;
   }
 
-  if(!(success and node_->updateTf(odom_to_map)))
+  if(!(success and node_->updateOdomToMapTransform(odom_to_map)))
     success = false;
   return success;
 }
