@@ -1035,7 +1035,8 @@ void Node::computeDelta(const PFVector& pose, PFVector* delta)
   delta->v[2] = angles::shortest_angular_distance(pf_odom_pose_.v[2], pose.v[2]);
 }
 
-void Node::setScannersUpdateFlags(const PFVector& delta, std::shared_ptr<std::vector<bool>> scanners_update,
+void Node::setScannersUpdateFlags(const PFVector& delta,
+                                  const std::shared_ptr<std::vector<bool>>& scanners_update,
                                   bool* force_update)
 {
     // See if we should update the filter
@@ -1084,8 +1085,9 @@ void Node::updateOdom(const PFVector& pose, const PFVector &delta)
   pf_odom_pose_ = pose;
 }
 
-void Node::initOdom(const PFVector& pose, std::shared_ptr<std::vector<bool>> scanners_update,
-                  int* resample_count, bool* force_publication)
+void Node::initOdom(const PFVector& pose,
+                    const std::shared_ptr<std::vector<bool>>& scanners_update,
+                    int* resample_count, bool* force_publication)
 {
   // Pose at last filter update
   pf_odom_pose_ = pose;
