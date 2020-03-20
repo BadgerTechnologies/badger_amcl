@@ -222,8 +222,8 @@ private:
   std::mutex configuration_mutex_;
   std::mutex tf_mutex_;
   std::mutex latest_amcl_pose_mutex_;
-  std::unique_ptr<dynamic_reconfigure::Server<amcl::AMCLConfig>> dsrv_;
-  amcl::AMCLConfig default_config_;
+  dynamic_reconfigure::Server<AMCLConfig> dsrv_;
+  AMCLConfig default_config_;
   ros::Timer publish_transform_timer_;
 
   bool global_localization_active_;

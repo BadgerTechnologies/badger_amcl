@@ -52,6 +52,7 @@ Node::Node()
   , initial_pose_hyp_(NULL)
   , first_reconfigure_call_(true)
   , global_localization_active_(false)
+  , dsrv_(ros::NodeHandle("~"))
 {
   std::lock_guard<std::mutex> cfl(configuration_mutex_);
 
@@ -164,10 +165,8 @@ Node::Node()
     absolute_motion_pub_ = nh_.advertise<geometry_msgs::Pose2D>("amcl_absolute_motion", 20, false);
   }
 
-  dsrv_ = std::unique_ptr<dynamic_reconfigure::Server<amcl::AMCLConfig>>(
-            new dynamic_reconfigure::Server<amcl::AMCLConfig>(ros::NodeHandle("~")));
-  dynamic_reconfigure::Server<amcl::AMCLConfig>::CallbackType cb = boost::bind(&Node::reconfigureCB, this, _1, _2);
-  dsrv_->setCallback(cb);
+  dynamic_reconfigure::Server<AMCLConfig>::CallbackType cb = boost::bind(&Node::reconfigureCB, this, _1, _2);
+  dsrv_.setCallback(cb);
 
   publish_transform_timer_ = nh_.createTimer(transform_publish_period_, boost::bind(&Node::publishTransform, this, _1));
 }

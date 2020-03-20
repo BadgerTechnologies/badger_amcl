@@ -50,7 +50,7 @@ class Node2D : public NodeND
 {
 public:
   Node2D(Node* node, int map_type, std::mutex& configuration_mutex);
-  void reconfigure(amcl::AMCLConfig& config) override;
+  void reconfigure(AMCLConfig& config) override;
   void globalLocalizationCallback() override;
   double scorePose(const PFVector& p) override;
 private:
