@@ -143,10 +143,10 @@ private:
   // Update PF helper functions
   void computeDelta(const PFVector& pose, PFVector* delta);
   void setScannersUpdateFlags(const PFVector& delta,
-                              std::shared_ptr<std::vector<bool>> scanners_update,
+                              const std::shared_ptr<std::vector<bool>>& scanners_update,
                               bool* force_update);
   void updateOdom(const PFVector& pose, const PFVector &delta);
-  void initOdom(const PFVector& pose, std::shared_ptr<std::vector<bool>> scanners_update,
+  void initOdom(const PFVector& pose, const std::shared_ptr<std::vector<bool>>& scanners_update,
                 int* resample_count, bool* force_publication);
 
   std::shared_ptr<std::function<PFVector()>> uniform_pose_generator_fn_ptr_;
