@@ -40,7 +40,7 @@ using namespace amcl;
 
 // Create a new filter
 ParticleFilter::ParticleFilter(int min_samples, int max_samples, double alpha_slow, double alpha_fast,
-                               std::shared_ptr<std::function<PFVector()>> random_pose_fn_ptr)
+                               std::function<PFVector()> random_pose_fn)
 {
   int i, j;
   std::shared_ptr<PFSampleSet> set;
@@ -49,7 +49,7 @@ ParticleFilter::ParticleFilter(int min_samples, int max_samples, double alpha_sl
   srand48(time(NULL));
 
   resample_model_ = PF_RESAMPLE_MULTINOMIAL;
-  random_pose_fn_ptr_ = random_pose_fn_ptr;
+  random_pose_fn_ = random_pose_fn;
 
   min_samples_ = min_samples;
   max_samples_ = max_samples;
@@ -145,7 +145,7 @@ void ParticleFilter::init(PFVector mean, PFMatrix cov)
 }
 
 // Initialize the filter using some model
-void ParticleFilter::initModel(std::shared_ptr<std::function<PFVector()>> init_fn)
+void ParticleFilter::initModel(std::function<PFVector()> init_fn)
 {
   int i;
   std::shared_ptr<PFSampleSet> set;
@@ -162,7 +162,7 @@ void ParticleFilter::initModel(std::shared_ptr<std::function<PFVector()>> init_f
   {
     sample = &(set->samples[i]);
     sample->weight = 1.0 / max_samples_;
-    sample->pose = (*init_fn)();
+    sample->pose = init_fn();
     // Add sample to histogram
     set->kdtree->insertPose(sample->pose, sample->weight);
   }
@@ -219,9 +219,9 @@ bool ParticleFilter::updateConverged()
 }
 
 // Update the filter with some new sensor observation
-void ParticleFilter::updateSensor(std::shared_ptr<std::function<double(std::shared_ptr<SensorData>,
-                                                                       std::shared_ptr<PFSampleSet>)>
-                                                 > sensor_fn_ptr,
+void ParticleFilter::updateSensor(std::function<double(std::shared_ptr<SensorData>,
+                                                       std::shared_ptr<PFSampleSet>)
+                                               > sensor_fn,
                                   std::shared_ptr<SensorData> sensor_data)
 {
   int i;
@@ -232,7 +232,7 @@ void ParticleFilter::updateSensor(std::shared_ptr<std::function<double(std::shar
   update_set = sets_[current_set_];
 
   // Compute the sample weights
-  total = (*sensor_fn_ptr)(sensor_data, update_set);
+  total = sensor_fn(sensor_data, update_set);
 
   if (total > 0.0)
   {
@@ -318,7 +318,7 @@ double ParticleFilter::resampleSystematic(double w_diff)
   for (i = 0; i < n_rand; ++i)
   {
     sample_b = &(set_b->samples[i]);
-    sample_b->pose = (*random_pose_fn_ptr_)();
+    sample_b->pose = random_pose_fn_();
     sample_b->weight = 1.0;
     total += sample_b->weight;
     // Add sample to histogram
@@ -384,7 +384,7 @@ double ParticleFilter::resampleMultinomial(double w_diff)
     sample_b = &(set_b->samples[set_b->sample_count++]);
 
     if (drand48() < w_diff)
-      sample_b->pose = (*random_pose_fn_ptr_)();
+      sample_b->pose = random_pose_fn_();
     else
     {
       // Naive discrete event sampler

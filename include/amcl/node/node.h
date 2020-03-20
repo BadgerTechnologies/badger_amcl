@@ -149,7 +149,7 @@ private:
   void initOdom(const PFVector& pose, const std::shared_ptr<std::vector<bool>>& scanners_update,
                 int* resample_count, bool* force_publication);
 
-  std::shared_ptr<std::function<PFVector()>> uniform_pose_generator_fn_ptr_;
+  std::function<PFVector()> uniform_pose_generator_fn_;
 
   ros::NodeHandle nh_;
   ros::NodeHandle private_nh_;

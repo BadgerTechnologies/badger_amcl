@@ -95,7 +95,7 @@ class ParticleFilter
 public:
   // Create a new filter
   ParticleFilter(int min_samples, int max_samples, double alpha_slow, double alpha_fast,
-                 std::shared_ptr<std::function<PFVector()>> random_pose_fn_ptr);
+                 std::function<PFVector()> random_pose_fn);
 
   // Set the resample model
   void setResampleModel(PFResampleModelType resample_model);
@@ -108,11 +108,11 @@ public:
   void init(PFVector mean, PFMatrix cov);
 
   // Initialize the filter using some model
-  void initModel(std::shared_ptr<std::function<PFVector()>> init_fn);
+  void initModel(std::function<PFVector()> init_fn);
 
   // Update the filter with some new sensor observation
-  void updateSensor(std::shared_ptr<std::function<double(std::shared_ptr<SensorData>,
-                                                         std::shared_ptr<PFSampleSet>)>> sensor_fn_ptr,
+  void updateSensor(std::function<double(std::shared_ptr<SensorData>,
+                                         std::shared_ptr<PFSampleSet>)> sensor_fn_ptr,
                     std::shared_ptr<SensorData> sensor_data);
 
   // Resample the distribution
@@ -162,7 +162,7 @@ private:
   double w_slow_, w_fast_;
 
   // Function used to draw random pose samples
-  std::shared_ptr<std::function<PFVector()>> random_pose_fn_ptr_;
+  std::function<PFVector()> random_pose_fn_;
 
   double dist_threshold_;  // distance threshold in each axis over which the pf is considered to not be converged
 
