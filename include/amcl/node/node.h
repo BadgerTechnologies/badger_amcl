@@ -163,7 +163,6 @@ private:
   ros::Subscriber initial_pose_sub_;
   ros::ServiceServer global_loc_srv_;
 
-  // 2: 2d, 3: 3d, else: none
   int map_type_;
   std::shared_ptr<Map> map_;
   bool wait_for_occupancy_map_;
