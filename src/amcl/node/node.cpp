@@ -247,10 +247,9 @@ void Node::reconfigureCB(AMCLConfig& config, uint32_t level)
   tf_broadcast_ = config.tf_broadcast;
   tf_reverse_ = config.tf_reverse;
 
-  std::function<PFVector()> fn_ptr = std::bind(&Node::uniformPoseGenerator, this);
-  uniform_pose_generator_fn_ptr_ = std::make_shared<std::function<PFVector()>>(fn_ptr);
+  uniform_pose_generator_fn_ = std::bind(&Node::uniformPoseGenerator, this);
   pf_ = std::make_shared<ParticleFilter>(min_particles_, max_particles_, alpha_slow_, alpha_fast_,
-                                         uniform_pose_generator_fn_ptr_);
+                                         uniform_pose_generator_fn_);
   pf_err_ = config.kld_err;
   pf_z_ = config.kld_z;
   pf_->setPopulationSizeParameters(pf_err_, pf_z_);
@@ -739,10 +738,9 @@ void Node::initFromNewMap(std::shared_ptr<Map> new_map)
 {
   map_ = new_map;
   // Create the particle filter
-  std::function<PFVector()> fn_ptr = std::bind(&Node::uniformPoseGenerator, this);
-  uniform_pose_generator_fn_ptr_ = std::make_shared<std::function<PFVector()>>(fn_ptr);
+  uniform_pose_generator_fn_ = std::bind(&Node::uniformPoseGenerator, this);
   pf_ = std::make_shared<ParticleFilter>(min_particles_, max_particles_, alpha_slow_, alpha_fast_,
-                                         uniform_pose_generator_fn_ptr_);
+                                         uniform_pose_generator_fn_);
   pf_->setPopulationSizeParameters(pf_err_, pf_z_);
   pf_->setResampleModel(resample_model_type_);
 
@@ -928,7 +926,7 @@ bool Node::globalLocalizationCallback(std_srvs::Empty::Request& req, std_srvs::E
   global_localization_active_ = true;
   pf_->setDecayRates(global_localization_alpha_slow_, global_localization_alpha_fast_);
   node_->globalLocalizationCallback();
-  pf_->initModel(uniform_pose_generator_fn_ptr_);
+  pf_->initModel(uniform_pose_generator_fn_);
   odom_init_ = false;
   return true;
 }
