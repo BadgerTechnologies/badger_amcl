@@ -321,14 +321,12 @@ void Node3D::updateFreeSpaceIndices()
 {
   // Index of free space
   // Must be calculated after the occ_dist is setup by the laser model
-  std::shared_ptr<std::vector<std::pair<int, int>>> fsi =
-          std::make_shared<std::vector<std::pair<int, int>>>();
-  fsi->resize(0);
+  std::vector<std::pair<int, int>> fsi;
   std::vector<int> min_cells(3), max_cells(3);
   map_->getMinMaxCells(&min_cells, &max_cells);
   for (int i = min_cells[0]; i < max_cells[0]; i++)
     for (int j = min_cells[1]; j < max_cells[1]; j++)
-      fsi->push_back(std::make_pair(i, j));
+      fsi.push_back(std::make_pair(i, j));
   node_->updateFreeSpaceIndices(fsi);
 }
 
