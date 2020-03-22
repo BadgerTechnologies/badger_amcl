@@ -169,6 +169,7 @@ private:
   // times we need to create an instance of this vector.
   std::vector<int> map_vec_;
 };
+
 }  // namespace amcl
 
 #endif  // AMCL_SENSORS_PLANAR_SCANNER_H

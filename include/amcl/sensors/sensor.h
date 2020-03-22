@@ -67,6 +67,7 @@ public:
   }
   std::shared_ptr<Sensor> sensor_;
 };
+
 }  // namespace amcl
 
 #endif  // AMCL_SENSORS_SENSOR_H

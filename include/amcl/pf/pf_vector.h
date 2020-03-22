@@ -66,6 +66,7 @@ public:
   // diagonal matrix [d] such that a = r * d * r^T.
   void decompose(PFMatrix* r, PFMatrix* d);
 };
+
 }  // namespace amcl
 
 #endif  // AMCL_PF_PF_VECTOR_H

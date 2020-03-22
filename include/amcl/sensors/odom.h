@@ -82,6 +82,7 @@ private:
   // Drift parameters
   double alpha1_, alpha2_, alpha3_, alpha4_, alpha5_;
 };
+
 }  // namespace amcl
 
 #endif  // AMCL_SENSORS_ODOM_H

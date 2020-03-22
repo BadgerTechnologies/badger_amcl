@@ -136,6 +136,7 @@ private:
   double global_localization_non_free_space_factor_;
   bool global_localization_active_;
 };
+
 }  // namespace amcl
 
 #endif // AMCL_NODE_NODE_2D_H
