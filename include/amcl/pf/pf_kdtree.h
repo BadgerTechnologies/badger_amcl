@@ -103,6 +103,7 @@ private:
   // The number of leaf nodes in the tree
   int leaf_count_;
 };
+
 }  // namespace amcl
 
 #endif  // AMCL_PF_PF_KDTREE_H

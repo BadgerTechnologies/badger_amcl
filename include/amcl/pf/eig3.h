@@ -26,6 +26,7 @@ private:
   static void tred2(PFMatrix& V, PFVector* d, PFVector* e);
   static void tql2(PFMatrix& V, PFVector& d, PFVector& e);
 };
+
 }  // namespace amcl
 
 #endif  // AMCL_PF_EIG3_H

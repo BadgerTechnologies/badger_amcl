@@ -179,6 +179,7 @@ private:
 
   bool converged_;
 };
+
 }  // namespace amcl
 
 #endif  // AMCL_PF_PARTICLE_FILTER_H

@@ -58,6 +58,7 @@ private:
   PFMatrix cr_;
   PFVector cd_;
 };
+
 }  // namespace amcl
 
 #endif  // AMCL_PF_PDF_GAUSSIAN_H

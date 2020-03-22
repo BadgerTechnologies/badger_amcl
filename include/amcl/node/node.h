@@ -234,6 +234,7 @@ private:
   double uniform_pose_deweight_multiplier_;
   std::vector<std::pair<int, int>> free_space_indices_;
 };
+
 }  // namespace amcl
 
 #endif  // AMCL_NODE_NODE_H

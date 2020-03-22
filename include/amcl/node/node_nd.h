@@ -33,6 +33,7 @@ public:
   virtual void globalLocalizationCallback() = 0;
   virtual double scorePose(const PFVector& p) = 0;
 };
+
 }  // namespace amcl
 
 #endif // AMCL_NODE_NODE_ND_H

@@ -121,6 +121,7 @@ private:
   std::vector<int> map_vec_;
   std::vector<double> world_vec_;
 };
+
 }  // namespace amcl
 
 #endif  // AMCL_SENSORS_POINT_CLOUD_SCANNER_H
