@@ -98,7 +98,7 @@ private:
   std::map<std::string, int> frame_to_scanner_;
   std::mutex& configuration_mutex_;
   std::vector<std::shared_ptr<PlanarScanner>> scanners_;
-  std::shared_ptr<std::vector<bool>> scanners_update_;
+  std::vector<bool> scanners_update_;
   std::shared_ptr<PlanarData> latest_scan_data_;
   std::shared_ptr<PFSampleSet> fake_sample_set_;
   std::shared_ptr<ParticleFilter> pf_;

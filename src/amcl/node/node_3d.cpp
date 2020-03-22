@@ -124,7 +124,6 @@ Node3D::Node3D(Node* node, int map_type, std::mutex& configuration_mutex)
     return;
   }
 
-  scanners_update_ = std::make_shared<std::vector<bool>>();
   force_update_ = false;
   first_octomap_received_ = false;
   octo_map_sub_ = nh_.subscribe("octomap_binary", 1, &Node3D::octoMapMsgReceived, this);
@@ -225,7 +224,7 @@ void Node3D::octoMapMsgReceived(const octomap_msgs::OctomapConstPtr& msg)
 
   // Clear queued point cloud objects because they hold pointers to the existing map
   scanners_.clear();
-  scanners_update_->clear();
+  scanners_update_.clear();
   frame_to_scanner_.clear();
   latest_scan_data_ = NULL;
   initFromNewMap();
@@ -347,7 +346,7 @@ void Node3D::scanReceived(const sensor_msgs::PointCloud2ConstPtr& point_cloud_sc
   {
     bool force_publication = false, resampled = false, success;
     success = updateNodePf(stamp, scanner_index, &force_publication);
-    if(scanners_update_->at(scanner_index))
+    if(scanners_update_.at(scanner_index))
       updateScanner(point_cloud_scan, scanner_index, &resampled);
     if(force_publication or resampled)
       success = success and resamplePose(stamp);
@@ -372,7 +371,7 @@ void Node3D::updateScanner(const sensor_msgs::PointCloud2ConstPtr& point_cloud_s
   makePointCloudFromScan(point_cloud_scan, point_cloud);
   updateLatestScanData(point_cloud, scanner_index);
   scanners_[scanner_index]->updateSensor(pf_, std::dynamic_pointer_cast<SensorData>(latest_scan_data_));
-  scanners_update_->at(scanner_index) = false;
+  scanners_update_.at(scanner_index) = false;
   if(!(++resample_count_ % resample_interval_))
   {
     resampleParticles();
@@ -434,7 +433,7 @@ int Node3D::getFrameToScannerIndex(const std::string& frame_id)
 int Node3D::initFrameToScanner(const std::string& frame_id, tf::Stamped<tf::Pose>* scanner_pose)
 {
   scanners_.push_back(std::make_shared<PointCloudScanner>(scanner_));
-  scanners_update_->push_back(true);
+  scanners_update_.push_back(true);
   int scanner_index = frame_to_scanner_.size();
   tf::Stamped<tf::Pose> ident(tf::Transform(tf::createIdentityQuaternion(), tf::Vector3(0, 0, 0)), ros::Time(),
                               frame_id);

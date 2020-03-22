@@ -115,7 +115,6 @@ Node2D::Node2D(Node* node, int map_type, std::mutex& configuration_mutex)
         nh_.createTimer(check_scanner_interval_, boost::bind(&Node2D::checkScanReceived, this, _1));
   }
 
-  scanners_update_ = std::make_shared<std::vector<bool>>();
   force_update_ = false;
   first_map_received_ = false;
   map_sub_ = nh_.subscribe("map", 1, &Node2D::mapMsgReceived, this);
@@ -211,7 +210,7 @@ void Node2D::mapMsgReceived(const nav_msgs::OccupancyGridConstPtr& msg)
   updateFreeSpaceIndices();
   // Clear queued planar scanner objects because they hold pointers to the existing map
   scanners_.clear();
-  scanners_update_->clear();
+  scanners_update_.clear();
   frame_to_scanner_.clear();
   latest_scan_data_ = NULL;
   initFromNewMap();
@@ -342,7 +341,7 @@ void Node2D::scanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan)
   {
     bool force_publication = false, resampled = false, success;
     success = updateNodePf(stamp, scanner_index, &force_publication);
-    if(scanners_update_->at(scanner_index))
+    if(scanners_update_.at(scanner_index))
       success = success and updateScanner(planar_scan, scanner_index, &resampled);
     if(force_publication or resampled)
       success = success and resamplePose(stamp);
@@ -369,7 +368,7 @@ bool Node2D::updateScanner(const sensor_msgs::LaserScanConstPtr& planar_scan,
               scanner_index, angle_min, angle_increment);
     updateLatestScanData(planar_scan, angle_min, angle_increment);
     scanners_[scanner_index]->updateSensor(pf_, std::dynamic_pointer_cast<SensorData>(latest_scan_data_));
-    scanners_update_->at(scanner_index) = false;
+    scanners_update_.at(scanner_index) = false;
     if(!(++resample_count_ % resample_interval_))
     {
       resampleParticles();
@@ -440,7 +439,7 @@ bool Node2D::initFrameToScanner(const std::string& frame_id, tf::Stamped<tf::Pos
   ROS_DEBUG("Setting up planar_scanner %d (frame_id=%s)\n", (int)frame_to_scanner_.size(),
             frame_id.c_str());
   scanners_.push_back(std::make_shared<PlanarScanner>(scanner_));
-  scanners_update_->push_back(true);
+  scanners_update_.push_back(true);
   *scanner_index = frame_to_scanner_.size();
 
   tf::Stamped<tf::Pose> ident(tf::Transform(tf::createIdentityQuaternion(), tf::Vector3(0, 0, 0)),
