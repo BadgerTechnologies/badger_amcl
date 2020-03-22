@@ -86,7 +86,7 @@ public:
   void publishParticleCloud();
   void updatePose(const PFVector& max_hyp_mean, const ros::Time& stamp);
   bool updateOdomToMapTransform(const tf::Stamped<tf::Pose>& odom_to_map);
-  bool updatePf(const ros::Time& t, std::shared_ptr<std::vector<bool>> scanners_update,
+  bool updatePf(const ros::Time& t, std::vector<bool>& scanners_update,
                 int scanner_index, int* resample_count, bool* force_publication,
                 bool* force_update);
   void setPfDecayRateNormal();
@@ -143,10 +143,10 @@ private:
   // Update PF helper functions
   void computeDelta(const PFVector& pose, PFVector* delta);
   void setScannersUpdateFlags(const PFVector& delta,
-                              const std::shared_ptr<std::vector<bool>>& scanners_update,
+                              std::vector<bool>& scanners_update,
                               bool* force_update);
   void updateOdom(const PFVector& pose, const PFVector &delta);
-  void initOdom(const PFVector& pose, const std::shared_ptr<std::vector<bool>>& scanners_update,
+  void initOdom(const PFVector& pose, std::vector<bool>& scanners_update,
                 int* resample_count, bool* force_publication);
 
   std::function<PFVector()> uniform_pose_generator_fn_;

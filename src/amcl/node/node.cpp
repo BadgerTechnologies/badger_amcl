@@ -284,7 +284,7 @@ void Node::setPfDecayRateNormal()
   pf_->setDecayRates(alpha_slow_, alpha_fast_);
 }
 
-bool Node::updatePf(const ros::Time& t, std::shared_ptr<std::vector<bool>> scanners_update,
+bool Node::updatePf(const ros::Time& t, std::vector<bool>& scanners_update,
                     int scanner_index, int* resample_count, bool* force_publication, bool* force_update)
 {
   // Where the robot was when this scan was taken
@@ -296,7 +296,7 @@ bool Node::updatePf(const ros::Time& t, std::shared_ptr<std::vector<bool>> scann
     {
       computeDelta(pose, &delta);
       setScannersUpdateFlags(delta, scanners_update, force_update);
-      if(scanners_update->at(scanner_index))
+      if(scanners_update.at(scanner_index))
       {
         updateOdom(pose, delta);
       }
@@ -1032,7 +1032,7 @@ void Node::computeDelta(const PFVector& pose, PFVector* delta)
 }
 
 void Node::setScannersUpdateFlags(const PFVector& delta,
-                                  const std::shared_ptr<std::vector<bool>>& scanners_update,
+                                  std::vector<bool>& scanners_update,
                                   bool* force_update)
 {
     // See if we should update the filter
@@ -1053,8 +1053,8 @@ void Node::setScannersUpdateFlags(const PFVector& delta,
 
     // Set the planar scanner update flags
     if (update)
-      for (unsigned int i = 0; i < scanners_update->size(); i++)
-        scanners_update->at(i) = true;
+      for (unsigned int i = 0; i < scanners_update.size(); i++)
+        scanners_update.at(i) = true;
 }
 
 void Node::updateOdom(const PFVector& pose, const PFVector &delta)
@@ -1082,7 +1082,7 @@ void Node::updateOdom(const PFVector& pose, const PFVector &delta)
 }
 
 void Node::initOdom(const PFVector& pose,
-                    const std::shared_ptr<std::vector<bool>>& scanners_update,
+                    std::vector<bool>& scanners_update,
                     int* resample_count, bool* force_publication)
 {
   // Pose at last filter update
@@ -1090,8 +1090,8 @@ void Node::initOdom(const PFVector& pose,
   // Filter is now initialized
   odom_init_ = true;
   // Should update sensor data
-  for (unsigned int i = 0; i < scanners_update->size(); i++)
-    scanners_update->at(i) = true;
+  for (unsigned int i = 0; i < scanners_update.size(); i++)
+    scanners_update.at(i) = true;
   *force_publication = true;
   *resample_count = 0;
   initOdomIntegrator();

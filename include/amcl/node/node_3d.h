@@ -97,7 +97,7 @@ private:
   std::shared_ptr<octomap::OcTree> octree_;
   std::shared_ptr<PointCloudData> latest_scan_data_;
   std::shared_ptr<std::vector<double>> occupancy_map_min_, occupancy_map_max_;
-  std::shared_ptr<std::vector<bool>> scanners_update_;
+  std::vector<bool> scanners_update_;
   std::shared_ptr<PFSampleSet> fake_sample_set_;
   std::shared_ptr<ParticleFilter> pf_;
   std::unique_ptr<message_filters::Subscriber<sensor_msgs::PointCloud2>> scan_sub_;
