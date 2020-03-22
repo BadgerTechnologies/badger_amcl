@@ -315,14 +315,13 @@ void Node2D::updateFreeSpaceIndices()
 {
   // Index of free space
   // Must be calculated after the occ_dist is setup by the planar model
-  std::shared_ptr<std::vector<std::pair<int, int>>> fsi =
-          std::make_shared<std::vector<std::pair<int, int>>>();
+  std::vector<std::pair<int, int>> fsi;
   std::vector<int> size_vec = map_->getSize();
   for (int i = 0; i < size_vec[0]; i++)
     for (int j = 0; j < size_vec[1]; j++)
       if (map_->getCellState(i, j) == MapCellState::CELL_FREE)
         if (map_->getOccDist(i, j) > non_free_space_radius_)
-          fsi->push_back(std::make_pair(i, j));
+          fsi.push_back(std::make_pair(i, j));
   node_->updateFreeSpaceIndices(fsi);
 }
 

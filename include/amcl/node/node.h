@@ -79,7 +79,7 @@ class Node
 public:
   Node();
   void initFromNewMap(std::shared_ptr<Map> new_map);
-  void updateFreeSpaceIndices(std::shared_ptr<std::vector<std::pair<int, int>>> fsi);
+  void updateFreeSpaceIndices(std::vector<std::pair<int, int>> fsi);
   void initOdomIntegrator();
   bool getOdomPose(const ros::Time& t, PFVector* map_pose);
   std::shared_ptr<ParticleFilter> getPfPtr();
@@ -232,7 +232,7 @@ private:
   double alpha_slow_, alpha_fast_;
   double uniform_pose_starting_weight_threshold_;
   double uniform_pose_deweight_multiplier_;
-  std::shared_ptr<std::vector<std::pair<int, int>>> free_space_indices_;
+  std::vector<std::pair<int, int>> free_space_indices_;
 };
 }  // namespace amcl
 

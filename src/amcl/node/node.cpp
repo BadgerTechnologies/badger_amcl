@@ -137,7 +137,6 @@ Node::Node()
   initial_pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>(
       "initialpose", 1, boost::bind(&Node::newInitialPoseSubscriber, this, _1));
 
-  free_space_indices_ = std::make_shared<std::vector<std::pair<int, int>>>();
   pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("amcl_pose", 2, true);
   particlecloud_pub_ = nh_.advertise<geometry_msgs::PoseArray>("particlecloud", 2, true);
   if (global_alt_frame_id_.size() > 0)
@@ -762,7 +761,7 @@ void Node::initFromNewMap(std::shared_ptr<Map> new_map)
   publishInitialPose();
 }
 
-void Node::updateFreeSpaceIndices(std::shared_ptr<std::vector<std::pair<int, int>>> fsi)
+void Node::updateFreeSpaceIndices(std::vector<std::pair<int, int>> fsi)
 {
   free_space_indices_ = fsi;
 }
@@ -871,13 +870,13 @@ bool Node::getOdomPose(const ros::Time& t, PFVector* map_pose)
 PFVector Node::randomFreeSpacePose()
 {
   PFVector p;
-  if (free_space_indices_->size() == 0)
+  if (free_space_indices_.size() == 0)
   {
     ROS_WARN("Free space indices have not been initialized");
     return p;
   }
-  unsigned int rand_index = drand48() * free_space_indices_->size();
-  std::pair<int, int> free_point = free_space_indices_->at(rand_index);
+  unsigned int rand_index = drand48() * free_space_indices_.size();
+  std::pair<int, int> free_point = free_space_indices_.at(rand_index);
   std::vector<double> p_vec(2);
   map_->convertMapToWorld({ free_point.first, free_point.second }, &p_vec);
   p.v[0] = p_vec[0];
