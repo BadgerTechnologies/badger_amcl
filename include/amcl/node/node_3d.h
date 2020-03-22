@@ -52,6 +52,10 @@ struct PoseHypothesis;
 class Node3D : public NodeND
 {
 public:
+  // The configuration_mutex parameter is a reference to the configuration_mutex in the Node class.
+  // While this couples the Node class with the NodeND class, it is acceptable because the
+  // Node class is designed to be coupled with a Map/Sensor combination, and the NodeND classes
+  // are designed to be coupled with the Node class.
   Node3D(Node* node, int map_type, std::mutex& configuration_mutex);
   void reconfigure(AMCLConfig& config) override;
   void globalLocalizationCallback() override;
