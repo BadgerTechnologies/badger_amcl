@@ -82,6 +82,8 @@ public:
   void updateFreeSpaceIndices(std::vector<std::pair<int, int>> fsi);
   void initOdomIntegrator();
   bool getOdomPose(const ros::Time& t, PFVector* map_pose);
+  std::string getOdomFrameId();
+  std::string getBaseFrameId();
   std::shared_ptr<ParticleFilter> getPfPtr();
   void publishParticleCloud();
   void updatePose(const PFVector& max_hyp_mean, const ros::Time& stamp);
