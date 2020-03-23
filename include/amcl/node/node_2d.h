@@ -53,7 +53,7 @@ public:
   // While this couples the Node class with the NodeND class, it is acceptable because the
   // Node class is designed to be coupled with a Map/Sensor combination, and the NodeND classes
   // are designed to be coupled with the Node class.
-  Node2D(Node* node, int map_type, std::mutex& configuration_mutex);
+  Node2D(Node* node, std::mutex& configuration_mutex);
   void reconfigure(AMCLConfig& config) override;
   void globalLocalizationCallback() override;
   double scorePose(const PFVector& p) override;
@@ -91,10 +91,6 @@ private:
   std::unique_ptr<message_filters::Subscriber<sensor_msgs::LaserScan>> scan_sub_;
   std::unique_ptr<tf::MessageFilter<sensor_msgs::LaserScan>> scan_filter_;
   std::string scan_topic_;
-  std::string odom_frame_id_;
-  std::string base_frame_id_;
-  std::string global_frame_id_;
-  std::string global_alt_frame_id_;
   std::map<std::string, int> frame_to_scanner_;
   std::mutex& configuration_mutex_;
   std::vector<std::shared_ptr<PlanarScanner>> scanners_;
@@ -112,7 +108,6 @@ private:
   ros::Time latest_scan_received_ts_;
   ros::Duration check_scanner_interval_;
   tf::TransformListener tf_;
-  int map_type_;
   int max_beams_;
   int map_scale_up_factor_;
   int resample_interval_;

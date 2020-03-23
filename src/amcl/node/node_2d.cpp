@@ -35,9 +35,8 @@
 
 using namespace amcl;
 
-Node2D::Node2D(Node* node, int map_type, std::mutex& configuration_mutex)
+Node2D::Node2D(Node* node, std::mutex& configuration_mutex)
     : node_(node)
-    , map_type_(map_type)
     , configuration_mutex_(configuration_mutex)
     , private_nh_("~")
     , resample_count_(0)
@@ -45,10 +44,6 @@ Node2D::Node2D(Node* node, int map_type, std::mutex& configuration_mutex)
   map_ = nullptr;
   latest_scan_data_ = NULL;
   private_nh_.param("first_map_only", first_map_only_, false);
-  private_nh_.param("odom_frame_id", odom_frame_id_, std::string("odom"));
-  private_nh_.param("base_frame_id", base_frame_id_, std::string("base_link"));
-  private_nh_.param("global_frame_id", global_frame_id_, std::string("map"));
-  private_nh_.param("global_alt_frame_id", global_alt_frame_id_, std::string(""));
   private_nh_.param("planar_scanner_min_range", sensor_min_range_, -1.0);
   private_nh_.param("planar_scanner_max_range", sensor_max_range_, -1.0);
   private_nh_.param("planar_scanner_max_beams", max_beams_, 30);
@@ -101,19 +96,17 @@ Node2D::Node2D(Node* node, int map_type, std::mutex& configuration_mutex)
   if (map_scale_up_factor_ > 16)
     map_scale_up_factor_ = 16;
 
-  if (map_type_ == 2)
-  {
-    scan_sub_ = std::unique_ptr<message_filters::Subscriber<sensor_msgs::LaserScan>>(
-        new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, scan_topic_, 100));
-    scan_filter_ = std::unique_ptr<tf::MessageFilter<sensor_msgs::LaserScan>>(
-        new tf::MessageFilter<sensor_msgs::LaserScan>(*scan_sub_.get(), tf_, odom_frame_id_, 100));
-    scan_filter_->registerCallback(boost::bind(&Node2D::scanReceived, this, _1));
+  scan_sub_ = std::unique_ptr<message_filters::Subscriber<sensor_msgs::LaserScan>>(
+      new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, scan_topic_, 100));
+  scan_filter_ = std::unique_ptr<tf::MessageFilter<sensor_msgs::LaserScan>>(
+      new tf::MessageFilter<sensor_msgs::LaserScan>(*scan_sub_.get(), tf_,
+                                                    node_->getOdomFrameId(), 100));
+  scan_filter_->registerCallback(boost::bind(&Node2D::scanReceived, this, _1));
 
-    // 15s timer to warn on lack of receipt of planar scans, #5209
-    check_scanner_interval_ = ros::Duration(15.0);
-    check_scanner_timer_ =
-        nh_.createTimer(check_scanner_interval_, boost::bind(&Node2D::checkScanReceived, this, _1));
-  }
+  // 15s timer to warn on lack of receipt of planar scans, #5209
+  check_scanner_interval_ = ros::Duration(15.0);
+  check_scanner_timer_ =
+      nh_.createTimer(check_scanner_interval_, boost::bind(&Node2D::checkScanReceived, this, _1));
 
   force_update_ = false;
   first_map_received_ = false;
@@ -123,9 +116,6 @@ Node2D::Node2D(Node* node, int map_type, std::mutex& configuration_mutex)
 void Node2D::reconfigure(AMCLConfig& config)
 {
   scan_topic_ = config.scan_topic;
-  odom_frame_id_ = config.odom_frame_id;
-  base_frame_id_ = config.base_frame_id;
-  global_frame_id_ = config.global_frame_id;
   sensor_min_range_ = config.laser_min_range;
   sensor_max_range_ = config.laser_max_range;
   z_hit_ = config.laser_z_hit;
@@ -190,7 +180,8 @@ void Node2D::reconfigure(AMCLConfig& config)
   }
   scanner_.setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
   scan_filter_ = std::unique_ptr<tf::MessageFilter<sensor_msgs::LaserScan>>(
-      new tf::MessageFilter<sensor_msgs::LaserScan>(*scan_sub_.get(), tf_, odom_frame_id_, 100));
+      new tf::MessageFilter<sensor_msgs::LaserScan>(*scan_sub_.get(), tf_,
+                                                    node_->getOdomFrameId(), 100));
   scan_filter_->registerCallback(boost::bind(&Node2D::scanReceived, this, _1));
   pf_ = node_->getPfPtr();
 }
@@ -446,12 +437,12 @@ bool Node2D::initFrameToScanner(const std::string& frame_id, tf::Stamped<tf::Pos
                               ros::Time(), frame_id);
   try
   {
-    tf_.transformPose(base_frame_id_, ident, *scanner_pose);
+    tf_.transformPose(node_->getBaseFrameId(), ident, *scanner_pose);
   }
   catch (tf::TransformException& e)
   {
     ROS_ERROR("Couldn't transform from %s to %s, even though the message notifier is in use",
-              frame_id.c_str(), base_frame_id_.c_str());
+              frame_id.c_str(), node_->getBaseFrameId().c_str());
     return false;
   }
   return true;
@@ -492,8 +483,8 @@ bool Node2D::getAngleStats(const sensor_msgs::LaserScanConstPtr& planar_scan,
   bool success = true;
   try
   {
-    tf_.transformQuaternion(base_frame_id_, min_q, min_q);
-    tf_.transformQuaternion(base_frame_id_, inc_q, inc_q);
+    tf_.transformQuaternion(node_->getBaseFrameId(), min_q, min_q);
+    tf_.transformQuaternion(node_->getBaseFrameId(), inc_q, inc_q);
   }
   catch (tf::TransformException& e)
   {
@@ -606,11 +597,13 @@ bool Node2D::updatePose(const PFVector& max_pose, const ros::Time& stamp)
   tf::Stamped<tf::Pose> odom_to_map;
   try
   {
+    std::string odom_frame_id = node_->getOdomFrameId();
+    std::string base_frame_id = node_->getBaseFrameId();
     tf::Transform tmp_tf(tf::createQuaternionFromYaw(max_pose.v[2]),
                          tf::Vector3(max_pose.v[0], max_pose.v[1], 0.0));
-    tf::Stamped<tf::Pose> tmp_tf_stamped(tmp_tf.inverse(), stamp, base_frame_id_);
-    tf_.waitForTransform(base_frame_id_, odom_frame_id_, stamp, ros::Duration(1.0));
-    tf_.transformPose(odom_frame_id_, tmp_tf_stamped, odom_to_map);
+    tf::Stamped<tf::Pose> tmp_tf_stamped(tmp_tf.inverse(), stamp, base_frame_id);
+    tf_.waitForTransform(base_frame_id, odom_frame_id, stamp, ros::Duration(1.0));
+    tf_.transformPose(odom_frame_id, tmp_tf_stamped, odom_to_map);
   }
   catch (tf::TransformException)
   {

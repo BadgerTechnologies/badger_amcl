@@ -47,7 +47,6 @@ namespace amcl
 {
 
 class Node;
-struct PoseHypothesis;
 
 class Node3D : public NodeND
 {
@@ -56,7 +55,7 @@ public:
   // While this couples the Node class with the NodeND class, it is acceptable because the
   // Node class is designed to be coupled with a Map/Sensor combination, and the NodeND classes
   // are designed to be coupled with the Node class.
-  Node3D(Node* node, int map_type, std::mutex& configuration_mutex);
+  Node3D(Node* node, std::mutex& configuration_mutex);
   void reconfigure(AMCLConfig& config) override;
   void globalLocalizationCallback() override;
   double scorePose(const PFVector& p) override;
@@ -78,8 +77,6 @@ private:
   void updateLatestScanData(const pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud, int scanner_index);
   void updateScanner(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan,
                      int scanner_index, bool* resampled);
-  void setOctomapBoundsFromOccupancyMap(std::shared_ptr<std::vector<double>> map_min,
-                                        std::shared_ptr<std::vector<double>> map_max);
   void resampleParticles();
   bool resamplePose(const ros::Time& stamp);
   void getMaxWeightPose(double* max_weight, PFVector* max_pose);
@@ -103,10 +100,6 @@ private:
   std::unique_ptr<message_filters::Subscriber<sensor_msgs::PointCloud2>> scan_sub_;
   std::unique_ptr<tf::MessageFilter<sensor_msgs::PointCloud2>> scan_filter_;
   std::string scan_topic_;
-  std::string odom_frame_id_;
-  std::string base_frame_id_;
-  std::string global_frame_id_;
-  std::string global_alt_frame_id_;
   std::map<std::string, int> frame_to_scanner_;
   std::mutex& configuration_mutex_;
   std::vector<std::shared_ptr<PointCloudScanner> > scanners_;
@@ -123,7 +116,6 @@ private:
   ros::Time latest_scan_received_ts_;
   tf::TransformListener tf_;
   tf::StampedTransform scanner_to_footprint_tf_;
-  int map_type_;
   int occupancy_map_scale_up_factor_;
   int max_beams_;
   int resample_interval_;

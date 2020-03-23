@@ -149,19 +149,20 @@ Node::Node()
   map_odom_transform_pub_ = nh_.advertise<nav_msgs::Odometry>("amcl_map_odom_transform", 1);
   global_loc_srv_ = nh_.advertiseService("global_localization", &Node::globalLocalizationCallback, this);
   loadPose();
-  if(map_type_ == 2)
-  {
-    node_ = std::make_shared<Node2D>(this, map_type_, configuration_mutex_);
-  }
-  if(map_type_ == 3)
-  {
-    node_ = std::make_shared<Node3D>(this, map_type_, configuration_mutex_);
-  }
 
   if (odom_integrator_topic_.size())
   {
     odom_integrator_sub_ = nh_.subscribe(odom_integrator_topic_, 20, &Node::integrateOdom, this);
     absolute_motion_pub_ = nh_.advertise<geometry_msgs::Pose2D>("amcl_absolute_motion", 20, false);
+  }
+
+  if(map_type_ == 2)
+  {
+    node_ = std::make_shared<Node2D>(this, configuration_mutex_);
+  }
+  if(map_type_ == 3)
+  {
+    node_ = std::make_shared<Node3D>(this, configuration_mutex_);
   }
 
   dynamic_reconfigure::Server<AMCLConfig>::CallbackType cb = boost::bind(&Node::reconfigureCB, this, _1, _2);
@@ -1215,4 +1216,14 @@ double Node::getYaw(const tf::Pose& t)
   double yaw, pitch, roll;
   t.getBasis().getEulerYPR(yaw, pitch, roll);
   return yaw;
+}
+
+std::string Node::getOdomFrameId()
+{
+  return odom_frame_id_;
+}
+
+std::string Node::getBaseFrameId()
+{
+  return base_frame_id_;
 }
