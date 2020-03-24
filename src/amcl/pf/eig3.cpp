@@ -300,6 +300,11 @@ void EIG3::tql2(PFMatrix& V, PFVector& d, PFVector& e)
 
 void EIG3::eigenDecomposition(const PFMatrix& A, PFMatrix* V, PFVector* d)
 {
+  if(V == nullptr or d == nullptr)
+  {
+    return;
+  }
+
   int i, j;
   PFVector e;
   for (i = 0; i < N; i++)
