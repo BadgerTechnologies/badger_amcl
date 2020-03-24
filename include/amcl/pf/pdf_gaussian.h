@@ -33,7 +33,9 @@
 
 namespace amcl
 {
-// Gaussian PDF info
+
+// Creates a gaussian probability density function (PDF) with a mean and covariance
+// and a function to sample the PDF
 class PDFGaussian
 {
 public:
