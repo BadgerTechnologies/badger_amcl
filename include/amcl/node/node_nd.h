@@ -29,6 +29,7 @@ namespace amcl
 class NodeND
 {
 public:
+  virtual ~NodeND() = default;
   virtual void reconfigure(AMCLConfig& config) = 0;
   virtual void globalLocalizationCallback() = 0;
   virtual double scorePose(const PFVector& p) = 0;
@@ -36,4 +37,4 @@ public:
 
 }  // namespace amcl
 
-#endif // AMCL_NODE_NODE_ND_H
+#endif  // AMCL_NODE_NODE_ND_H
