@@ -38,12 +38,14 @@
 
 namespace amcl
 {
-typedef enum {
+
+enum PlanarModelType
+{
   PLANAR_MODEL_BEAM,
   PLANAR_MODEL_LIKELIHOOD_FIELD,
   PLANAR_MODEL_LIKELIHOOD_FIELD_PROB,
   PLANAR_MODEL_LIKELIHOOD_FIELD_GOMPERTZ,
-} PlanarModelType;
+};
 
 // Planar sensor data
 class PlanarData : public SensorData

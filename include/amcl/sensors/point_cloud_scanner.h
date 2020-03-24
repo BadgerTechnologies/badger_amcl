@@ -36,10 +36,12 @@
 
 namespace amcl
 {
-typedef enum {
+
+enum PointCloudModelType
+{
   POINT_CLOUD_MODEL,
   POINT_CLOUD_MODEL_GOMPERTZ,
-} PointCloudModelType;
+};
 
 class PointCloudData : public SensorData
 {

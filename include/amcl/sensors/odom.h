@@ -34,13 +34,15 @@
 
 namespace amcl
 {
-typedef enum {
+
+enum OdomModelType
+{
   ODOM_MODEL_DIFF,
   ODOM_MODEL_OMNI,
   ODOM_MODEL_DIFF_CORRECTED,
   ODOM_MODEL_OMNI_CORRECTED,
   ODOM_MODEL_GAUSSIAN,
-} OdomModelType;
+};
 
 // Odometric sensor data
 class OdomData : public SensorData

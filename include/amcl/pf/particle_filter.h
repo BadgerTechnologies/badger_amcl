@@ -33,13 +33,15 @@
 
 namespace amcl
 {
-typedef enum {
+
+enum PFResampleModelType
+{
   PF_RESAMPLE_MULTINOMIAL,
   PF_RESAMPLE_SYSTEMATIC,
-} PFResampleModelType;
+};
 
 // Information for a single sample
-typedef struct
+struct PFSample
 {
   // Pose represented by this sample
   PFVector pose;
@@ -47,10 +49,10 @@ typedef struct
   // Weight for this pose
   double weight;
 
-} PFSample;
+};
 
 // Information for a cluster of samples
-typedef struct
+struct PFCluster
 {
   // Number of samples
   int count;
@@ -65,10 +67,10 @@ typedef struct
   // Workspace
   double m[4], c[2][2];
 
-} PFCluster;
+};
 
 // Information for a set of samples
-typedef struct
+struct PFSampleSet
 {
   // The samples
   int sample_count;
@@ -85,7 +87,7 @@ typedef struct
   PFVector mean;
   PFMatrix cov;
   int converged;
-} PFSampleSet;
+};
 
 class SensorData;
 
