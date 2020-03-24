@@ -64,8 +64,8 @@ public:
   virtual bool isValid(const std::vector<int>& coords);
   virtual std::vector<int> getSize();
   virtual void getMinMaxCells(std::vector<int>* min_cells, std::vector<int>* max_cells);
-  virtual void setMapBounds(std::shared_ptr<std::vector<double>> map_min,
-                            std::shared_ptr<std::vector<double>> map_max);
+  virtual void setMapBounds(const std::vector<double>& map_min,
+                            const std::vector<double>& map_max);
   // Update the cspace distance values
   virtual void updateCSpace();
   virtual void updateMaxOccDist(double max_occ_dist);

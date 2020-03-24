@@ -186,10 +186,8 @@ void Node3D::occupancyMapMsgReceived(const nav_msgs::OccupancyGridConstPtr& msg)
   double resolution = (*msg).info.resolution / occupancy_map_scale_up_factor_;
   size_vec.push_back((*msg).info.width * occupancy_map_scale_up_factor_);
   size_vec.push_back((*msg).info.height * occupancy_map_scale_up_factor_);
-  occupancy_map_min_ = std::make_shared<std::vector<double>>(std::vector<double>({0.0, 0.0}));
-  occupancy_map_max_ = std::make_shared<std::vector<double>>(std::vector<double>(
-                                                               {size_vec[0] * resolution,
-                                                                size_vec[1] * resolution}));
+  occupancy_map_min_ = {0.0, 0.0};
+  occupancy_map_max_ = {size_vec[0] * resolution, size_vec[1] * resolution};
   occupancy_bounds_received_ = true;
   if(first_octomap_received_)
   {
