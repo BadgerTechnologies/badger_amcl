@@ -133,11 +133,11 @@ double OctoMap::getMaxOccDist()
   return max_occ_dist_;
 }
 
-void OctoMap::setMapBounds(std::shared_ptr<std::vector<double>> map_min,
-                           std::shared_ptr<std::vector<double>> map_max)
+void OctoMap::setMapBounds(const std::vector<double>& map_min,
+                           const std::vector<double>& map_max)
 {
-  std::vector<int> cells_min(map_min->size()), cells_max(map_max->size());
-  std::vector<double> map_min_local(*map_min), map_max_local(*map_max);
+  std::vector<int> cells_min(map_min.size()), cells_max(map_max.size());
+  std::vector<double> map_min_local(map_min), map_max_local(map_max);
   // add a buffer around map bounds to ensure representation
   // of objects at extreme map values
   for (int i = 0; i < map_min_local.size(); i++)
