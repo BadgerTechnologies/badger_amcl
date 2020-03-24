@@ -29,8 +29,9 @@
 
 namespace amcl
 {
+
 // Info for a node in the tree
-typedef struct pf_kdtree_node
+struct PFKDTreeNode
 {
   // Depth in the tree
   int leaf, depth;
@@ -49,9 +50,9 @@ typedef struct pf_kdtree_node
   int cluster;
 
   // Child nodes
-  struct pf_kdtree_node* children[2];
+  struct PFKDTreeNode* children[2];
 
-} PFKDTreeNode;
+};
 
 // A kd tree
 class PFKDTree
