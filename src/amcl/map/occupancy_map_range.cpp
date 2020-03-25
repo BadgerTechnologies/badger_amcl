@@ -24,7 +24,7 @@
 
 #include "map/occupancy_map.h"
 
-#include <stdlib.h>
+#include <cstdlib>
 
 using namespace amcl;
 
@@ -45,11 +45,11 @@ double OccupancyMap::calcRange(double ox, double oy, double oa, double max_range
   convertWorldToMap({ ox, oy }, &tmp_vec);
   x0 = tmp_vec[0];
   y0 = tmp_vec[1];
-  convertWorldToMap({ ox + max_range * cos(oa), oy + max_range * sin(oa) }, &tmp_vec);
+  convertWorldToMap({ ox + max_range * std::cos(oa), oy + max_range * sin(oa) }, &tmp_vec);
   x1 = tmp_vec[0];
   y1 = tmp_vec[1];
 
-  if (abs(y1 - y0) > abs(x1 - x0))
+  if (std::abs(y1 - y0) > std::abs(x1 - x0))
     steep = 1;
   else
     steep = 0;
@@ -65,8 +65,8 @@ double OccupancyMap::calcRange(double ox, double oy, double oa, double max_range
     y1 = tmp;
   }
 
-  deltax = abs(x1 - x0);
-  deltay = abs(y1 - y0);
+  deltax = std::abs(x1 - x0);
+  deltay = std::abs(y1 - y0);
   error = 0;
   deltaerr = deltay;
 
@@ -85,12 +85,12 @@ double OccupancyMap::calcRange(double ox, double oy, double oa, double max_range
   if (steep)
   {
     if (!isValid({ y, x }) || cells_[computeCellIndex(y, x)] != MapCellState::CELL_FREE)
-      return sqrt((x - x0) * (x - x0) + (y - y0) * (y - y0)) * resolution_;
+      return std::sqrt((x - x0) * (x - x0) + (y - y0) * (y - y0)) * resolution_;
   }
   else
   {
     if (!isValid({ x, y }) || cells_[computeCellIndex(x, y)] != MapCellState::CELL_FREE)
-      return sqrt((x - x0) * (x - x0) + (y - y0) * (y - y0)) * resolution_;
+      return std::sqrt((x - x0) * (x - x0) + (y - y0) * (y - y0)) * resolution_;
   }
 
   while (x != (x1 + xstep * 1))
@@ -106,12 +106,12 @@ double OccupancyMap::calcRange(double ox, double oy, double oa, double max_range
     if (steep)
     {
       if (!isValid({ y, x }) || cells_[computeCellIndex(y, x)] != MapCellState::CELL_FREE)
-        return sqrt((x - x0) * (x - x0) + (y - y0) * (y - y0)) * resolution_;
+        return std::sqrt((x - x0) * (x - x0) + (y - y0) * (y - y0)) * resolution_;
     }
     else
     {
       if (!isValid({ x, y }) || cells_[computeCellIndex(x, y)] != MapCellState::CELL_FREE)
-        return sqrt((x - x0) * (x - x0) + (y - y0) * (y - y0)) * resolution_;
+        return std::sqrt((x - x0) * (x - x0) + (y - y0) * (y - y0)) * resolution_;
     }
   }
   return max_range;

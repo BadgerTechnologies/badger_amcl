@@ -174,7 +174,7 @@ private:
   // Decay rates for running averages
   double alpha_slow_, alpha_fast_;
 
-  // The sample sets.  We keep two sets and use [current_set]
+  // The sample sets. We keep two sets and use [current_set]
   // to identify the active set.
   int current_set_;
   std::vector<std::shared_ptr<PFSampleSet>> sets_;

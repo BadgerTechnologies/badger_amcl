@@ -358,7 +358,8 @@ bool Node2D::updateScanner(const sensor_msgs::LaserScanConstPtr& planar_scan,
     ROS_DEBUG("Planar scanner %d angles in base frame: min: %.3f inc: %.3f",
               scanner_index, angle_min, angle_increment);
     updateLatestScanData(planar_scan, angle_min, angle_increment);
-    scanners_[scanner_index]->updateSensor(pf_, std::dynamic_pointer_cast<SensorData>(latest_scan_data_));
+    scanners_[scanner_index]->updateSensor(
+            pf_, std::dynamic_pointer_cast<SensorData>(latest_scan_data_));
     scanners_update_.at(scanner_index) = false;
     if(!(++resample_count_ % resample_interval_))
     {
@@ -496,7 +497,7 @@ bool Node2D::getAngleStats(const sensor_msgs::LaserScanConstPtr& planar_scan,
     *angle_min = tf::getYaw(min_q);
     *angle_increment = tf::getYaw(inc_q) - *angle_min;
     // wrapping angle to [-pi .. pi]
-    *angle_increment = fmod(*angle_increment + 5 * M_PI, 2 * M_PI) - M_PI;
+    *angle_increment = std::fmod(*angle_increment + 5 * M_PI, 2 * M_PI) - M_PI;
   }
   return success;
 }
@@ -621,19 +622,21 @@ void Node2D::checkScanReceived(const ros::TimerEvent& event)
   ros::Duration d = ros::Time::now() - latest_scan_received_ts_;
   if (d > check_scanner_interval_)
   {
-    ROS_WARN("No planar scan received (and thus no pose updates have been published) for %f seconds."
-             "Verify that data is being published on the %s topic.",
+    ROS_WARN("No planar scan received (and thus no pose updates have been published) for %f "
+             "seconds. Verify that data is being published on the %s topic.",
              d.toSec(), ros::names::resolve(scan_topic_).c_str());
   }
 }
 
 void Node2D::globalLocalizationCallback()
 {
-  scanner_.setMapFactors(global_localization_off_map_factor_, global_localization_non_free_space_factor_,
-                                non_free_space_radius_);
+  scanner_.setMapFactors(global_localization_off_map_factor_,
+                         global_localization_non_free_space_factor_,
+                         non_free_space_radius_);
   for (auto& l : scanners_)
   {
-    l->setMapFactors(global_localization_off_map_factor_, global_localization_non_free_space_factor_,
+    l->setMapFactors(global_localization_off_map_factor_,
+                     global_localization_non_free_space_factor_,
                      non_free_space_radius_);
   }
 }

@@ -66,7 +66,8 @@ float OccupancyMap::getOccDist(int i, int j)
   return max_occ_dist_;
 }
 
-void OccupancyMap::convertMapToWorld(const std::vector<int>& map_coords, std::vector<double>* world_coords)
+void OccupancyMap::convertMapToWorld(const std::vector<int>& map_coords,
+                                     std::vector<double>* world_coords)
 {
   std::vector<double> return_vals;
   int i = map_coords[0];
@@ -75,13 +76,14 @@ void OccupancyMap::convertMapToWorld(const std::vector<int>& map_coords, std::ve
   (*world_coords)[1] = origin_.y + (j - size_y_ / 2) * resolution_;
 }
 
-void OccupancyMap::convertWorldToMap(const std::vector<double>& world_coords, std::vector<int>* map_coords)
+void OccupancyMap::convertWorldToMap(const std::vector<double>& world_coords,
+                                     std::vector<int>* map_coords)
 {
   std::vector<int> return_vals;
   double x = world_coords[0];
   double y = world_coords[1];
-  (*map_coords)[0] = floor((x - origin_.x) / resolution_ + 0.5) + size_x_ / 2;
-  (*map_coords)[1] = floor((y - origin_.y) / resolution_ + 0.5) + size_y_ / 2;
+  (*map_coords)[0] = std::floor((x - origin_.x) / resolution_ + 0.5) + size_x_ / 2;
+  (*map_coords)[1] = std::floor((y - origin_.y) / resolution_ + 0.5) + size_y_ / 2;
 }
 
 bool OccupancyMap::isValid(const std::vector<int>& coords)
@@ -109,14 +111,14 @@ MapCellState OccupancyMap::getCellState(int i, int j)
 CachedDistanceOccupancyMap::CachedDistanceOccupancyMap(double resolution, double max_dist)
     : resolution_(resolution), max_dist_(max_dist)
 {
-  cell_radius_ = (int)floor(max_dist / resolution);
+  cell_radius_ = (int)std::floor(max_dist / resolution);
   distances_.resize(cell_radius_ + 2);
   for (int i = 0; i <= cell_radius_ + 1; i++)
   {
     distances_[i].resize(cell_radius_ + 2);
     for (int j = 0; j <= cell_radius_ + 1; j++)
     {
-      distances_[i][j] = sqrt(i * i + j * j);
+      distances_[i][j] = std::sqrt(i * i + j * j);
     }
   }
 }

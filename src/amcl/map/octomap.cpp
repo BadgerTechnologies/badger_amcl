@@ -51,9 +51,9 @@ void OctoMap::initFromOctree(std::shared_ptr<octomap::OcTree> octree)
   // set size
   double x_meters, y_meters, z_meters;
   octree_->getMetricSize(x_meters, y_meters, z_meters);
-  full_cells_[0] = (int)ceil(x_meters / resolution_);
-  full_cells_[1] = (int)ceil(y_meters / resolution_);
-  full_cells_[2] = (int)ceil(z_meters / resolution_);
+  full_cells_[0] = (int)std::ceil(x_meters / resolution_);
+  full_cells_[1] = (int)std::ceil(y_meters / resolution_);
+  full_cells_[2] = (int)std::ceil(z_meters / resolution_);
   double min_x, min_y, min_z, max_x, max_y, max_z;
   octree_->getMetricMin(min_x, min_y, min_z);
   octree_->getMetricMax(max_x, max_y, max_z);
@@ -96,12 +96,12 @@ void OctoMap::convertWorldToMap(const std::vector<double>& world_coords, std::ve
 {
   double x = world_coords[0];
   double y = world_coords[1];
-  (*map_coords)[0] = floor((x - origin_.x) / resolution_ + 0.5);
-  (*map_coords)[1] = floor((y - origin_.y) / resolution_ + 0.5);
+  (*map_coords)[0] = std::floor((x - origin_.x) / resolution_ + 0.5);
+  (*map_coords)[1] = std::floor((y - origin_.y) / resolution_ + 0.5);
   if (world_coords.size() > 2)
   {
     double z = world_coords[2];
-    (*map_coords)[2] = floor((z - origin_.z) / resolution_ + 0.5);
+    (*map_coords)[2] = std::floor((z - origin_.z) / resolution_ + 0.5);
   }
 }
 
@@ -158,7 +158,7 @@ void OctoMap::setMapBounds(const std::vector<double>& map_min,
 CachedDistanceOctoMap::CachedDistanceOctoMap(double resolution, double max_dist)
     : resolution_(resolution), max_dist_(max_dist)
 {
-  cell_radius_ = (int)floor(max_dist / resolution);
+  cell_radius_ = (int)std::floor(max_dist / resolution);
   distances_.resize(cell_radius_ + 2);
   for (int i = 0; i <= cell_radius_ + 1; i++)
   {
@@ -168,7 +168,7 @@ CachedDistanceOctoMap::CachedDistanceOctoMap(double resolution, double max_dist)
       distances_[i][j].resize(cell_radius_ + 2);
       for (int k = 0; k <= cell_radius_ + 1; k++)
       {
-        distances_[i][j][k] = sqrt(i * i + j * j + k * k);
+        distances_[i][j][k] = std::sqrt(i * i + j * j + k * k);
       }
     }
   }

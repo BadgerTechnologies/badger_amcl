@@ -24,7 +24,7 @@
 
 #include "pf/pf_vector.h"
 
-#include <math.h>
+#include <cmath>
 #include <vector>
 
 #include "pf/eig3.h"
@@ -44,7 +44,7 @@ bool PFVector::isFinite()
 {
   int i;
   for (i = 0; i < 3; i++)
-    if (!isfinite(v[i]))
+    if (!std::isfinite(v[i]))
       return 0;
   return 1;
 }
@@ -73,10 +73,10 @@ PFVector PFVector::pfVectorSub(PFVector a, PFVector b)
 PFVector PFVector::pfVectorCoordAdd(PFVector a, PFVector b)
 {
   PFVector c;
-  c.v[0] = b.v[0] + a.v[0] * cos(b.v[2]) - a.v[1] * sin(b.v[2]);
-  c.v[1] = b.v[1] + a.v[0] * sin(b.v[2]) + a.v[1] * cos(b.v[2]);
+  c.v[0] = b.v[0] + a.v[0] * std::cos(b.v[2]) - a.v[1] * std::sin(b.v[2]);
+  c.v[1] = b.v[1] + a.v[0] * std::sin(b.v[2]) + a.v[1] * std::cos(b.v[2]);
   c.v[2] = b.v[2] + a.v[2];
-  c.v[2] = atan2(sin(c.v[2]), cos(c.v[2]));
+  c.v[2] = std::atan2(std::sin(c.v[2]), std::cos(c.v[2]));
   return c;
 }
 
@@ -84,10 +84,10 @@ PFVector PFVector::pfVectorCoordAdd(PFVector a, PFVector b)
 PFVector PFVector::pfVectorCoordSub(PFVector a, PFVector b)
 {
   PFVector c;
-  c.v[0] = +(a.v[0] - b.v[0]) * cos(b.v[2]) + (a.v[1] - b.v[1]) * sin(b.v[2]);
-  c.v[1] = -(a.v[0] - b.v[0]) * sin(b.v[2]) + (a.v[1] - b.v[1]) * cos(b.v[2]);
+  c.v[0] = +(a.v[0] - b.v[0]) * std::cos(b.v[2]) + (a.v[1] - b.v[1]) * std::sin(b.v[2]);
+  c.v[1] = -(a.v[0] - b.v[0]) * std::sin(b.v[2]) + (a.v[1] - b.v[1]) * std::cos(b.v[2]);
   c.v[2] = a.v[2] - b.v[2];
-  c.v[2] = atan2(sin(c.v[2]), cos(c.v[2]));
+  c.v[2] = std::atan2(std::sin(c.v[2]), std::cos(c.v[2]));
   return c;
 }
 
@@ -108,7 +108,7 @@ bool PFMatrix::isFinite()
 
   for (i = 0; i < 3; i++)
     for (j = 0; j < 3; j++)
-      if (!isfinite(m[i][j]))
+      if (!std::isfinite(m[i][j]))
         return false;
   return true;
 }

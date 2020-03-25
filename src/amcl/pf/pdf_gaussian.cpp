@@ -24,9 +24,9 @@
 
 #include "pf/pdf_gaussian.h"
 
-#include <math.h>
 #include <ros/console.h>
-#include <stdlib.h>
+
+#include <cmath>
 
 // Random number generator seed value
 
@@ -47,9 +47,9 @@ PDFGaussian::PDFGaussian(PFVector x, PFMatrix cx)
   // Decompose the convariance matrix into a rotation
   // matrix and a diagonal matrix.
   cx_.decompose(&cr_, &m);
-  cd_.v[0] = sqrt(m.m[0][0]);
-  cd_.v[1] = sqrt(m.m[1][1]);
-  cd_.v[2] = sqrt(m.m[2][2]);
+  cd_.v[0] = std::sqrt(m.m[0][0]);
+  cd_.v[1] = std::sqrt(m.m[1][1]);
+  cd_.v[2] = std::sqrt(m.m[2][2]);
 }
 
 // Generate a sample from the the pdf.
@@ -97,5 +97,5 @@ double PDFGaussian::draw(double sigma)
     w = x1 * x1 + x2 * x2;
   } while (w > 1.0 || w == 0.0);
 
-  return (sigma * x2 * sqrt(-2.0 * log(w) / w));
+  return (sigma * x2 * std::sqrt(-2.0 * std::log(w) / w));
 }
