@@ -460,10 +460,9 @@ void Node3D::updateScannerPose(const tf::Stamped<tf::Pose>& scanner_pose, int sc
 }
 
 void Node3D::initLatestScanData(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan,
-                                  int scanner_index)
+                                int scanner_index)
 {
   latest_scan_data_ = std::make_shared<PointCloudData>();
-  latest_scan_data_->sensor_ = scanners_[scanner_index];
   latest_scan_data_->frame_id_ = point_cloud_scan->header.frame_id;
 }
 

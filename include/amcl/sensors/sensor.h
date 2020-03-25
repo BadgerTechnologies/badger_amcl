@@ -55,7 +55,6 @@ class SensorData
   // Pointer to sensor that generated the data
 public:
   virtual ~SensorData() = default;
-  std::shared_ptr<Sensor> sensor_;
 };
 
 }  // namespace amcl
