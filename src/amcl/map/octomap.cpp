@@ -122,12 +122,6 @@ bool OctoMap::isValid(const std::vector<int>& coords)
   }
 }
 
-// computes the index of the cell for a flattened 3D list
-unsigned int OctoMap::computeCellIndex(int i, int j, int k)
-{
-  return i + j * unsigned(full_cells_[0]) + k * unsigned(full_cells_[1]) * unsigned(full_cells_[2]);
-}
-
 double OctoMap::getMaxOccDist()
 {
   return max_occ_dist_;

@@ -86,11 +86,9 @@ public:
   virtual void setCellState(int index, MapCellState state);
 
 protected:
-  void setMapOccDist(int i, int j, float d);
-  void iterateObstacleCells();
-  void iterateEmptyCells();
-  void updateNode(int i, int j, const OccupancyMapCellData& current_cell);
-  bool enqueue(int i, int j, int src_i, int src_j);
+  virtual void iterateObstacleCells();
+  virtual void iterateEmptyCells();
+  virtual bool enqueue(int i, int j, int src_i, int src_j);
 
   // Map dimensions (number of cells)
   int size_x_, size_y_;
@@ -104,6 +102,10 @@ protected:
   CachedDistanceOccupancyMap cdm_;
   std::priority_queue<OccupancyMapCellData> q_;
   std::vector<bool> marked_;
+
+private:
+  inline void setMapOccDist(int i, int j, float d);
+  inline void updateNode(int i, int j, const OccupancyMapCellData& current_cell);
 };
 
 struct OccupancyMapCellData
