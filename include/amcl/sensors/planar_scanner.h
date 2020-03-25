@@ -62,11 +62,10 @@ public:
 // Planar sensor model
 class PlanarScanner : public Sensor
 {
-  // Default constructor
 public:
   PlanarScanner();
 
-  void init(std::size_t max_beams, std::shared_ptr<OccupancyMap> map);
+  void init(int max_beams, std::shared_ptr<OccupancyMap> map);
 
   void setModelBeam(double z_hit, double z_short, double z_max, double z_rand, double sigma_hit, double labda_short);
 
