@@ -76,13 +76,9 @@ public:
 protected:
   static constexpr double EPSILON = std::numeric_limits<double>::epsilon();
 
-  void iterateObstacleCells();
-  void iterateEmptyCells();
-  void updateNode(int i, int j, int k, const OctoMapCellData& current_cell);
-  void setOccDist(int i, int j, int k, double d);
-  bool enqueue(int i, int j, int k, int src_i, int src_j, int src_k);
-  unsigned int computeCellIndex(int i, int j, int k);
-  std::size_t makeHash(int i, int j, int k);
+  virtual void iterateObstacleCells();
+  virtual void iterateEmptyCells();
+  virtual bool enqueue(int i, int j, int k, int src_i, int src_j, int src_k);
 
   std::shared_ptr<octomap::OcTree> octree_;
   tsl::sparse_map<std::size_t, double> distances_;
@@ -95,6 +91,11 @@ protected:
   CachedDistanceOctoMap cdm_;
   std::priority_queue<OctoMapCellData> q_;
   octomap::OcTree marked_;
+
+private:
+  inline void setOccDist(int i, int j, int k, double d);
+  inline void updateNode(int i, int j, int k, const OctoMapCellData& current_cell);
+  inline std::size_t makeHash(int i, int j, int k);
 };
 
 struct OctoMapCellData
