@@ -26,9 +26,8 @@
 #ifndef AMCL_SENSORS_PLANAR_SCANNER_H
 #define AMCL_SENSORS_PLANAR_SCANNER_H
 
-#include <stddef.h>
-
 #include <memory>
+#include <cstddef>
 #include <vector>
 
 #include "map/occupancy_map.h"
@@ -67,7 +66,7 @@ class PlanarScanner : public Sensor
 public:
   PlanarScanner();
 
-  void init(size_t max_beams, std::shared_ptr<OccupancyMap> map);
+  void init(std::size_t max_beams, std::shared_ptr<OccupancyMap> map);
 
   void setModelBeam(double z_hit, double z_short, double z_max, double z_rand, double sigma_hit, double labda_short);
 

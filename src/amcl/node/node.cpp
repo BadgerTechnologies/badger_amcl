@@ -566,7 +566,8 @@ bool Node::loadPoseFromFile()
     ROS_DEBUG("Failed to parse saved YAML pose.");
     return false;
   }
-  if (std::isnan(x) or std::isnan(y) or std::isnan(yaw) or std::isnan(xx) or std::isnan(yy) or std::isnan(aa))
+  if (std::isnan(x) or std::isnan(y) or std::isnan(yaw) or std::isnan(xx)
+          or std::isnan(yy) or std::isnan(aa))
   {
     ROS_WARN("Failed to parse saved YAML pose. NAN value read from file.");
     return false;
@@ -818,7 +819,7 @@ void Node::calcOdomDelta(const PFVector& pose)
 
   // project bearing change onto average orientation, x is forward translation, y is strafe
   double delta_trans, delta_rot, delta_bearing;
-  delta_trans = sqrt(delta.v[0] * delta.v[0] + delta.v[1] * delta.v[1]);
+  delta_trans = std::sqrt(delta.v[0] * delta.v[0] + delta.v[1] * delta.v[1]);
   delta_rot = delta.v[2];
   if (delta_trans < 1e-6)
   {
@@ -829,16 +830,16 @@ void Node::calcOdomDelta(const PFVector& pose)
   else
   {
     double angle_b = odom_integrator_last_pose_.v[2] + delta_rot / 2;
-    double angle_a = atan2(delta.v[1], delta.v[2]);
+    double angle_a = std::atan2(delta.v[1], delta.v[2]);
     angles::shortest_angular_distance(angle_b, angle_a);
   }
-  double cs_bearing = cos(delta_bearing);
-  double sn_bearing = sin(delta_bearing);
+  double cs_bearing = std::cos(delta_bearing);
+  double sn_bearing = std::sin(delta_bearing);
 
   // Accumulate absolute motion
-  odom_integrator_absolute_motion_.v[0] += fabs(delta_trans * cs_bearing);
-  odom_integrator_absolute_motion_.v[1] += fabs(delta_trans * sn_bearing);
-  odom_integrator_absolute_motion_.v[2] += fabs(delta_rot);
+  odom_integrator_absolute_motion_.v[0] += std::fabs(delta_trans * cs_bearing);
+  odom_integrator_absolute_motion_.v[1] += std::fabs(delta_trans * sn_bearing);
+  odom_integrator_absolute_motion_.v[2] += std::fabs(delta_rot);
 
   // We could also track velocity and acceleration here, for motion models that adjust for velocity/acceleration.
   // We could also track the covariance of the odometry message and accumulate a total covariance across the time
@@ -1040,14 +1041,18 @@ void Node::setScannersUpdateFlags(const PFVector& delta,
     bool update;
     if (odom_integrator_topic_.size())
     {
-      double abs_trans = sqrt(odom_integrator_absolute_motion_.v[0] * odom_integrator_absolute_motion_.v[0] +
-                              odom_integrator_absolute_motion_.v[1] * odom_integrator_absolute_motion_.v[1]);
+      double abs_trans = std::sqrt(odom_integrator_absolute_motion_.v[0]
+                                   * odom_integrator_absolute_motion_.v[0]
+                                   + odom_integrator_absolute_motion_.v[1]
+                                   * odom_integrator_absolute_motion_.v[1]);
       double abs_rot = odom_integrator_absolute_motion_.v[2];
       update = abs_trans >= d_thresh_ || abs_rot >= a_thresh_;
     }
     else
     {
-      update = fabs(delta.v[0]) > d_thresh_ || fabs(delta.v[1]) > d_thresh_ || fabs(delta.v[2]) > a_thresh_;
+      update = std::fabs(delta.v[0]) > d_thresh_
+                         || std::fabs(delta.v[1]) > d_thresh_
+                         || std::fabs(delta.v[2]) > a_thresh_;
     }
     update = update || *force_update;
     *force_update = false;

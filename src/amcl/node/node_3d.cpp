@@ -72,7 +72,8 @@ Node3D::Node3D(Node* node, std::mutex& configuration_mutex)
   private_nh_.param("point_cloud_gompertz_input_shift", gompertz_input_shift_, 0.0);
   private_nh_.param("point_cloud_gompertz_input_scale", gompertz_input_scale_, 1.0);
   private_nh_.param("point_cloud_gompertz_output_shift", gompertz_output_shift_, 0.0);
-  private_nh_.param("global_localization_scanner_off_map_factor", global_localization_off_map_factor_, 1.0);
+  private_nh_.param("global_localization_scanner_off_map_factor",
+                    global_localization_off_map_factor_, 1.0);
   private_nh_.param("global_localization_scanner_non_free_space_factor",
                     global_localization_non_free_space_factor_, 1.0);
   const std::string default_point_cloud_scan_topic = "/scans/top/points_filtered";
@@ -89,8 +90,8 @@ Node3D::Node3D(Node* node, std::mutex& configuration_mutex)
   }
   else
   {
-    ROS_WARN("Unknown point cloud scanner model type \"%s\"; defaulting to point cloud scanner model",
-             tmp_model_type.c_str());
+    ROS_WARN("Unknown point cloud scanner model type \"%s\"; defaulting to point cloud scanner "
+             "model", tmp_model_type.c_str());
     model_type_ = POINT_CLOUD_MODEL;
   }
   private_nh_.param("map_scale_up_factor", occupancy_map_scale_up_factor_, 1);
@@ -98,7 +99,8 @@ Node3D::Node3D(Node* node, std::mutex& configuration_mutex)
   scan_sub_ = std::unique_ptr<message_filters::Subscriber<sensor_msgs::PointCloud2>>(
       new message_filters::Subscriber<sensor_msgs::PointCloud2>(nh_, scan_topic_, 1));
   scan_filter_ = std::unique_ptr<tf::MessageFilter<sensor_msgs::PointCloud2>>(
-      new tf::MessageFilter<sensor_msgs::PointCloud2>(*scan_sub_, tf_, node_->getOdomFrameId(), 1));
+      new tf::MessageFilter<sensor_msgs::PointCloud2>(*scan_sub_, tf_,
+                                                      node_->getOdomFrameId(), 1));
   scan_filter_->registerCallback(boost::bind(&Node3D::scanReceived, this, _1));
   // 15s timer to warn on lack of receipt of point cloud scans, #5209
   scanner_check_interval_ = ros::Duration(15.0);
@@ -137,7 +139,8 @@ void Node3D::reconfigure(amcl::AMCLConfig& config)
   non_free_space_factor_ = config.laser_non_free_space_factor;
   non_free_space_radius_ = config.laser_non_free_space_radius;
   global_localization_off_map_factor_ = config.global_localization_laser_off_map_factor;
-  global_localization_non_free_space_factor_ = config.global_localization_laser_non_free_space_factor;
+  global_localization_non_free_space_factor_ = (
+          config.global_localization_laser_non_free_space_factor);
   if (config.laser_model_type == "likelihood_field")
   {
     model_type_ = POINT_CLOUD_MODEL;
@@ -155,7 +158,8 @@ void Node3D::reconfigure(amcl::AMCLConfig& config)
   }
   else if (model_type_ == POINT_CLOUD_MODEL_GOMPERTZ)
   {
-    ROS_INFO("Initializing likelihood field (gompertz) model; this can take some time on large maps...");
+    ROS_INFO("Initializing likelihood field (gompertz) model; this can take some time on large "
+             "maps...");
     scanner_.setPointCloudModelGompertz(
         z_hit_, z_rand_, sigma_hit_, sensor_likelihood_max_dist_, gompertz_a_, gompertz_b_,
         gompertz_c_, gompertz_input_shift_, gompertz_input_scale_,
@@ -171,7 +175,8 @@ void Node3D::reconfigure(amcl::AMCLConfig& config)
 
   scanner_.setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
   scan_filter_ = std::unique_ptr<tf::MessageFilter<sensor_msgs::PointCloud2>>(
-      new tf::MessageFilter<sensor_msgs::PointCloud2>(*scan_sub_, tf_, node_->getOdomFrameId(), 100));
+      new tf::MessageFilter<sensor_msgs::PointCloud2>(*scan_sub_, tf_,
+                                                      node_->getOdomFrameId(), 100));
   scan_filter_->registerCallback(boost::bind(&Node3D::scanReceived, this, _1));
   pf_ = node_->getPfPtr();
 }
@@ -226,7 +231,8 @@ void Node3D::initFromNewMap()
   }
   else if (model_type_ == POINT_CLOUD_MODEL_GOMPERTZ)
   {
-    ROS_INFO("Initializing likelihood field (gompertz) model; this can take some time on large maps...");
+    ROS_INFO("Initializing likelihood field (gompertz) model; this can take some time on large "
+             "maps...");
     scanner_.setPointCloudModelGompertz(
         z_hit_, z_rand_, sigma_hit_, sensor_likelihood_max_dist_, gompertz_a_, gompertz_b_,
         gompertz_c_, gompertz_input_shift_, gompertz_input_scale_, gompertz_output_shift_);
@@ -357,7 +363,8 @@ void Node3D::updateScanner(const sensor_msgs::PointCloud2ConstPtr& point_cloud_s
   pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud(new pcl::PointCloud<pcl::PointXYZ>);
   makePointCloudFromScan(point_cloud_scan, point_cloud);
   updateLatestScanData(point_cloud, scanner_index);
-  scanners_[scanner_index]->updateSensor(pf_, std::dynamic_pointer_cast<SensorData>(latest_scan_data_));
+  scanners_[scanner_index]->updateSensor(pf_, std::dynamic_pointer_cast<SensorData>(
+                                                latest_scan_data_));
   scanners_update_.at(scanner_index) = false;
   if(!(++resample_count_ % resample_interval_))
   {
@@ -422,8 +429,8 @@ int Node3D::initFrameToScanner(const std::string& frame_id, tf::Stamped<tf::Pose
   scanners_.push_back(std::make_shared<PointCloudScanner>(scanner_));
   scanners_update_.push_back(true);
   int scanner_index = frame_to_scanner_.size();
-  tf::Stamped<tf::Pose> ident(tf::Transform(tf::createIdentityQuaternion(), tf::Vector3(0, 0, 0)), ros::Time(),
-                              frame_id);
+  tf::Stamped<tf::Pose> ident(tf::Transform(tf::createIdentityQuaternion(), tf::Vector3(0, 0, 0)),
+                              ros::Time(), frame_id);
   bool success = true;
   try
   {
@@ -576,19 +583,21 @@ void Node3D::checkScanReceived(const ros::TimerEvent& event)
   ros::Duration d = ros::Time::now() - latest_scan_received_ts_;
   if (d > scanner_check_interval_)
   {
-    ROS_DEBUG("No point cloud scan received (and thus no pose updates have been published) for %f seconds. "
-              "Verify that data is being published on the %s topic.",
+    ROS_DEBUG("No point cloud scan received (and thus no pose updates have been published) for %f "
+              "seconds. Verify that data is being published on the %s topic.",
               d.toSec(), ros::names::resolve(scan_topic_).c_str());
   }
 }
 
 void Node3D::globalLocalizationCallback()
 {
-  scanner_.setMapFactors(global_localization_off_map_factor_, global_localization_non_free_space_factor_,
-                                     non_free_space_radius_);
+  scanner_.setMapFactors(global_localization_off_map_factor_,
+                         global_localization_non_free_space_factor_,
+                         non_free_space_radius_);
   for (auto& l : scanners_)
   {
-    l->setMapFactors(global_localization_off_map_factor_, global_localization_non_free_space_factor_,
+    l->setMapFactors(global_localization_off_map_factor_,
+                     global_localization_non_free_space_factor_,
                      non_free_space_radius_);
   }
 }

@@ -24,11 +24,11 @@
 
 #include "pf/pf_kdtree.h"
 
-#include <math.h>
 #include <ros/assert.h>
-#include <stdlib.h>
 
-#include <string>
+#include <cmath>
+#include <cstdlib>
+#include <cstring>
 #include <vector>
 
 using namespace amcl;
@@ -45,7 +45,7 @@ PFKDTree::PFKDTree(int max_size)
 
   node_count_ = 0;
   node_max_count_ = max_size;
-  nodes_ = (PFKDTreeNode*)calloc(node_max_count_, sizeof(PFKDTreeNode));
+  nodes_ = (PFKDTreeNode*)std::calloc(node_max_count_, sizeof(PFKDTreeNode));
 
   leaf_count_ = 0;
 }
@@ -54,7 +54,7 @@ PFKDTree::PFKDTree(int max_size)
 // Destroy a tree
 PFKDTree::~PFKDTree()
 {
-  free(nodes_);
+  std::free(nodes_);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -72,9 +72,9 @@ void PFKDTree::insertPose(PFVector pose, double value)
 {
   int key[3];
 
-  key[0] = floor(pose.v[0] / cell_size_[0]);
-  key[1] = floor(pose.v[1] / cell_size_[1]);
-  key[2] = floor(pose.v[2] / cell_size_[2]);
+  key[0] = std::floor(pose.v[0] / cell_size_[0]);
+  key[1] = std::floor(pose.v[1] / cell_size_[1]);
+  key[2] = std::floor(pose.v[2] / cell_size_[2]);
 
   root_ = insertNode(NULL, root_, key, value);
 }
@@ -86,9 +86,9 @@ int PFKDTree::getCluster(PFVector pose)
   int key[3];
   PFKDTreeNode* node;
 
-  key[0] = floor(pose.v[0] / cell_size_[0]);
-  key[1] = floor(pose.v[1] / cell_size_[1]);
-  key[2] = floor(pose.v[2] / cell_size_[2]);
+  key[0] = std::floor(pose.v[0] / cell_size_[0]);
+  key[1] = std::floor(pose.v[1] / cell_size_[1]);
+  key[2] = std::floor(pose.v[2] / cell_size_[2]);
 
   node = findNode(root_, key);
   if (node == NULL)
@@ -115,7 +115,8 @@ PFKDTreeNode* PFKDTree::insertNode(PFKDTreeNode* parent, PFKDTreeNode* node, int
   {
     ROS_ASSERT(node_count_ < node_max_count_);
     node = nodes_ + node_count_++;
-    memset(node, 0, sizeof(PFKDTreeNode));
+    // TODO: refactor memset
+    std::memset(node, 0, sizeof(PFKDTreeNode));
 
     node->leaf = 1;
 
@@ -149,7 +150,7 @@ PFKDTreeNode* PFKDTree::insertNode(PFKDTreeNode* parent, PFKDTreeNode* node, int
       node->pivot_dim = -1;
       for (i = 0; i < 3; i++)
       {
-        split = abs(key[i] - node->key[i]);
+        split = std::abs(key[i] - node->key[i]);
         if (split > max_split)
         {
           max_split = split;

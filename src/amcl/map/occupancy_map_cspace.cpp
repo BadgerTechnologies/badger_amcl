@@ -25,9 +25,8 @@
 #include "map/occupancy_map.h"
 
 #include <ros/console.h>
-#include <stdlib.h>
 
-#include <string>
+#include <algorithm>
 
 using namespace amcl;
 
@@ -117,8 +116,8 @@ void OccupancyMap::updateNode(int i, int j, const OccupancyMapCellData& current_
 
 bool OccupancyMap::enqueue(int i, int j, int src_i, int src_j)
 {
-  int di = abs(i - src_i);
-  int dj = abs(j - src_j);
+  int di = std::abs(i - src_i);
+  int dj = std::abs(j - src_j);
   double distance = cdm_.distances_[di][dj];
   if (distance > cdm_.cell_radius_)
   {

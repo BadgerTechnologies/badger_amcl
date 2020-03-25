@@ -26,10 +26,10 @@
 #include <octomap/OcTreeDataNode.h>
 #include <octomap/OcTreeNode.h>
 #include <ros/console.h>
-#include <stdlib.h>
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 
 using namespace amcl;
 
@@ -73,7 +73,8 @@ void OctoMap::iterateObstacleCells()
   std::vector<double> world_coords(3);
   std::vector<int> map_coords(3);
 
-  for (octomap::OcTree::leaf_iterator it = octree_->begin_leafs(), end = octree_->end_leafs(); it != end; ++it)
+  for (octomap::OcTree::leaf_iterator it = octree_->begin_leafs(),
+          end = octree_->end_leafs(); it != end; ++it)
   {
     if (octree_->isNodeOccupied(*it))
     {
@@ -150,9 +151,9 @@ void OctoMap::updateNode(int i, int j, int k, const OctoMapCellData& current_cel
 // Adds the voxel to the queue if the voxel is close enough to an object
 bool OctoMap::enqueue(int i, int j, int k, int src_i, int src_j, int src_k)
 {
-  int di = abs(i - src_i);
-  int dj = abs(j - src_j);
-  int dk = abs(k - src_k);
+  int di = std::abs(i - src_i);
+  int dj = std::abs(j - src_j);
+  int dk = std::abs(k - src_k);
   double distance = cdm_.distances_[di][dj][dk];
 
   if (distance <= cdm_.cell_radius_)
@@ -175,14 +176,14 @@ bool OctoMap::enqueue(int i, int j, int k, int src_i, int src_j, int src_k)
 // Sets the distance from the voxel to the nearest object in the static map
 void OctoMap::setOccDist(int i, int j, int k, double d)
 {
-  size_t hash = makeHash(i, j, k);
+  std::size_t hash = makeHash(i, j, k);
   distances_.insert_or_assign(hash, d);
 }
 
 // returns the distance from the 3d voxel to the nearest object in the static map
 double OctoMap::getOccDist(int i, int j, int k)
 {
-  size_t hash = makeHash(i, j, k);
+  std::size_t hash = makeHash(i, j, k);
   hashmap_iterator_ = distances_.find(hash);
   if(hashmap_iterator_ != distances_end_)
   {
@@ -191,7 +192,7 @@ double OctoMap::getOccDist(int i, int j, int k)
   return max_occ_dist_;
 }
 
-size_t OctoMap::makeHash(int i, int j, int k)
+std::size_t OctoMap::makeHash(int i, int j, int k)
 {
   std::size_t hash(0);
   boost::hash_combine(hash, i);

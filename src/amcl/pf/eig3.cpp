@@ -7,16 +7,16 @@
 
 #include "pf/eig3.h"
 
-#include <math.h>
 #include <ros/console.h>
 
 #include <algorithm>
+#include <cmath>
 
 using namespace amcl;
 
 double EIG3::hypot2(double x, double y)
 {
-  return sqrt(x * x + y * y);
+  return std::sqrt(x * x + y * y);
 }
 
 // Symmetric Householder reduction to tridiagonal form.
@@ -45,7 +45,7 @@ void EIG3::tred2(PFMatrix& V, PFVector* d, PFVector* e)
     double h = 0.0;
     for (k = 0; k < i; k++)
     {
-      scale = scale + fabs(d->v[k]);
+      scale = scale + std::fabs(d->v[k]);
     }
     if (scale == 0.0)
     {
@@ -67,7 +67,7 @@ void EIG3::tred2(PFMatrix& V, PFVector* d, PFVector* e)
         h += d->v[k] * d->v[k];
       }
       f = d->v[i - 1];
-      g = sqrt(h);
+      g = std::sqrt(h);
       if (f > 0)
       {
         g = -g;
@@ -181,16 +181,16 @@ void EIG3::tql2(PFMatrix& V, PFVector& d, PFVector& e)
 
   f = 0.0;
   tst1 = 0.0;
-  eps = pow(2.0, -52.0);
+  eps = std::pow(2.0, -52.0);
   for (l = 0; l < N; l++)
   {
     // Find small subdiagonal element
 
-    tst1 = std::max(fabs(d.v[l]) + fabs(e.v[l]), tst1);
+    tst1 = std::max(std::fabs(d.v[l]) + std::fabs(e.v[l]), tst1);
     m = l;
     while (m < N)
     {
-      if (fabs(e.v[m]) <= eps * tst1)
+      if (std::fabs(e.v[m]) <= eps * tst1)
       {
         break;
       }
@@ -264,7 +264,7 @@ void EIG3::tql2(PFMatrix& V, PFVector& d, PFVector& e)
 
         // Check for convergence.
 
-      } while (fabs(e.v[l]) > eps * tst1);
+      } while (std::fabs(e.v[l]) > eps * tst1);
     }
     d.v[l] = d.v[l] + f;
     e.v[l] = 0.0;

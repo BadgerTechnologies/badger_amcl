@@ -24,14 +24,13 @@
 
 #include "pf/particle_filter.h"
 
-#include <math.h>
 #include <ros/assert.h>
 #include <ros/console.h>
-#include <stddef.h>
-#include <stdlib.h>
-#include <time.h>
 
+#include <cmath>
+#include <cstddef>
 #include <cstdlib>
+#include <ctime>
 
 #include "pf/pdf_gaussian.h"
 #include "sensors/sensor.h"
@@ -39,14 +38,14 @@
 using namespace amcl;
 
 // Create a new filter
-ParticleFilter::ParticleFilter(int min_samples, int max_samples, double alpha_slow, double alpha_fast,
-                               std::function<PFVector()> random_pose_fn)
+ParticleFilter::ParticleFilter(int min_samples, int max_samples, double alpha_slow,
+                               double alpha_fast, std::function<PFVector()> random_pose_fn)
 {
   int i, j;
   std::shared_ptr<PFSampleSet> set;
   PFSample* sample;
 
-  srand48(time(NULL));
+  srand48(std::time(NULL));
 
   resample_model_ = PF_RESAMPLE_MULTINOMIAL;
   random_pose_fn_ = random_pose_fn;
@@ -205,8 +204,8 @@ bool ParticleFilter::updateConverged()
   for (i = 0; i < set->sample_count; i++)
   {
     sample = &(set->samples[i]);
-    if (fabs(sample->pose.v[0] - mean_x) > dist_threshold_
-        || fabs(sample->pose.v[1] - mean_y) > dist_threshold_)
+    if (std::fabs(sample->pose.v[0] - mean_x) > dist_threshold_
+        || std::fabs(sample->pose.v[1] - mean_y) > dist_threshold_)
     {
       set->converged = 0;
       converged_ = false;
@@ -293,7 +292,8 @@ double ParticleFilter::resampleSystematic(double w_diff)
   // Approximate set_b's leaf_count from set_a's
   int new_count = resampleLimit(set_a->kdtree->getLeafCount());
   // Try to add particles for randomness.
-  // No need to throw away our (possibly good) particles when we have free space in the filter for random ones.
+  // No need to throw away our (possibly good) particles when we have free space in the filter
+  // for random ones.
   if (w_diff > 0.0)
   {
     new_count *= (1.0 + w_diff);
@@ -481,10 +481,10 @@ int ParticleFilter::resampleLimit(int k)
 
   a = 1;
   b = 2 / (9 * ((double)k - 1));
-  c = sqrt(2 / (9 * ((double)k - 1))) * pop_z_;
+  c = std::sqrt(2 / (9 * ((double)k - 1))) * pop_z_;
   x = a - b + c;
 
-  n = (int)ceil((k - 1) / (2 * pop_err_) * x * x * x);
+  n = (int)std::ceil((k - 1) / (2 * pop_err_) * x * x * x);
 
   if (n < min_samples_)
     return min_samples_;
@@ -508,7 +508,7 @@ void ParticleFilter::clusterStats(std::shared_ptr<PFSampleSet> set)
 
   // Workspace
   double m[4], c[2][2];
-  size_t count;
+  std::size_t count;
   double weight;
 
   // Cluster the samples
@@ -567,13 +567,13 @@ void ParticleFilter::clusterStats(std::shared_ptr<PFSampleSet> set)
     // Compute mean
     cluster->m[0] += sample->weight * sample->pose.v[0];
     cluster->m[1] += sample->weight * sample->pose.v[1];
-    cluster->m[2] += sample->weight * cos(sample->pose.v[2]);
-    cluster->m[3] += sample->weight * sin(sample->pose.v[2]);
+    cluster->m[2] += sample->weight * std::cos(sample->pose.v[2]);
+    cluster->m[3] += sample->weight * std::sin(sample->pose.v[2]);
 
     m[0] += sample->weight * sample->pose.v[0];
     m[1] += sample->weight * sample->pose.v[1];
-    m[2] += sample->weight * cos(sample->pose.v[2]);
-    m[3] += sample->weight * sin(sample->pose.v[2]);
+    m[2] += sample->weight * std::cos(sample->pose.v[2]);
+    m[3] += sample->weight * std::sin(sample->pose.v[2]);
 
     // Compute covariance in linear components
     for (j = 0; j < 2; j++)
@@ -591,24 +591,26 @@ void ParticleFilter::clusterStats(std::shared_ptr<PFSampleSet> set)
 
     cluster->mean.v[0] = cluster->m[0] / cluster->weight;
     cluster->mean.v[1] = cluster->m[1] / cluster->weight;
-    cluster->mean.v[2] = atan2(cluster->m[3], cluster->m[2]);
+    cluster->mean.v[2] = std::atan2(cluster->m[3], cluster->m[2]);
 
     cluster->cov = PFMatrix();
 
     // Covariance in linear components
     for (j = 0; j < 2; j++)
       for (k = 0; k < 2; k++)
-        cluster->cov.m[j][k] = cluster->c[j][k] / cluster->weight - cluster->mean.v[j] * cluster->mean.v[k];
+        cluster->cov.m[j][k] = (cluster->c[j][k] / cluster->weight
+                                - cluster->mean.v[j] * cluster->mean.v[k]);
 
     // Covariance in angular components; I think this is the correct
     // formula for circular statistics.
-    cluster->cov.m[2][2] = -2 * log(sqrt(cluster->m[2] * cluster->m[2] + cluster->m[3] * cluster->m[3]));
+    cluster->cov.m[2][2] = -2 * std::log(std::sqrt(cluster->m[2] * cluster->m[2]
+                                                   + cluster->m[3] * cluster->m[3]));
   }
 
   // Compute overall filter stats
   set->mean.v[0] = m[0] / weight;
   set->mean.v[1] = m[1] / weight;
-  set->mean.v[2] = atan2(m[3], m[2]);
+  set->mean.v[2] = std::atan2(m[3], m[2]);
 
   // Covariance in linear components
   for (j = 0; j < 2; j++)
@@ -617,7 +619,7 @@ void ParticleFilter::clusterStats(std::shared_ptr<PFSampleSet> set)
 
   // Covariance in angular components; I think this is the correct
   // formula for circular statistics.
-  set->cov.m[2][2] = -2 * log(sqrt(m[2] * m[2] + m[3] * m[3]));
+  set->cov.m[2][2] = -2 * std::log(std::sqrt(m[2] * m[2] + m[3] * m[3]));
 }
 
 // Compute the CEP statistics (mean and variance).
