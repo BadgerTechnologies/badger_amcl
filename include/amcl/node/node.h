@@ -126,7 +126,6 @@ private:
   void publishInitialPose();
   void newInitialPoseSubscriber(const ros::SingleSubscriberPublisher& single_sub_pub);
 
-  std::string makeFilepathFromName(const std::string filename);
   void loadPose();
   void publishPose(const geometry_msgs::PoseWithCovarianceStamped& p);
   void applyInitialPose();

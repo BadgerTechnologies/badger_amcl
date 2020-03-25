@@ -79,10 +79,8 @@ Node::Node()
   private_nh_.param("odom_alpha5", alpha5_, 0.2);
 
   private_nh_.param("save_pose", save_pose_, false);
-  const std::string default_filename = "savedpose.yaml";
-  std::string filename;
-  private_nh_.param("saved_pose_filename", filename, default_filename);
-  saved_pose_filepath_ = makeFilepathFromName(filename);
+  const std::string default_filepath = "savedpose.yaml";
+  private_nh_.param("saved_pose_filepath", saved_pose_filepath_, default_filepath);
 
   std::string tmp_model_type;
   private_nh_.param("odom_model_type", tmp_model_type, std::string("diff"));
@@ -274,8 +272,7 @@ void Node::reconfigureCB(AMCLConfig& config, uint32_t level)
   global_frame_id_ = config.global_frame_id;
   node_->reconfigure(config);
   save_pose_ = config.save_pose;
-  const std::string filename = config.saved_pose_filename;
-  saved_pose_filepath_ = makeFilepathFromName(filename);
+  saved_pose_filepath_ = config.saved_pose_filepath;
   initial_pose_sub_ = nh_.subscribe("initialpose", 2, &Node::initialPoseReceived, this);
   publish_transform_timer_ = nh_.createTimer(transform_publish_period_, boost::bind(&Node::publishTransform, this, _1));
 }
@@ -721,17 +718,6 @@ void Node::savePoseToFile()
   badger_file_lib::atomic_ofstream file_buf(saved_pose_filepath_);
   file_buf << pose_stamped_node;
   file_buf.close();
-}
-
-std::string Node::makeFilepathFromName(const std::string filename)
-{
-  const char* bar_common = std::getenv("BAR_COMMON");
-  if (bar_common == nullptr)
-  {
-    bar_common = "/var/snap/bar-base/common";
-  }
-  std::string bar_common_string = bar_common;
-  return bar_common_string + "/" + filename;
 }
 
 void Node::initFromNewMap(std::shared_ptr<Map> new_map)
