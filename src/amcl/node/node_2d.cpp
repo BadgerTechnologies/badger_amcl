@@ -465,7 +465,6 @@ bool Node2D::initLatestScanData(const sensor_msgs::LaserScanConstPtr& planar_sca
                                 int scanner_index)
 {
   latest_scan_data_ = std::make_shared<PlanarData>();
-  latest_scan_data_->sensor_ = scanners_[scanner_index];
   latest_scan_data_->range_count_ = planar_scan->ranges.size();
 }
 
