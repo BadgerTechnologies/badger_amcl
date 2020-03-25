@@ -58,7 +58,7 @@ public:
   PointCloudScanner();
   ~PointCloudScanner() = default;
 
-  void init(size_t max_beams, std::shared_ptr<OctoMap> map);
+  void init(int max_beams, std::shared_ptr<OctoMap> map);
 
   void setPointCloudModel(double z_hit, double z_rand, double sigma_hit, double max_occ_dist);
   void setPointCloudModelGompertz(double z_hit, double z_rand, double sigma_hit, double max_occ_dist, double gompertz_a,

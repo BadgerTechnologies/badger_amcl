@@ -47,7 +47,7 @@ PlanarScanner::PlanarScanner() : Sensor(), max_beams_(0), max_samples_(0), max_o
     map_vec_ = { 0, 0 };
 }
 
-void PlanarScanner::init(size_t max_beams, std::shared_ptr<OccupancyMap> map)
+void PlanarScanner::init(int max_beams, std::shared_ptr<OccupancyMap> map)
 {
   max_beams_ = max_beams;
   map_ = map;

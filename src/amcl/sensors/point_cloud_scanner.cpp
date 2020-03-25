@@ -47,7 +47,7 @@ PointCloudScanner::PointCloudScanner() : Sensor()
     world_vec_ = {0.0, 0.0, 0.0};
 }
 
-void PointCloudScanner::init(size_t max_beams, std::shared_ptr<OctoMap> map)
+void PointCloudScanner::init(int max_beams, std::shared_ptr<OctoMap> map)
 {
   max_beams_ = max_beams;
   map_ = map;
