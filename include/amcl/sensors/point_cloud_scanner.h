@@ -46,8 +46,8 @@ enum PointCloudModelType
 class PointCloudData : public SensorData
 {
 public:
-  PointCloudData(){};
-  virtual ~PointCloudData(){};
+  PointCloudData() = default;
+  virtual ~PointCloudData() = default;
   std::string frame_id_;
   pcl::PointCloud<pcl::PointXYZ> points_;
 };
@@ -56,7 +56,7 @@ class PointCloudScanner : public Sensor
 {
 public:
   PointCloudScanner();
-  ~PointCloudScanner(){};
+  ~PointCloudScanner() = default;
 
   void init(size_t max_beams, std::shared_ptr<OctoMap> map);
 

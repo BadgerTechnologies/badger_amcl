@@ -61,7 +61,7 @@ class OccupancyMap : public Map
 {
 public:
   OccupancyMap(double resolution);
-  virtual ~OccupancyMap() {};
+  virtual ~OccupancyMap() = default;
   // Convert from map index to world coords
   virtual void convertMapToWorld(const std::vector<int>& map_coords,
                                  std::vector<double>* world_coords);

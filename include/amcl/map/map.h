@@ -36,7 +36,7 @@ class Map
 {
 public:
   Map(double resolution);
-  virtual ~Map() {};
+  virtual ~Map() = default;
 
   // Convert from map index to world coords
   virtual void convertMapToWorld(const std::vector<int>& map_coords, std::vector<double>* world_coords) = 0;

@@ -50,8 +50,8 @@ enum PlanarModelType
 class PlanarData : public SensorData
 {
 public:
-  PlanarData(){};
-  virtual ~PlanarData(){};
+  PlanarData() = default;
+  virtual ~PlanarData() = default;
   // Planar range data (range, bearing tuples)
   int range_count_;
   double range_max_;
