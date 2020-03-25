@@ -46,7 +46,6 @@ enum PointCloudModelType
 class PointCloudData : public SensorData
 {
 public:
-  PointCloudData() = default;
   virtual ~PointCloudData() = default;
   std::string frame_id_;
   pcl::PointCloud<pcl::PointXYZ> points_;
