@@ -53,7 +53,7 @@ class OctoMap : public Map
 {
 public:
   OctoMap(double resolution, bool wait_for_occupancy_map);
-  virtual ~OctoMap() {};
+  virtual ~OctoMap() = default;
   // Convert from map index to world coords
   virtual void convertMapToWorld(const std::vector<int>& map_coords,
                                  std::vector<double>* world_coords);
