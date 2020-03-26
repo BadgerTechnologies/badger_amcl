@@ -47,8 +47,6 @@ public:
   int cell_radius_;
 };
 
-struct OctoMapCellData;
-
 class OctoMap : public Map
 {
 public:
@@ -74,6 +72,7 @@ public:
   virtual double getMaxOccDist();
 
 protected:
+  struct OctoMapCellData;
   static constexpr double EPSILON = std::numeric_limits<double>::epsilon();
 
   virtual void iterateObstacleCells();
@@ -92,22 +91,22 @@ protected:
   std::priority_queue<OctoMapCellData> q_;
   octomap::OcTree marked_;
 
+  struct OctoMapCellData
+  {
+    OctoMapCellData(OctoMap& o_map) : octo_map(&o_map) {};
+    OctoMap* octo_map;
+    int i, j, k;
+    int src_i, src_j, src_k;
+    inline bool operator<(const OctoMapCellData& b) const
+    {
+      return octo_map->getOccDist(i, j, k) > b.octo_map->getOccDist(b.i, b.j, b.k);
+    }
+  };
+
 private:
   inline void setOccDist(int i, int j, int k, double d);
   inline void updateNode(int i, int j, int k, const OctoMapCellData& current_cell);
   inline std::size_t makeHash(int i, int j, int k);
-};
-
-struct OctoMapCellData
-{
-  OctoMap* octo_map;
-  OctoMapCellData(OctoMap& o_map) : octo_map(&o_map) {}
-  int i, j, k;
-  int src_i, src_j, src_k;
-  inline bool operator<(const OctoMapCellData& b) const
-  {
-    return octo_map->getOccDist(i, j, k) > b.octo_map->getOccDist(b.i, b.j, b.k);
-  }
 };
 }  // namespace amcl
 

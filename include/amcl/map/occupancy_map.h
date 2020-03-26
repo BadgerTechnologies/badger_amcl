@@ -55,8 +55,6 @@ public:
   int cell_radius_;
 };
 
-struct OccupancyMapCellData;
-
 class OccupancyMap : public Map
 {
 public:
@@ -86,6 +84,8 @@ public:
   virtual void setCellState(int index, MapCellState state);
 
 protected:
+  struct OccupancyMapCellData;
+
   virtual void iterateObstacleCells();
   virtual void iterateEmptyCells();
   virtual bool enqueue(int i, int j, int src_i, int src_j);
@@ -103,21 +103,21 @@ protected:
   std::priority_queue<OccupancyMapCellData> q_;
   std::vector<bool> marked_;
 
+  struct OccupancyMapCellData
+  {
+    OccupancyMap* occ_map;
+    OccupancyMapCellData(OccupancyMap* o_map) : occ_map(o_map) {}
+    int i, j;
+    int src_i, src_j;
+    inline bool operator<(const OccupancyMapCellData& b) const
+    {
+      return occ_map->getOccDist(i, j) > b.occ_map->getOccDist(b.i, b.j);
+    }
+  };
+
 private:
   inline void setMapOccDist(int i, int j, float d);
   inline void updateNode(int i, int j, const OccupancyMapCellData& current_cell);
-};
-
-struct OccupancyMapCellData
-{
-  OccupancyMap* occ_map;
-  OccupancyMapCellData(OccupancyMap* o_map) : occ_map(o_map) {}
-  int i, j;
-  int src_i, src_j;
-  inline bool operator<(const OccupancyMapCellData& b) const
-  {
-    return occ_map->getOccDist(i, j) > b.occ_map->getOccDist(b.i, b.j);
-  }
 };
 }  // namespace amcl
 
