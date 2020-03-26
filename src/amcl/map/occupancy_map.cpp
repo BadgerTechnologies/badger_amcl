@@ -32,11 +32,11 @@
 namespace amcl
 {
 
-OccupancyMap::OccupancyMap(double resolution) :
-    Map(resolution),
-    size_x_(0),
-    size_y_(0),
-    cdm_(resolution, 0.0)
+OccupancyMap::OccupancyMap(double resolution)
+    : Map(resolution),
+      size_x_(0),
+      size_y_(0),
+      cdm_(resolution, 0.0)
 {
   max_occ_dist_ = 0.0;
 }

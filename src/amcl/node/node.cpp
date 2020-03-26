@@ -46,14 +46,14 @@ namespace amcl
 {
 
 Node::Node()
-  : sent_first_transform_(false)
-  , latest_tf_valid_(false)
-  , map_(NULL)
-  , private_nh_("~")
-  , initial_pose_hyp_(NULL)
-  , first_reconfigure_call_(true)
-  , global_localization_active_(false)
-  , dsrv_(ros::NodeHandle("~"))
+  : sent_first_transform_(false),
+    latest_tf_valid_(false),
+    map_(NULL),
+    private_nh_("~"),
+    initial_pose_hyp_(NULL),
+    first_reconfigure_call_(true),
+    global_localization_active_(false),
+    dsrv_(ros::NodeHandle("~"))
 {
   std::lock_guard<std::mutex> cfl(configuration_mutex_);
 

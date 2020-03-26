@@ -36,7 +36,11 @@ namespace amcl
 
 ////////////////////////////////////////////////////////////////////////////////
 // Default constructor
-PlanarScanner::PlanarScanner() : Sensor(), max_beams_(0), max_samples_(0), max_obs_(0)
+PlanarScanner::PlanarScanner()
+    : Sensor(),
+      max_beams_(0),
+      max_samples_(0),
+      max_obs_(0)
 {
   map_ = nullptr;
 
