@@ -27,7 +27,6 @@
 namespace amcl
 {
 
-// Create a new map
 OccupancyMap::OccupancyMap(double resolution) :
     Map(resolution),
     size_x_(0),
@@ -112,7 +111,7 @@ MapCellState OccupancyMap::getCellState(int i, int j)
 CachedDistanceOccupancyMap::CachedDistanceOccupancyMap(double resolution, double max_dist)
     : resolution_(resolution), max_dist_(max_dist)
 {
-  cell_radius_ = (int)std::floor(max_dist / resolution);
+  cell_radius_ = static_cast<int>(std::floor(max_dist / resolution));
   distances_.resize(cell_radius_ + 2);
   for (int i = 0; i <= cell_radius_ + 1; i++)
   {
