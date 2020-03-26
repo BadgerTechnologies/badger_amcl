@@ -105,6 +105,7 @@ protected:
 
   struct OccupancyMapCellData
   {
+    OccupancyMapCellData() = delete;
     OccupancyMap* occ_map;
     OccupancyMapCellData(OccupancyMap* o_map) : occ_map(o_map) {}
     int i, j;

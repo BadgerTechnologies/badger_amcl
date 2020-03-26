@@ -93,6 +93,7 @@ protected:
 
   struct OctoMapCellData
   {
+    OctoMapCellData() = delete;
     OctoMapCellData(OctoMap& o_map) : octo_map(&o_map) {};
     OctoMap* octo_map;
     int i, j, k;
