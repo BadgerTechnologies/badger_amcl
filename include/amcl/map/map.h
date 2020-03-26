@@ -32,6 +32,7 @@
 
 namespace amcl
 {
+
 class Map
 {
 public:

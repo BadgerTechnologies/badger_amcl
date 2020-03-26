@@ -24,7 +24,8 @@
 
 #include "map/map.h"
 
-using namespace amcl;
+namespace amcl
+{
 
 // Create a new map
 Map::Map(double resolution) : resolution_(resolution)
@@ -47,3 +48,5 @@ bool Map::isCSpaceCreated()
 {
   return cspace_created_;
 }
+
+}  // namespace amcl

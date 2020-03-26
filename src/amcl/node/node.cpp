@@ -42,7 +42,8 @@
 #include "node/node_2d.h"
 #include "node/node_3d.h"
 
-using namespace amcl;
+namespace amcl
+{
 
 Node::Node()
   : sent_first_transform_(false)
@@ -1218,3 +1219,5 @@ std::string Node::getBaseFrameId()
 {
   return base_frame_id_;
 }
+
+}  // namespace amcl

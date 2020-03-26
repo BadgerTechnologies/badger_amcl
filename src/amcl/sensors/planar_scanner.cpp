@@ -31,7 +31,8 @@
 #include <cstdlib>
 #include <functional>
 
-using namespace amcl;
+namespace amcl
+{
 
 ////////////////////////////////////////////////////////////////////////////////
 // Default constructor
@@ -690,3 +691,5 @@ void PlanarScanner::clearTempData(int new_max_samples, int new_max_obs)
   temp_obs_.clear();
   temp_obs_.resize(max_samples_, std::vector<double>(max_obs_, 0.0));
 }
+
+}  // namespace amcl

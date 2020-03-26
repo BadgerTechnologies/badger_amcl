@@ -24,7 +24,8 @@
 
 #include "map/occupancy_map.h"
 
-using namespace amcl;
+namespace amcl
+{
 
 // Create a new map
 OccupancyMap::OccupancyMap(double resolution) :
@@ -122,3 +123,5 @@ CachedDistanceOccupancyMap::CachedDistanceOccupancyMap(double resolution, double
     }
   }
 }
+
+}  //namespace amcl

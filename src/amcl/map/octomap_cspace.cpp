@@ -31,7 +31,8 @@
 #include <cmath>
 #include <cstdlib>
 
-using namespace amcl;
+namespace amcl
+{
 
 // This version also updates the max_occ_dist_ variable and
 // calls the base non-parameter updateCSpace
@@ -200,3 +201,5 @@ std::size_t OctoMap::makeHash(int i, int j, int k)
   boost::hash_combine(hash, k);
   return hash;
 }
+
+}  // namespace amcl

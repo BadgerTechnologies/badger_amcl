@@ -31,7 +31,8 @@
 #include <cstring>
 #include <vector>
 
-using namespace amcl;
+namespace amcl
+{
 
 ///////////////////////////////////////////////////////////////////////////////
 // Create a tree
@@ -304,3 +305,5 @@ int PFKDTree::getLeafCount()
 {
   return leaf_count_;
 }
+
+}  // namspace amcl

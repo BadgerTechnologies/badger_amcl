@@ -33,7 +33,8 @@
 
 #include "node/node.h"
 
-using namespace amcl;
+namespace amcl
+{
 
 Node2D::Node2D(Node* node, std::mutex& configuration_mutex)
     : node_(node)
@@ -639,3 +640,5 @@ void Node2D::globalLocalizationCallback()
                      non_free_space_radius_);
   }
 }
+
+}  // namespace amcl

@@ -31,7 +31,8 @@
 
 #include "pf/pdf_gaussian.h"
 
-using namespace amcl;
+namespace amcl
+{
 
 ////////////////////////////////////////////////////////////////////////////////
 // Default constructor
@@ -340,3 +341,5 @@ double Odom::angleDiff(double a, double b)
   else
     return d2;
 }
+
+}  // namespace amcl
