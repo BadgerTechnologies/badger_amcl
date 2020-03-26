@@ -35,11 +35,11 @@
 namespace amcl
 {
 
-OctoMap::OctoMap(double resolution, bool wait_for_occupancy_map) :
-    Map(resolution),
-    wait_for_occupancy_map_(wait_for_occupancy_map_),
-    cdm_(resolution, 0.0),
-    marked_(resolution)
+OctoMap::OctoMap(double resolution, bool wait_for_occupancy_map)
+    : Map(resolution),
+      wait_for_occupancy_map_(wait_for_occupancy_map_),
+      cdm_(resolution, 0.0),
+      marked_(resolution)
 {
   full_cells_ = std::vector<int>(3);
   cropped_min_cells_ = std::vector<int>(3);

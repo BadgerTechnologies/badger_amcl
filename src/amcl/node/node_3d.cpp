@@ -47,10 +47,10 @@ namespace amcl
 {
 
 Node3D::Node3D(Node* node, std::mutex& configuration_mutex)
-    : node_(node)
-    , configuration_mutex_(configuration_mutex)
-    , private_nh_("~")
-    , resample_count_(0)
+    : node_(node),
+      configuration_mutex_(configuration_mutex),
+      private_nh_("~"),
+      resample_count_(0)
 {
   map_ = nullptr;
   octree_ = nullptr;
