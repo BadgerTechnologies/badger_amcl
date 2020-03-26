@@ -60,10 +60,7 @@ add_library(amcl_core
     src/amcl/pf/eig3.cpp
     src/amcl/map/map.cpp
     src/amcl/map/occupancy_map.cpp
-    src/amcl/map/occupancy_map_cspace.cpp
-    src/amcl/map/occupancy_map_range.cpp
     src/amcl/map/octomap.cpp
-    src/amcl/map/octomap_cspace.cpp
     src/amcl/sensors/odom.cpp
     src/amcl/sensors/planar_scanner.cpp
     src/amcl/sensors/point_cloud_scanner.cpp
