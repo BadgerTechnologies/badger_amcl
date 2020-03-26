@@ -18,7 +18,6 @@
  *
  */
 
-#include <boost/shared_ptr.hpp>
 #include <ros/init.h>
 #include <ros/node_handle.h>
 #include <ros/spinner.h>
@@ -28,15 +27,8 @@
 
 #include "node/node.h"
 
-using namespace amcl;
-
-boost::shared_ptr<Node> amcl_node_ptr;
-bool sigFlag = false;
-
 void sigHandler(int sig)
 {
-  std::cout << "Sig int detected, ros shutting down.\n";
-  sigFlag = true;
   ros::shutdown();
 }
 
@@ -49,21 +41,15 @@ int main(int argc, char** argv)
   signal(SIGINT, sigHandler);
   signal(SIGTERM, sigHandler);
 
-  // Make our node available to sigintHandler
-  amcl_node_ptr.reset(new Node());
+  std::unique_ptr<amcl::Node> amcl_node_ptr(new amcl::Node());
 
-  // Uncomment for single threaded
-  // ros::spin();
-
-  // Uncomment for multithreaded
   ros::MultiThreadedSpinner spinner(4);
   spinner.spin();
 
   amcl_node_ptr->savePoseToFile();
 
-  // Without this, our boost locks are not shut down nicely
+  // Without this, our locks are not shut down nicely
   amcl_node_ptr.reset();
 
-  // To quote Morgan, Hooray!
   return 0;
 }
