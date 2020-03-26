@@ -27,7 +27,8 @@
 #include <algorithm>
 #include <cmath>
 
-using namespace amcl;
+namespace amcl
+{
 
 OctoMap::OctoMap(double resolution, bool wait_for_occupancy_map) :
     Map(resolution),
@@ -167,3 +168,5 @@ CachedDistanceOctoMap::CachedDistanceOctoMap(double resolution, double max_dist)
     }
   }
 }
+
+}  // namespace amcl

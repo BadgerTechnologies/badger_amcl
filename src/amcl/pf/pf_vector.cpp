@@ -29,7 +29,8 @@
 
 #include "pf/eig3.h"
 
-using namespace amcl;
+namespace amcl
+{
 
 // Return a zero vector
 PFVector::PFVector()
@@ -143,3 +144,5 @@ void PFMatrix::decompose(PFMatrix* r, PFMatrix* d)
     }
   }
 }
+
+}  // namspace amcl

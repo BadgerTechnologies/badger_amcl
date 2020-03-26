@@ -28,9 +28,8 @@
 
 #include <cmath>
 
-// Random number generator seed value
-
-using namespace amcl;
+namespace amcl
+{
 
 /**************************************************************************
  * Gaussian
@@ -99,3 +98,5 @@ double PDFGaussian::draw(double sigma)
 
   return (sigma * x2 * std::sqrt(-2.0 * std::log(w) / w));
 }
+
+}  // namespace amcl

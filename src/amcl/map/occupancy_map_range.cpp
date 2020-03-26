@@ -26,7 +26,8 @@
 
 #include <cstdlib>
 
-using namespace amcl;
+namespace amcl
+{
 
 // Extract a single range reading from the map.  Unknown cells and/or
 // out-of-bound cells are treated as occupied, which makes it easy to
@@ -116,3 +117,5 @@ double OccupancyMap::calcRange(double ox, double oy, double oa, double max_range
   }
   return max_range;
 }
+
+}  // namespace amcl  

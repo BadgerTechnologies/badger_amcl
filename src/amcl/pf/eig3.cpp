@@ -12,7 +12,8 @@
 #include <algorithm>
 #include <cmath>
 
-using namespace amcl;
+namespace amcl
+{
 
 double EIG3::hypot2(double x, double y)
 {
@@ -317,3 +318,5 @@ void EIG3::eigenDecomposition(const PFMatrix& A, PFMatrix* V, PFVector* d)
   EIG3::tred2(*V, d, &e);
   EIG3::tql2(*V, *d, e);
 }
+
+}  // namespace amcl

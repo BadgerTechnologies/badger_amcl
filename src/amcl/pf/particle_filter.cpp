@@ -35,7 +35,8 @@
 #include "pf/pdf_gaussian.h"
 #include "sensors/sensor.h"
 
-using namespace amcl;
+namespace amcl
+{
 
 // Create a new filter
 ParticleFilter::ParticleFilter(int min_samples, int max_samples, double alpha_slow,
@@ -704,3 +705,5 @@ void ParticleFilter::setConverged(bool converged)
 {
   converged_ = converged;
 }
+
+}  // namespace amcl

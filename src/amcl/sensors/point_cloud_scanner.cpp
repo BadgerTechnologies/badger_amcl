@@ -30,7 +30,8 @@
 #include <cmath>
 #include <functional>
 
-using namespace amcl;
+namespace amcl
+{
 
 PointCloudScanner::PointCloudScanner() : Sensor()
 {
@@ -295,3 +296,5 @@ int PointCloudScanner::getMaxBeams()
 {
   return max_beams_;
 }
+
+}  // namspace amcl

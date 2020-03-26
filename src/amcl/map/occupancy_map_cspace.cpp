@@ -28,7 +28,8 @@
 
 #include <algorithm>
 
-using namespace amcl;
+namespace amcl
+{
 
 // Update the cspace distance values
 void OccupancyMap::updateCSpace(double max_occ_dist)
@@ -140,3 +141,5 @@ void OccupancyMap::setMapOccDist(int i, int j, float d)
     distances_[computeCellIndex(i, j)] = d;
   }
 }
+
+}  //namespace amcl
