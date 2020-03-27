@@ -429,7 +429,8 @@ int Node2D::getFrameToScannerIndex(const std::string& frame_id)
 bool Node2D::initFrameToScanner(const std::string& frame_id, tf::Stamped<tf::Pose>* scanner_pose,
                                 int* scanner_index)
 {
-  ROS_DEBUG("Setting up planar_scanner %d (frame_id=%s)\n", (int)frame_to_scanner_.size(),
+  ROS_DEBUG("Setting up planar_scanner %d (frame_id=%s)\n",
+            static_cast<int>(frame_to_scanner_.size()),
             frame_id.c_str());
   scanners_.push_back(std::make_shared<PlanarScanner>(scanner_));
   scanners_update_.push_back(true);
@@ -507,12 +508,13 @@ void Node2D::updateLatestScanData(const sensor_msgs::LaserScanConstPtr& planar_s
 {
   // Apply range min/max thresholds, if the user supplied them
   if (sensor_max_range_ > 0.0)
-    latest_scan_data_->range_max_ = std::min(planar_scan->range_max, (float)sensor_max_range_);
+    latest_scan_data_->range_max_ = std::min(planar_scan->range_max,
+                                             static_cast<float>(sensor_max_range_));
   else
     latest_scan_data_->range_max_ = planar_scan->range_max;
   double range_min;
   if (sensor_min_range_ > 0.0)
-    range_min = std::max(planar_scan->range_min, (float)sensor_min_range_);
+    range_min = std::max(planar_scan->range_min, static_cast<float>(sensor_min_range_));
   else
     range_min = planar_scan->range_min;
   latest_scan_data_->ranges_.resize(latest_scan_data_->range_count_);

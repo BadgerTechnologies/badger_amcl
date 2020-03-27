@@ -474,18 +474,19 @@ void ParticleFilter::updateResample()
 // with samples in them.  This is taken directly from Fox et al.
 int ParticleFilter::resampleLimit(int k)
 {
-  double a, b, c, x;
+  double a, b, c, x, kd;
   int n;
 
   if (k <= 1)
     return max_samples_;
 
+  kd = static_cast<double>(k);
   a = 1;
-  b = 2 / (9 * ((double)k - 1));
-  c = std::sqrt(2 / (9 * ((double)k - 1))) * pop_z_;
+  b = 2 / (9 * (kd - 1));
+  c = std::sqrt(2 / (9 * (kd - 1))) * pop_z_;
   x = a - b + c;
 
-  n = (int)std::ceil((k - 1) / (2 * pop_err_) * x * x * x);
+  n = static_cast<int>(std::ceil((k - 1) / (2 * pop_err_) * x * x * x));
 
   if (n < min_samples_)
     return min_samples_;
