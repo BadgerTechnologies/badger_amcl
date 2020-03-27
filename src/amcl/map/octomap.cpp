@@ -41,7 +41,6 @@ OctoMap::OctoMap(double resolution, bool wait_for_occupancy_map)
       cdm_(resolution, 0.0),
       marked_(resolution)
 {
-  full_cells_ = std::vector<int>(3);
   cropped_min_cells_ = std::vector<int>(3);
   cropped_max_cells_ = std::vector<int>(3);
   map_min_bounds_ = std::vector<double>(2);
@@ -64,17 +63,6 @@ void OctoMap::initFromOctree(std::shared_ptr<octomap::OcTree> octree)
   // crop values here if required
   convertWorldToMap({ min_x, min_y, min_z }, &cropped_min_cells_);
   convertWorldToMap({ max_x, max_y, max_z }, &cropped_max_cells_);
-  for (int i = 0; i < 3; i++)
-  {
-    full_cells_[i] = cropped_max_cells_[i] - cropped_min_cells_[i];
-  }
-}
-
-// returns vector of map size in voxels
-// each voxel represents map_size_in_meters / resolution
-std::vector<int> OctoMap::getSize()
-{
-  return full_cells_;
 }
 
 void OctoMap::getMinMaxCells(std::vector<int>* min_cells, std::vector<int>* max_cells)

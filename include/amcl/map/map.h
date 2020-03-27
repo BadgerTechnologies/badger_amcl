@@ -45,7 +45,6 @@ public:
   virtual void convertWorldToMap(const std::vector<double>& world_coords, std::vector<int>* map_coords) = 0;
   // Test to see if the given map coords lie within the absolute map bounds.
   virtual bool isValid(const std::vector<int>& coords) = 0;
-  virtual std::vector<int> getSize() = 0;
 
   virtual bool isCSpaceCreated();
   virtual pcl::PointXYZ getOrigin();
