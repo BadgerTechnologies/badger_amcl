@@ -59,7 +59,7 @@ public:
   virtual void convertWorldToMap(const std::vector<double>& world_coords,
                                  std::vector<int>* map_coords);
   // Test to see if the given map coords lie within the absolute map bounds.
-  virtual bool isValid(const std::vector<int>& coords);
+  virtual bool isPoseValid(const std::vector<int>& coords);
   virtual void getMinMaxCells(std::vector<int>* min_cells, std::vector<int>* max_cells);
   virtual void setMapBounds(const std::vector<double>& map_min,
                             const std::vector<double>& map_max);

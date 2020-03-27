@@ -101,20 +101,14 @@ void OctoMap::convertWorldToMap(const std::vector<double>& world_coords, std::ve
 }
 
 // returns true if all coordinates are within the represented map
-bool OctoMap::isValid(const std::vector<int>& coords)
+bool OctoMap::isPoseValid(const std::vector<int>& coords)
 {
   int i = coords[0];
   int j = coords[1];
   if ((i < cropped_min_cells_[0]) || (i >= cropped_max_cells_[0]) || (j < cropped_min_cells_[1]) ||
       (j >= cropped_max_cells_[1]))
     return false;
-  if (coords.size() == 2)
-    return true;
-  else
-  {
-    int k = coords[2];
-    return (k >= cropped_min_cells_[2]) && (k < cropped_max_cells_[2]);
-  }
+  return true;
 }
 
 double OctoMap::getMaxOccDist()
