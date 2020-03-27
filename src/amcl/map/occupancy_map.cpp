@@ -191,11 +191,11 @@ void OccupancyMap::iterateEmptyCells()
     {
       updateNode(current_cell.i, current_cell.j - 1, current_cell);
     }
-    if ((int)current_cell.i < size_x_ - 1)
+    if (static_cast<int>(current_cell.i < size_x_ - 1))
     {
       updateNode(current_cell.i + 1, current_cell.j, current_cell);
     }
-    if ((int)current_cell.j < size_y_ - 1)
+    if (static_cast<int>(current_cell.j < size_y_ - 1))
     {
       updateNode(current_cell.i, current_cell.j + 1, current_cell);
     }
