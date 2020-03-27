@@ -60,7 +60,6 @@ public:
                                  std::vector<int>* map_coords);
   // Test to see if the given map coords lie within the absolute map bounds.
   virtual bool isValid(const std::vector<int>& coords);
-  virtual std::vector<int> getSize();
   virtual void getMinMaxCells(std::vector<int>* min_cells, std::vector<int>* max_cells);
   virtual void setMapBounds(const std::vector<double>& map_min,
                             const std::vector<double>& map_max);
@@ -85,7 +84,7 @@ protected:
   tsl::sparse_map<std::size_t, double>::iterator hashmap_iterator_;
   // Map dimensions (number of cells)
   std::vector<double> map_min_bounds_, map_max_bounds_;
-  std::vector<int> cropped_min_cells_, cropped_max_cells_, full_cells_;
+  std::vector<int> cropped_min_cells_, cropped_max_cells_;
   bool wait_for_occupancy_map_;
   CachedDistanceOctoMap cdm_;
   std::priority_queue<OctoMapCellData> q_;
