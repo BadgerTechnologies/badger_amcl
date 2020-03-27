@@ -57,9 +57,6 @@ void OctoMap::initFromOctree(std::shared_ptr<octomap::OcTree> octree)
   // set size
   double x_meters, y_meters, z_meters;
   octree_->getMetricSize(x_meters, y_meters, z_meters);
-  full_cells_[0] = (int)std::ceil(x_meters / resolution_);
-  full_cells_[1] = (int)std::ceil(y_meters / resolution_);
-  full_cells_[2] = (int)std::ceil(z_meters / resolution_);
   double min_x, min_y, min_z, max_x, max_y, max_z;
   octree_->getMetricMin(min_x, min_y, min_z);
   octree_->getMetricMax(max_x, max_y, max_z);
@@ -67,6 +64,10 @@ void OctoMap::initFromOctree(std::shared_ptr<octomap::OcTree> octree)
   // crop values here if required
   convertWorldToMap({ min_x, min_y, min_z }, &cropped_min_cells_);
   convertWorldToMap({ max_x, max_y, max_z }, &cropped_max_cells_);
+  for (int i = 0; i < 3; i++)
+  {
+    full_cells_[i] = cropped_max_cells_[i] - cropped_min_cells_[i];
+  }
 }
 
 // returns vector of map size in voxels
