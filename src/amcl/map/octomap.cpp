@@ -217,12 +217,6 @@ void OctoMap::iterateObstacleCells(std::priority_queue<OctoMapCellData>& q,
       marked.updateNode(i, j, k, true);
       q.push(cell);
     }
-    else
-    {
-      octomap::OcTreeKey key = it.getIndexKey();
-      int i = key[0], j = key[1], k = key[2];
-      setOccDist(i, j, k, max_occ_dist_);
-    }
   }
 }
 
