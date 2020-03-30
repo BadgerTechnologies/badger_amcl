@@ -196,6 +196,7 @@ void OctoMap::iterateObstacleCells(std::priority_queue<OctoMapCellData>& q,
   std::vector<double> world_coords(3);
   std::vector<int> map_coords(3);
 
+  octree_->expand();
   for (octomap::OcTree::leaf_iterator it = octree_->begin_leafs(),
           end = octree_->end_leafs(); it != end; ++it)
   {
