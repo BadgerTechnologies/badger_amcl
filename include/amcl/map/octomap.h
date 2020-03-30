@@ -72,18 +72,20 @@ public:
 
 protected:
   struct OctoMapCellData;
+  using CellDataQueue = std::priority_queue<OctoMapCellData>;
+  using HashMapBool = tsl::sparse_map<std::size_t, bool>;
+  using HashMapDouble = tsl::sparse_map<std::size_t, double>;
   static constexpr double EPSILON = std::numeric_limits<double>::epsilon();
 
-  virtual void iterateObstacleCells(std::priority_queue<OctoMapCellData>& q,
-                                    octomap::OcTree& marked);
-  virtual void iterateEmptyCells(std::priority_queue<OctoMapCellData>& q, octomap::OcTree& marked);
+  virtual void iterateObstacleCells(CellDataQueue& q, HashMapBool& marked);
+  virtual void iterateEmptyCells(CellDataQueue& q, HashMapBool& marked);
   virtual bool enqueue(int i, int j, int k, int src_i, int src_j, int src_k,
-                       std::priority_queue<OctoMapCellData>& q);
+                       CellDataQueue& q);
 
   std::shared_ptr<octomap::OcTree> octree_;
-  tsl::sparse_map<std::size_t, double> distances_;
-  tsl::sparse_map<std::size_t, double>::iterator distances_end_;
-  tsl::sparse_map<std::size_t, double>::iterator hashmap_iterator_;
+  HashMapDouble distances_;
+  HashMapDouble::iterator distances_end_;
+  HashMapDouble::iterator distances_iterator_;
   // Map dimensions (number of cells)
   std::vector<double> map_min_bounds_, map_max_bounds_;
   std::vector<int> cropped_min_cells_, cropped_max_cells_;
@@ -106,7 +108,7 @@ protected:
 private:
   inline void setOccDist(int i, int j, int k, double d);
   inline void updateNode(int i, int j, int k, const OctoMapCellData& current_cell,
-                         std::priority_queue<OctoMapCellData>& q, octomap::OcTree& marked);
+                         CellDataQueue& q, HashMapBool& marked);
   inline std::size_t makeHash(int i, int j, int k);
 };
 }  // namespace amcl
