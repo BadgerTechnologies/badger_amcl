@@ -86,9 +86,12 @@ public:
 protected:
   struct OccupancyMapCellData;
 
-  virtual void iterateObstacleCells();
-  virtual void iterateEmptyCells();
-  virtual bool enqueue(int i, int j, int src_i, int src_j);
+  virtual void iterateObstacleCells(std::priority_queue<OccupancyMapCellData>& q,
+                                    std::vector<bool>& marked);
+  virtual void iterateEmptyCells(std::priority_queue<OccupancyMapCellData>& q,
+                                 std::vector<bool>& marked);
+  virtual bool enqueue(int i, int j, int src_i, int src_j,
+                       std::priority_queue<OccupancyMapCellData>& q);
 
   // Map dimensions (number of cells)
   int size_x_, size_y_;
@@ -100,8 +103,6 @@ protected:
   std::vector<float> distances_;
 
   CachedDistanceOccupancyMap cdm_;
-  std::priority_queue<OccupancyMapCellData> q_;
-  std::vector<bool> marked_;
 
   struct OccupancyMapCellData
   {
@@ -118,7 +119,8 @@ protected:
 
 private:
   inline void setMapOccDist(int i, int j, float d);
-  inline void updateNode(int i, int j, const OccupancyMapCellData& current_cell);
+  inline void updateNode(int i, int j, const OccupancyMapCellData& current_cell,
+                         std::priority_queue<OccupancyMapCellData>& q, std::vector<bool>& marked);
 };
 }  // namespace amcl
 

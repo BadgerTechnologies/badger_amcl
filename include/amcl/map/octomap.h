@@ -74,9 +74,11 @@ protected:
   struct OctoMapCellData;
   static constexpr double EPSILON = std::numeric_limits<double>::epsilon();
 
-  virtual void iterateObstacleCells();
-  virtual void iterateEmptyCells();
-  virtual bool enqueue(int i, int j, int k, int src_i, int src_j, int src_k);
+  virtual void iterateObstacleCells(std::priority_queue<OctoMapCellData>& q,
+                                    octomap::OcTree& marked);
+  virtual void iterateEmptyCells(std::priority_queue<OctoMapCellData>& q, octomap::OcTree& marked);
+  virtual bool enqueue(int i, int j, int k, int src_i, int src_j, int src_k,
+                       std::priority_queue<OctoMapCellData>& q);
 
   std::shared_ptr<octomap::OcTree> octree_;
   tsl::sparse_map<std::size_t, double> distances_;
@@ -87,8 +89,6 @@ protected:
   std::vector<int> cropped_min_cells_, cropped_max_cells_;
   bool wait_for_occupancy_map_;
   CachedDistanceOctoMap cdm_;
-  std::priority_queue<OctoMapCellData> q_;
-  octomap::OcTree marked_;
 
   struct OctoMapCellData
   {
@@ -105,7 +105,8 @@ protected:
 
 private:
   inline void setOccDist(int i, int j, int k, double d);
-  inline void updateNode(int i, int j, int k, const OctoMapCellData& current_cell);
+  inline void updateNode(int i, int j, int k, const OctoMapCellData& current_cell,
+                         std::priority_queue<OctoMapCellData>& q, octomap::OcTree& marked);
   inline std::size_t makeHash(int i, int j, int k);
 };
 }  // namespace amcl
