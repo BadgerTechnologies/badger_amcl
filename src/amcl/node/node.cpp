@@ -57,7 +57,6 @@ Node::Node()
 {
   std::lock_guard<std::mutex> cfl(configuration_mutex_);
 
-  // 2: 2d, 3: 3d, else: none
   private_nh_.param("map_type", map_type_, 0);
   private_nh_.param("wait_for_occupancy_map", wait_for_occupancy_map_, false);
 
