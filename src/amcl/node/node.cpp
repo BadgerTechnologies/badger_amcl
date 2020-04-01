@@ -258,9 +258,9 @@ void Node::reconfigureCB(AMCLConfig& config, uint32_t level)
   pf_init_pose_mean.v[1] = last_published_pose_->pose.pose.position.y;
   pf_init_pose_mean.v[2] = tf::getYaw(last_published_pose_->pose.pose.orientation);
   PFMatrix pf_init_pose_cov;
-  pf_init_pose_cov.m[0][0] = last_published_pose_->pose.covariance[6 * 0 + 0];
-  pf_init_pose_cov.m[1][1] = last_published_pose_->pose.covariance[6 * 1 + 1];
-  pf_init_pose_cov.m[2][2] = last_published_pose_->pose.covariance[6 * 5 + 5];
+  pf_init_pose_cov.m[0][0] = last_published_pose_->pose.covariance[COVARIANCE_XX];
+  pf_init_pose_cov.m[1][1] = last_published_pose_->pose.covariance[COVARIANCE_YY];
+  pf_init_pose_cov.m[2][2] = last_published_pose_->pose.covariance[COVARIANCE_AA];
   pf_->init(pf_init_pose_mean, pf_init_pose_cov);
   odom_init_ = false;
 
