@@ -91,14 +91,8 @@ void PointCloudScanner::setMapFactors(double off_map_factor, double non_free_spa
   non_free_space_radius_ = non_free_space_radius;
 }
 
-void PointCloudScanner::setPointCloudScannerPose(PFVector& scanner_pose)
-{
-  point_cloud_scanner_pose_ = scanner_pose;
-}
-
-
 void PointCloudScanner::setPointCloudScannerToFootprintTF(
-        tf::Transform point_cloud_scanner_to_footprint_tf)
+tf::Transform point_cloud_scanner_to_footprint_tf)
 {
   point_cloud_scanner_to_footprint_tf_ = point_cloud_scanner_to_footprint_tf;
 }
