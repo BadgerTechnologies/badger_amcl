@@ -560,8 +560,8 @@ bool Node::loadPoseFromFile()
   }
   catch (std::exception& e)
   {
-    ROS_WARN("exception: %s", e.what());
-    ROS_DEBUG("Failed to parse saved YAML pose.");
+    ROS_WARN("Exception while loading pose from file. Failed to parse saved YAML pose. "
+             "%s", e.what());
     return false;
   }
   if (std::isnan(x) or std::isnan(y) or std::isnan(yaw) or std::isnan(xx)
