@@ -403,6 +403,7 @@ bool Node::updateOdomToMapTransform(const tf::Stamped<tf::Pose>& odom_to_map)
 
 void Node::attemptSavePose()
 {
+  std::lock_guard<std::mutex> tfl(tf_mutex_);
   if (latest_tf_valid_)
   {
     // Is it time to save our last pose to the param server
