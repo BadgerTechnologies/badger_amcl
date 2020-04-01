@@ -365,7 +365,7 @@ void Node::updatePose(const PFVector& max_hyp_mean, const ros::Time& stamp)
   }
   // Report the overall filter covariance, rather than the
   // covariance for the highest-weight cluster
-  p->pose.covariance[6 * 5 + 5] = set->cov.m[2][2];
+  p->pose.covariance[COVARIANCE_AA] = set->cov.m[2][2];
   publishPose(*p);
   last_published_pose_ = p;
 }
@@ -1043,7 +1043,7 @@ void Node::setScannersUpdateFlags(const PFVector& delta,
     update = update || *force_update;
     *force_update = false;
 
-    // Set the planar scanner update flags
+    // Set the scanner update flags
     if (update)
       for (unsigned int i = 0; i < scanners_update.size(); i++)
         scanners_update.at(i) = true;
