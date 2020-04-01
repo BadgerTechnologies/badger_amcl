@@ -113,7 +113,8 @@ Node::Node()
     resample_model_type_ = PF_RESAMPLE_SYSTEMATIC;
   else
   {
-    ROS_WARN("Unknown resample model type \"%s\"; defaulting to multinomial model", tmp_model_type.c_str());
+    ROS_WARN("Unknown resample model type \"%s\"; defaulting to multinomial model",
+             tmp_model_type.c_str());
     resample_model_type_ = PF_RESAMPLE_MULTINOMIAL;
   }
 
@@ -139,10 +140,10 @@ Node::Node()
   particlecloud_pub_ = nh_.advertise<geometry_msgs::PoseArray>("particlecloud", 2, true);
   if (global_alt_frame_id_.size() > 0)
   {
-    alt_pose_pub_ =
-        nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("amcl_pose_in_" + global_alt_frame_id_, 2, true);
-    alt_particlecloud_pub_ =
-        nh_.advertise<geometry_msgs::PoseArray>("particlecloud_in_" + global_alt_frame_id_, 2, true);
+    alt_pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("amcl_pose_in_" + global_alt_frame_id_,
+                                                                            2, true);
+    alt_particlecloud_pub_ = nh_.advertise<geometry_msgs::PoseArray>("particlecloud_in_" + global_alt_frame_id_,
+                                                                     2, true);
   }
   map_odom_transform_pub_ = nh_.advertise<nav_msgs::Odometry>("amcl_map_odom_transform", 1);
   global_loc_srv_ = nh_.advertiseService("global_localization", &Node::globalLocalizationCallback, this);
@@ -228,8 +229,8 @@ void Node::reconfigureCB(AMCLConfig& config, uint32_t level)
 
   if (config.min_particles > config.max_particles)
   {
-    ROS_WARN("You've set min_particles to be greater than max particles, this isn't allowed so they'll be set to be "
-             "equal.");
+    ROS_WARN("You've set min_particles to be greater than max particles, "
+             "this isn't allowed so they'll be set to be equal.");
     config.max_particles = config.min_particles;
   }
 
@@ -282,8 +283,8 @@ void Node::setPfDecayRateNormal()
   pf_->setDecayRates(alpha_slow_, alpha_fast_);
 }
 
-bool Node::updatePf(const ros::Time& t, std::vector<bool>& scanners_update,
-                    int scanner_index, int* resample_count, bool* force_publication, bool* force_update)
+bool Node::updatePf(const ros::Time& t, std::vector<bool>& scanners_update, int scanner_index,
+                    int* resample_count, bool* force_publication, bool* force_update)
 {
   // Where the robot was when this scan was taken
   PFVector pose;
@@ -350,8 +351,7 @@ void Node::updatePose(const PFVector& max_hyp_mean, const ros::Time& stamp)
   // Copy in the pose
   p->pose.pose.position.x = max_hyp_mean.v[0];
   p->pose.pose.position.y = max_hyp_mean.v[1];
-  tf::quaternionTFToMsg(tf::createQuaternionFromYaw(max_hyp_mean.v[2]),
-                        p->pose.pose.orientation);
+  tf::quaternionTFToMsg(tf::createQuaternionFromYaw(max_hyp_mean.v[2]), p->pose.pose.orientation);
   // Copy in the covariance, converting from 3-D to 6-D
   std::shared_ptr<PFSampleSet> set = pf_->getCurrentSet();
   for (int i = 0; i < 2; i++)
@@ -390,8 +390,7 @@ bool Node::updateOdomToMapTransform(const tf::Stamped<tf::Pose>& odom_to_map)
 
   try
   {
-    latest_tf_ = tf::Transform(tf::Quaternion(odom_to_map.getRotation()),
-                               tf::Point(odom_to_map.getOrigin()));
+    latest_tf_ = tf::Transform(tf::Quaternion(odom_to_map.getRotation()), tf::Point(odom_to_map.getOrigin()));
     latest_tf_valid_ = true;
   }
   catch (tf::TransformException)
@@ -408,13 +407,14 @@ void Node::attemptSavePose()
   {
     // Is it time to save our last pose to the param server
     ros::Time now = ros::Time::now();
-    if ((save_pose_to_server_period_.toSec() > 0.0) &&
-        (now - save_pose_to_server_last_time_) >= save_pose_to_server_period_)
+    if ((save_pose_to_server_period_.toSec() > 0.0)
+        && (now - save_pose_to_server_last_time_) >= save_pose_to_server_period_)
     {
       savePoseToServer();
       save_pose_to_server_last_time_ = now;
     }
-    if ((save_pose_to_file_period_.toSec() > 0.0) && (now - save_pose_to_file_last_time_) >= save_pose_to_file_period_)
+    if ((save_pose_to_file_period_.toSec() > 0.0)
+        && (now - save_pose_to_file_last_time_) >= save_pose_to_file_period_)
     {
       ROS_DEBUG("save pose to file period: %f", save_pose_to_file_period_.toSec());
       savePoseToFile();
@@ -560,12 +560,10 @@ bool Node::loadPoseFromFile()
   }
   catch (std::exception& e)
   {
-    ROS_WARN("Exception while loading pose from file. Failed to parse saved YAML pose. "
-             "%s", e.what());
+    ROS_WARN("Exception while loading pose from file. Failed to parse saved YAML pose. %s", e.what());
     return false;
   }
-  if (std::isnan(x) or std::isnan(y) or std::isnan(yaw) or std::isnan(xx)
-          or std::isnan(yy) or std::isnan(aa))
+  if (std::isnan(x) or std::isnan(y) or std::isnan(yaw) or std::isnan(xx) or std::isnan(yy) or std::isnan(aa))
   {
     ROS_WARN("Failed to parse saved YAML pose. NAN value read from file.");
     return false;
@@ -629,7 +627,8 @@ YAML::Node Node::loadYamlFromFile()
   else
   {
     YAML::Node empty;
-    ROS_WARN("Cannot parse the saved pose file in either the new c++ style YAML nor the old Python style YAML.");
+    ROS_WARN("Cannot parse the saved pose file in either the new c++ style YAML "
+             "nor the old Python style YAML.");
     return empty;
   }
 }
@@ -828,9 +827,10 @@ void Node::calcOdomDelta(const PFVector& pose)
   odom_integrator_absolute_motion_.v[1] += std::fabs(delta_trans * sn_bearing);
   odom_integrator_absolute_motion_.v[2] += std::fabs(delta_rot);
 
-  // We could also track velocity and acceleration here, for motion models that adjust for velocity/acceleration.
-  // We could also track the covariance of the odometry message and accumulate a total covariance across the time
-  // region for a motion model that uses the reported covariance directly.
+  // We could also track velocity and acceleration here, for motion models that adjust for
+  // velocity/acceleration. We could also track the covariance of the odometry message and
+  // accumulate a total covariance across the time region for a motion model that uses the
+  // reported covariance directly.
 }
 
 bool Node::getOdomPose(const ros::Time& t, PFVector* map_pose)
@@ -935,8 +935,8 @@ void Node::publishTransform(const ros::TimerEvent& event)
     }
     else
     {
-      tmp_tf_stamped =
-          tf::StampedTransform(latest_tf_.inverse(), transform_expiration, global_frame_id_, odom_frame_id_);
+      tmp_tf_stamped = tf::StampedTransform(latest_tf_.inverse(), transform_expiration,
+                                            global_frame_id_, odom_frame_id_);
       tf_transform = latest_tf_.inverse();
     }
     geometry_msgs::Quaternion quaternion;
@@ -1000,15 +1000,13 @@ void Node::newInitialPoseSubscriber(const ros::SingleSubscriberPublisher& single
   std::lock_guard<std::mutex> lpl(latest_amcl_pose_mutex_);
   if (latest_amcl_pose_.header.frame_id.compare("map") == 0)
   {
-    ROS_INFO("New initial pose subscriber registered. "
-             "Publishing latest amcl pose: (%f, %f).",
+    ROS_INFO("New initial pose subscriber registered. Publishing latest amcl pose: (%f, %f).",
              latest_amcl_pose_.pose.pose.position.x, latest_amcl_pose_.pose.pose.position.y);
     single_sub_pub.publish(latest_amcl_pose_);
   }
   else
   {
-    ROS_DEBUG("New initial pose subscriber registered. "
-              "Latest amcl pose uninitialized, no pose will be published.");
+    ROS_DEBUG("New initial pose subscriber registered. Latest amcl pose uninitialized, no pose will be published.");
   }
 }
 
@@ -1020,18 +1018,14 @@ void Node::computeDelta(const PFVector& pose, PFVector* delta)
   delta->v[2] = angles::shortest_angular_distance(pf_odom_pose_.v[2], pose.v[2]);
 }
 
-void Node::setScannersUpdateFlags(const PFVector& delta,
-                                  std::vector<bool>& scanners_update,
-                                  bool* force_update)
+void Node::setScannersUpdateFlags(const PFVector& delta, std::vector<bool>& scanners_update, bool* force_update)
 {
     // See if we should update the filter
     bool update;
     if (odom_integrator_topic_.size())
     {
-      double abs_trans = std::sqrt(odom_integrator_absolute_motion_.v[0]
-                                   * odom_integrator_absolute_motion_.v[0]
-                                   + odom_integrator_absolute_motion_.v[1]
-                                   * odom_integrator_absolute_motion_.v[1]);
+      double abs_trans = std::sqrt(odom_integrator_absolute_motion_.v[0] * odom_integrator_absolute_motion_.v[0]
+                                   + odom_integrator_absolute_motion_.v[1] * odom_integrator_absolute_motion_.v[1]);
       double abs_rot = odom_integrator_absolute_motion_.v[2];
       update = abs_trans >= d_thresh_ || abs_rot >= a_thresh_;
     }
@@ -1074,8 +1068,7 @@ void Node::updateOdom(const PFVector& pose, const PFVector &delta)
   pf_odom_pose_ = pose;
 }
 
-void Node::initOdom(const PFVector& pose,
-                    std::vector<bool>& scanners_update,
+void Node::initOdom(const PFVector& pose, std::vector<bool>& scanners_update,
                     int* resample_count, bool* force_publication)
 {
   // Pose at last filter update
@@ -1117,8 +1110,7 @@ bool Node::checkInitialPose(const geometry_msgs::PoseWithCovarianceStamped& msg)
     return false;
   }
 
-  if (std::isnan(msg.pose.pose.position.x) or std::isnan(msg.pose.pose.position.y) or
-      std::isnan(msg.pose.pose.position.z))
+  if (std::isnan(msg.pose.pose.position.x) or std::isnan(msg.pose.pose.position.y) or std::isnan(msg.pose.pose.position.z))
   {
     ROS_WARN("Received initial pose with position value 'NAN'. Ignoring pose.");
     return false;
@@ -1148,7 +1140,8 @@ void Node::setMsgCovarianceVals(geometry_msgs::PoseWithCovarianceStamped* msg)
   }
 }
 
-void Node::transformMsgToTfPose(const geometry_msgs::PoseWithCovarianceStamped& msg, tf::Pose* pose)
+void Node::transformMsgToTfPose(const geometry_msgs::PoseWithCovarianceStamped& msg,
+                                tf::Pose* pose)
 {
   // In case the client sent us a pose estimate in the past, integrate the
   // intervening odometric change.
@@ -1177,11 +1170,10 @@ void Node::transformMsgToTfPose(const geometry_msgs::PoseWithCovarianceStamped& 
   *pose = pose_old * tx_odom;
 }
 
-void Node::transformPoseToGlobalFrame(const geometry_msgs::PoseWithCovarianceStamped& msg,
-                                      const tf::Pose& pose)
+void Node::transformPoseToGlobalFrame(const geometry_msgs::PoseWithCovarianceStamped& msg, const tf::Pose& pose)
 {
-  ROS_DEBUG("Setting pose (%.6f): %.3f %.3f %.3f", ros::Time::now().toSec(), pose.getOrigin().x(),
-            pose.getOrigin().y(), getYaw(pose));
+  ROS_DEBUG("Setting pose (%.6f): %.3f %.3f %.3f", ros::Time::now().toSec(),
+            pose.getOrigin().x(), pose.getOrigin().y(), getYaw(pose));
   ROS_INFO("Initial pose received by AMCL: (%.3f, %.3f)", pose.getOrigin().x(), pose.getOrigin().y());
   // Re-initialize the filter
   PFVector pf_init_pose_mean;

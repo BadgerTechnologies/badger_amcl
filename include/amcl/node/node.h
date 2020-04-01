@@ -88,9 +88,8 @@ public:
   void publishParticleCloud();
   void updatePose(const PFVector& max_hyp_mean, const ros::Time& stamp);
   bool updateOdomToMapTransform(const tf::Stamped<tf::Pose>& odom_to_map);
-  bool updatePf(const ros::Time& t, std::vector<bool>& scanners_update,
-                int scanner_index, int* resample_count, bool* force_publication,
-                bool* force_update);
+  bool updatePf(const ros::Time& t, std::vector<bool>& scanners_update, int scanner_index,
+                int* resample_count, bool* force_publication, bool* force_update);
   void setPfDecayRateNormal();
   void attemptSavePose();
   void savePoseToServer();
@@ -121,8 +120,7 @@ private:
   bool checkInitialPose(const geometry_msgs::PoseWithCovarianceStamped& msg);
   void setMsgCovarianceVals(geometry_msgs::PoseWithCovarianceStamped* msg);
   void transformMsgToTfPose(const geometry_msgs::PoseWithCovarianceStamped& msg, tf::Pose* pose);
-  void transformPoseToGlobalFrame(const geometry_msgs::PoseWithCovarianceStamped& msg,
-                                  const tf::Pose& pose);
+  void transformPoseToGlobalFrame(const geometry_msgs::PoseWithCovarianceStamped& msg, const tf::Pose& pose);
   void publishInitialPose();
   void newInitialPoseSubscriber(const ros::SingleSubscriberPublisher& single_sub_pub);
 
@@ -143,12 +141,9 @@ private:
 
   // Update PF helper functions
   void computeDelta(const PFVector& pose, PFVector* delta);
-  void setScannersUpdateFlags(const PFVector& delta,
-                              std::vector<bool>& scanners_update,
-                              bool* force_update);
+  void setScannersUpdateFlags(const PFVector& delta, std::vector<bool>& scanners_update, bool* force_update);
   void updateOdom(const PFVector& pose, const PFVector &delta);
-  void initOdom(const PFVector& pose, std::vector<bool>& scanners_update,
-                int* resample_count, bool* force_publication);
+  void initOdom(const PFVector& pose, std::vector<bool>& scanners_update, int* resample_count, bool* force_publication);
 
   std::function<PFVector()> uniform_pose_generator_fn_;
 

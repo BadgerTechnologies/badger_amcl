@@ -60,8 +60,7 @@ public:
 private:
   void scanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan);
   bool updateNodePf(const ros::Time& stamp, int scanner_index, bool* force_publication);
-  bool updateScanner(const sensor_msgs::LaserScanConstPtr& planar_scan,
-                     int scanner_index, bool* resampled);
+  bool updateScanner(const sensor_msgs::LaserScanConstPtr& planar_scan, int scanner_index, bool* resampled);
   void updateFreeSpaceIndices();
   void resampleParticles();
   bool resamplePose(const ros::Time& stamp);
@@ -74,16 +73,12 @@ private:
   void initFromNewMap();
   std::shared_ptr<OccupancyMap> convertMap(const nav_msgs::OccupancyGrid& map_msg);
   void checkScanReceived(const ros::TimerEvent& event);
-  bool initFrameToScanner(const std::string& frame_id, tf::Stamped<tf::Pose>* scanner_pose,
-                          int* scanner_index);
+  bool initFrameToScanner(const std::string& frame_id, tf::Stamped<tf::Pose>* scanner_pose, int* scanner_index);
   void updateScannerPose(const tf::Stamped<tf::Pose>& scanner_pose, int scanner_index);
   bool initLatestScanData(const sensor_msgs::LaserScanConstPtr& planar_scan, int scanner_index);
-  bool getAngleStats(const sensor_msgs::LaserScanConstPtr& planar_scan, double* angle_min,
-                     double* angle_increment);
-  void updateLatestScanData(const sensor_msgs::LaserScanConstPtr& planar_scan, double angle_min,
-                            double angle_increment);
-  bool updatePf(const sensor_msgs::LaserScanConstPtr& planar_scan,
-                int scanner_index, bool* resampled);
+  bool getAngleStats(const sensor_msgs::LaserScanConstPtr& planar_scan, double* angle_min, double* angle_increment);
+  void updateLatestScanData(const sensor_msgs::LaserScanConstPtr& planar_scan, double angle_min, double angle_increment);
+  bool updatePf(const sensor_msgs::LaserScanConstPtr& planar_scan, int scanner_index, bool* resampled);
   bool resamplePf(const sensor_msgs::LaserScanConstPtr& planar_scan);
 
   Node* node_;

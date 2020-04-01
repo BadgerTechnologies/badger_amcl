@@ -66,17 +66,14 @@ private:
   void octoMapMsgReceived(const octomap_msgs::OctomapConstPtr& msg);
   void initFromNewMap();
   std::shared_ptr<OctoMap> convertMap(const octomap_msgs::Octomap& map_msg);
-  bool initFrameToScanner(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan,
-                          int* scanner_index);
-  bool updatePf(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan,
-                int scanner_index, bool* resampled);
+  bool initFrameToScanner(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan, int* scanner_index);
+  bool updatePf(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan, int scanner_index, bool* resampled);
   bool resamplePf(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan);
   void makePointCloudFromScan(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan,
                               pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud);
   void updateFreeSpaceIndices();
   void updateLatestScanData(const pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud, int scanner_index);
-  void updateScanner(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan,
-                     int scanner_index, bool* resampled);
+  void updateScanner(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan, int scanner_index, bool* resampled);
   void resampleParticles();
   bool resamplePose(const ros::Time& stamp);
   void getMaxWeightPose(double* max_weight, PFVector* max_pose);
@@ -86,8 +83,7 @@ private:
   int getFrameToScannerIndex(const std::string& frame_id);
   int initFrameToScanner(const std::string& frame_id, tf::Stamped<tf::Pose>* scanner_pose);
   void updateScannerPose(const tf::Stamped<tf::Pose>& scanner_pose, int scanner_index);
-  void initLatestScanData(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan,
-                            int scanner_index);
+  void initLatestScanData(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan, int scanner_index);
   void checkScanReceived(const ros::TimerEvent& event);
 
   std::shared_ptr<OctoMap> map_;
