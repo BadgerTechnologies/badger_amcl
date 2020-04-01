@@ -87,7 +87,8 @@ Node2D::Node2D(Node* node, std::mutex& configuration_mutex)
     model_type_ = PLANAR_MODEL_LIKELIHOOD_FIELD_GOMPERTZ;
   else
   {
-    ROS_WARN("Unknown planar model type \"%s\"; defaulting to likelihood_field model", tmp_model_type.c_str());
+    ROS_WARN("Unknown planar model type \"%s\"; defaulting to likelihood_field model",
+             tmp_model_type.c_str());
     model_type_ = PLANAR_MODEL_LIKELIHOOD_FIELD;
   }
   private_nh_.param("map_scale_up_factor", map_scale_up_factor_, 1);
@@ -100,14 +101,12 @@ Node2D::Node2D(Node* node, std::mutex& configuration_mutex)
   scan_sub_ = std::unique_ptr<message_filters::Subscriber<sensor_msgs::LaserScan>>(
       new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, scan_topic_, 100));
   scan_filter_ = std::unique_ptr<tf::MessageFilter<sensor_msgs::LaserScan>>(
-      new tf::MessageFilter<sensor_msgs::LaserScan>(*scan_sub_.get(), tf_,
-                                                    node_->getOdomFrameId(), 100));
+      new tf::MessageFilter<sensor_msgs::LaserScan>(*scan_sub_.get(), tf_, node_->getOdomFrameId(), 100));
   scan_filter_->registerCallback(boost::bind(&Node2D::scanReceived, this, _1));
 
   // 15s timer to warn on lack of receipt of planar scans, #5209
   check_scanner_interval_ = ros::Duration(15.0);
-  check_scanner_timer_ =
-      nh_.createTimer(check_scanner_interval_, boost::bind(&Node2D::checkScanReceived, this, _1));
+  check_scanner_timer_ = nh_.createTimer(check_scanner_interval_, boost::bind(&Node2D::checkScanReceived, this, _1));
 
   force_update_ = false;
   first_map_received_ = false;
@@ -156,8 +155,9 @@ void Node2D::reconfigure(AMCLConfig& config)
   else if (model_type_ == PLANAR_MODEL_LIKELIHOOD_FIELD_PROB)
   {
     ROS_INFO("Initializing likelihood field model; this can take some time on large maps...");
-    scanner_.setModelLikelihoodFieldProb(z_hit_, z_rand_, sigma_hit_, sensor_likelihood_max_dist_, do_beamskip_,
-                                                beam_skip_distance_, beam_skip_threshold_, beam_skip_error_threshold_);
+    scanner_.setModelLikelihoodFieldProb(z_hit_, z_rand_, sigma_hit_, sensor_likelihood_max_dist_,
+                                         do_beamskip_, beam_skip_distance_, beam_skip_threshold_,
+                                         beam_skip_error_threshold_);
     ROS_INFO("Done initializing likelihood field model with probabilities.");
   }
   else if (model_type_ == PLANAR_MODEL_LIKELIHOOD_FIELD)
@@ -168,21 +168,22 @@ void Node2D::reconfigure(AMCLConfig& config)
   }
   else if (model_type_ == PLANAR_MODEL_LIKELIHOOD_FIELD_GOMPERTZ)
   {
-    ROS_INFO("Initializing likelihood field (gompertz) model; this can take some time on large maps...");
+    ROS_INFO("Initializing likelihood field (gompertz) model; this can take some time on "
+             "large maps...");
     scanner_.setModelLikelihoodFieldGompertz(
         z_hit_, z_rand_, sigma_hit_, sensor_likelihood_max_dist_, gompertz_a_, gompertz_b_,
         gompertz_c_, gompertz_input_shift_, gompertz_input_scale_, gompertz_output_shift_);
-    ROS_INFO("Gompertz key points by total planar scan match: "
-             "0.0: %f, 0.25: %f, 0.5: %f, 0.75: %f, 1.0: %f",
-             scanner_.applyGompertz(z_rand_), scanner_.applyGompertz(z_rand_ + z_hit_ * .25),
+    ROS_INFO("Gompertz key points by total planar scan match: 0.0: %f, 0.25: %f, 0.5: %f, 0.75: %f, 1.0: %f",
+             scanner_.applyGompertz(z_rand_),
+             scanner_.applyGompertz(z_rand_ + z_hit_ * .25),
              scanner_.applyGompertz(z_rand_ + z_hit_ * .5),
-             scanner_.applyGompertz(z_rand_ + z_hit_ * .75), scanner_.applyGompertz(z_rand_ + z_hit_));
+             scanner_.applyGompertz(z_rand_ + z_hit_ * .75),
+             scanner_.applyGompertz(z_rand_ + z_hit_));
     ROS_INFO("Done initializing likelihood (gompertz) field model.");
   }
   scanner_.setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
   scan_filter_ = std::unique_ptr<tf::MessageFilter<sensor_msgs::LaserScan>>(
-      new tf::MessageFilter<sensor_msgs::LaserScan>(*scan_sub_.get(), tf_,
-                                                    node_->getOdomFrameId(), 100));
+      new tf::MessageFilter<sensor_msgs::LaserScan>(*scan_sub_.get(), tf_, node_->getOdomFrameId(), 100));
   scan_filter_->registerCallback(boost::bind(&Node2D::scanReceived, this, _1));
   pf_ = node_->getPfPtr();
 }
@@ -216,21 +217,24 @@ void Node2D::initFromNewMap()
   else if (model_type_ == PLANAR_MODEL_LIKELIHOOD_FIELD_PROB)
   {
     ROS_INFO("Initializing likelihood field model; this can take some time on large maps...");
-    scanner_.setModelLikelihoodFieldProb(z_hit_, z_rand_, sigma_hit_, sensor_likelihood_max_dist_, do_beamskip_,
-                                                beam_skip_distance_, beam_skip_threshold_, beam_skip_error_threshold_);
+    scanner_.setModelLikelihoodFieldProb(z_hit_, z_rand_, sigma_hit_, sensor_likelihood_max_dist_,
+                                         do_beamskip_, beam_skip_distance_, beam_skip_threshold_,
+                                         beam_skip_error_threshold_);
     ROS_INFO("Done initializing likelihood field model.");
   }
   else if (model_type_ == PLANAR_MODEL_LIKELIHOOD_FIELD_GOMPERTZ)
   {
-    ROS_INFO("Initializing likelihood field (gompertz) model; this can take some time on large maps...");
+    ROS_INFO("Initializing likelihood field (gompertz) model; this can take some time on "
+             "large maps...");
     scanner_.setModelLikelihoodFieldGompertz(
         z_hit_, z_rand_, sigma_hit_, sensor_likelihood_max_dist_, gompertz_a_, gompertz_b_,
         gompertz_c_, gompertz_input_shift_, gompertz_input_scale_, gompertz_output_shift_);
-    ROS_INFO("Gompertz key points by total planar scan match: "
-             "0.0: %f, 0.25: %f, 0.5: %f, 0.75: %f, 1.0: %f",
-             scanner_.applyGompertz(z_rand_), scanner_.applyGompertz(z_rand_ + z_hit_ * .25),
+    ROS_INFO("Gompertz key points by total planar scan match: 0.0: %f, 0.25: %f, 0.5: %f, 0.75: %f, 1.0: %f",
+             scanner_.applyGompertz(z_rand_),
+             scanner_.applyGompertz(z_rand_ + z_hit_ * .25),
              scanner_.applyGompertz(z_rand_ + z_hit_ * .5),
-             scanner_.applyGompertz(z_rand_ + z_hit_ * .75), scanner_.applyGompertz(z_rand_ + z_hit_));
+             scanner_.applyGompertz(z_rand_ + z_hit_ * .75),
+             scanner_.applyGompertz(z_rand_ + z_hit_));
     ROS_INFO("Done initializing likelihood (gompertz) field model.");
   }
   else
@@ -327,7 +331,7 @@ void Node2D::scanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan)
     deactivateGlobalLocalizationParams();
 
   std::string frame_id = planar_scan->header.frame_id;
-  ros::Time stamp = planar_scan->header.stamp; 
+  ros::Time stamp = planar_scan->header.stamp;
   int scanner_index = getFrameToScannerIndex(frame_id);
   if(scanner_index >= 0)
   {
@@ -344,8 +348,7 @@ void Node2D::scanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan)
 
 bool Node2D::updateNodePf(const ros::Time& stamp, int scanner_index, bool* force_publication)
 {
-  return node_->updatePf(stamp, scanners_update_, scanner_index, &resample_count_,
-                         force_publication, &force_update_);
+  return node_->updatePf(stamp, scanners_update_, scanner_index, &resample_count_, force_publication, &force_update_);
 }
 
 bool Node2D::updateScanner(const sensor_msgs::LaserScanConstPtr& planar_scan,
@@ -356,11 +359,9 @@ bool Node2D::updateScanner(const sensor_msgs::LaserScanConstPtr& planar_scan,
   bool success = true;
   if(getAngleStats(planar_scan, &angle_min, &angle_increment))
   {
-    ROS_DEBUG("Planar scanner %d angles in base frame: min: %.3f inc: %.3f",
-              scanner_index, angle_min, angle_increment);
+    ROS_DEBUG("Planar scanner %d angles in base frame: min: %.3f inc: %.3f", scanner_index, angle_min, angle_increment);
     updateLatestScanData(planar_scan, angle_min, angle_increment);
-    scanners_[scanner_index]->updateSensor(
-            pf_, std::dynamic_pointer_cast<SensorData>(latest_scan_data_));
+    scanners_[scanner_index]->updateSensor(pf_, std::dynamic_pointer_cast<SensorData>(latest_scan_data_));
     scanners_update_.at(scanner_index) = false;
     if(!(++resample_count_ % resample_interval_))
     {
@@ -426,8 +427,7 @@ int Node2D::getFrameToScannerIndex(const std::string& frame_id)
   return scanner_index;
 }
 
-bool Node2D::initFrameToScanner(const std::string& frame_id, tf::Stamped<tf::Pose>* scanner_pose,
-                                int* scanner_index)
+bool Node2D::initFrameToScanner(const std::string& frame_id, tf::Stamped<tf::Pose>* scanner_pose, int* scanner_index)
 {
   ROS_DEBUG("Setting up planar_scanner %d (frame_id=%s)\n",
             static_cast<int>(frame_to_scanner_.size()),
@@ -459,8 +459,8 @@ void Node2D::updateScannerPose(const tf::Stamped<tf::Pose>& scanner_pose, int sc
   // planar scanner mounting angle gets computed later -> set to 0 here!
   scanner_pose_v.v[2] = 0;
   scanners_[scanner_index]->setPlanarScannerPose(scanner_pose_v);
-  ROS_DEBUG("Received planar scanner's pose wrt robot: %.3f %.3f %.3f", scanner_pose_v.v[0],
-            scanner_pose_v.v[1], scanner_pose_v.v[2]);
+  ROS_DEBUG("Received planar scanner's pose wrt robot: %.3f %.3f %.3f",
+            scanner_pose_v.v[0], scanner_pose_v.v[1], scanner_pose_v.v[2]);
 }
 
 bool Node2D::initLatestScanData(const sensor_msgs::LaserScanConstPtr& planar_scan,
@@ -470,8 +470,7 @@ bool Node2D::initLatestScanData(const sensor_msgs::LaserScanConstPtr& planar_sca
   latest_scan_data_->range_count_ = planar_scan->ranges.size();
 }
 
-bool Node2D::getAngleStats(const sensor_msgs::LaserScanConstPtr& planar_scan,
-                           double* angle_min, double* angle_increment)
+bool Node2D::getAngleStats(const sensor_msgs::LaserScanConstPtr& planar_scan, double* angle_min, double* angle_increment)
 {
   // To account for the planar scanners that are mounted upside-down, we determine the
   // min, max, and increment angles of the scanner in the base frame.
@@ -508,8 +507,7 @@ void Node2D::updateLatestScanData(const sensor_msgs::LaserScanConstPtr& planar_s
 {
   // Apply range min/max thresholds, if the user supplied them
   if (sensor_max_range_ > 0.0)
-    latest_scan_data_->range_max_ = std::min(planar_scan->range_max,
-                                             static_cast<float>(sensor_max_range_));
+    latest_scan_data_->range_max_ = std::min(planar_scan->range_max, static_cast<float>(sensor_max_range_));
   else
     latest_scan_data_->range_max_ = planar_scan->range_max;
   double range_min;
@@ -624,8 +622,8 @@ void Node2D::checkScanReceived(const ros::TimerEvent& event)
   ros::Duration d = ros::Time::now() - latest_scan_received_ts_;
   if (d > check_scanner_interval_)
   {
-    ROS_WARN("No planar scan received (and thus no pose updates have been published) for %f "
-             "seconds. Verify that data is being published on the %s topic.",
+    ROS_WARN("No planar scan received (and thus no pose updates have been published) for %f seconds. "
+             "Verify that data is being published on the %s topic.",
              d.toSec(), ros::names::resolve(scan_topic_).c_str());
   }
 }
