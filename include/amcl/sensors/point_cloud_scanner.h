@@ -75,7 +75,6 @@ public:
   void setMapFactors(double off_map_factor, double non_free_space_factor, double non_free_space_radius);
 
   // Set the scanner's pose after construction
-  void setPointCloudScannerPose(PFVector& scanner_pose);
   void setPointCloudScannerToFootprintTF(tf::Transform lidarToFootprintTF);
 
   int getMaxBeams();
@@ -90,7 +89,6 @@ private:
                    pcl::PointCloud<pcl::PointXYZ>& map_cloud);
 
   std::shared_ptr<OctoMap> map_;
-  PFVector point_cloud_scanner_pose_;
   PointCloudModelType model_type_;
 
   // Parameters for applying Gompertz function to sample weights

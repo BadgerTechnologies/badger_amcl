@@ -406,12 +406,11 @@ int Node3D::getFrameToScannerIndex(const std::string& frame_id)
   // Do we have the base->base_lidar Tx yet?
   if (frame_to_scanner_.find(frame_id) == frame_to_scanner_.end())
   {
-    tf::Stamped<tf::Pose> scanner_pose;
-    scanner_index = initFrameToScanner(frame_id, &scanner_pose);
+    scanner_index = initFrameToScanner(frame_id);
     if(scanner_index >= 0)
     {
       frame_to_scanner_[frame_id] = scanner_index;
-      updateScannerPose(scanner_pose, scanner_index);
+      scanners_[scanner_index]->setPointCloudScannerToFootprintTF(scanner_to_footprint_tf_);
     }
   }
   else
@@ -422,38 +421,12 @@ int Node3D::getFrameToScannerIndex(const std::string& frame_id)
   return scanner_index;
 }
 
-int Node3D::initFrameToScanner(const std::string& frame_id, tf::Stamped<tf::Pose>* scanner_pose)
+int Node3D::initFrameToScanner(const std::string& frame_id)
 {
   scanners_.push_back(std::make_shared<PointCloudScanner>(scanner_));
   scanners_update_.push_back(true);
   int scanner_index = frame_to_scanner_.size();
-  tf::Stamped<tf::Pose> ident(tf::Transform(tf::createIdentityQuaternion(), tf::Vector3(0, 0, 0)),
-                              ros::Time(), frame_id);
-  bool success = true;
-  try
-  {
-    tf_.transformPose(node_->getBaseFrameId(), ident, *scanner_pose);
-  }
-  catch (tf::TransformException& e)
-  {
-    ROS_ERROR("Couldn't transform from %s to %s, even though the message notifier is in use",
-              frame_id.c_str(), node_->getBaseFrameId().c_str());
-    scanner_index = -1;
-  }
   return scanner_index;
-}
-
-void Node3D::updateScannerPose(const tf::Stamped<tf::Pose>& scanner_pose, int scanner_index)
-{
-  PFVector scanner_pose_v;
-  scanner_pose_v.v[0] = scanner_pose.getOrigin().x();
-  scanner_pose_v.v[1] = scanner_pose.getOrigin().y();
-  // point cloud scanner mounting angle gets computed later -> set to 0 here!
-  scanner_pose_v.v[2] = 0;
-  scanners_[scanner_index]->setPointCloudScannerPose(scanner_pose_v);
-  scanners_[scanner_index]->setPointCloudScannerToFootprintTF(scanner_to_footprint_tf_);
-  ROS_DEBUG("Received point cloud scanner's pose wrt robot: %.3f %.3f %.3f",
-            scanner_pose_v.v[0], scanner_pose_v.v[1], scanner_pose_v.v[2]);
 }
 
 void Node3D::initLatestScanData(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan, int scanner_index)

@@ -81,8 +81,7 @@ private:
   bool isMapInitialized();
   void deactivateGlobalLocalizationParams();
   int getFrameToScannerIndex(const std::string& frame_id);
-  int initFrameToScanner(const std::string& frame_id, tf::Stamped<tf::Pose>* scanner_pose);
-  void updateScannerPose(const tf::Stamped<tf::Pose>& scanner_pose, int scanner_index);
+  int initFrameToScanner(const std::string& frame_id);
   void initLatestScanData(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan, int scanner_index);
   void checkScanReceived(const ros::TimerEvent& event);
 
