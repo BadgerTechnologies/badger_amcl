@@ -265,7 +265,7 @@ void Node3D::initFromNewMap()
  */
 std::shared_ptr<OctoMap> Node3D::convertMap(const octomap_msgs::Octomap& map_msg)
 {
-  octomap::AbstractOcTree* absoctree;
+  octomap::AbstractOcTree* absoctree = nullptr;
   bool binary = map_msg.binary;
   if (binary)
   {
