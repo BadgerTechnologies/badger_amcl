@@ -58,33 +58,33 @@ Node3D::Node3D(Node* node, std::mutex& configuration_mutex)
   fake_sample_set_ = std::make_shared<PFSampleSet>();
   private_nh_.param("first_map_only", first_map_only_, false);
   private_nh_.param("wait_for_occupancy_map", wait_for_occupancy_map_, false);
-  private_nh_.param("point_cloud_scanner_max_beams", max_beams_, 256);
-  private_nh_.param("point_cloud_scanner_z_hit", z_hit_, 0.95);
-  private_nh_.param("point_cloud_scanner_z_rand", z_rand_, 0.05);
-  private_nh_.param("point_cloud_scanner_sigma_hit", sigma_hit_, 0.2);
-  private_nh_.param("point_cloud_scanner_off_map_factor", off_map_factor_, 1.0);
-  private_nh_.param("point_cloud_scanner_non_free_space_factor", non_free_space_factor_, 1.0);
-  private_nh_.param("point_cloud_scanner_non_free_space_radius", non_free_space_radius_, 0.0);
-  private_nh_.param("point_cloud_scanner_likelihood_max_dist", sensor_likelihood_max_dist_, 0.36);
+  private_nh_.param("laser_max_beams", max_beams_, 256);
+  private_nh_.param("laser_z_hit", z_hit_, 0.95);
+  private_nh_.param("laser_z_rand", z_rand_, 0.05);
+  private_nh_.param("laser_sigma_hit", sigma_hit_, 0.2);
+  private_nh_.param("laser_off_map_factor", off_map_factor_, 1.0);
+  private_nh_.param("laser_non_free_space_factor", non_free_space_factor_, 1.0);
+  private_nh_.param("laser_non_free_space_radius", non_free_space_radius_, 0.0);
+  private_nh_.param("laser_likelihood_max_dist", sensor_likelihood_max_dist_, 0.36);
   private_nh_.param("resample_interval", resample_interval_, 2);
-  private_nh_.param("point_cloud_gompertz_a", gompertz_a_, 1.0);
-  private_nh_.param("point_cloud_gompertz_b", gompertz_b_, 1.0);
-  private_nh_.param("point_cloud_gompertz_c", gompertz_c_, 1.0);
-  private_nh_.param("point_cloud_gompertz_input_shift", gompertz_input_shift_, 0.0);
-  private_nh_.param("point_cloud_gompertz_input_scale", gompertz_input_scale_, 1.0);
-  private_nh_.param("point_cloud_gompertz_output_shift", gompertz_output_shift_, 0.0);
+  private_nh_.param("laser_gompertz_a", gompertz_a_, 1.0);
+  private_nh_.param("laser_gompertz_b", gompertz_b_, 1.0);
+  private_nh_.param("laser_gompertz_c", gompertz_c_, 1.0);
+  private_nh_.param("laser_gompertz_input_shift", gompertz_input_shift_, 0.0);
+  private_nh_.param("laser_gompertz_input_scale", gompertz_input_scale_, 1.0);
+  private_nh_.param("laser_gompertz_output_shift", gompertz_output_shift_, 0.0);
   private_nh_.param("global_localization_scanner_off_map_factor", global_localization_off_map_factor_, 1.0);
   private_nh_.param("global_localization_scanner_non_free_space_factor",
                     global_localization_non_free_space_factor_, 1.0);
   const std::string default_point_cloud_scan_topic = "/scans/top/points_filtered";
-  private_nh_.param("point_cloud_scan_topic", scan_topic_, default_point_cloud_scan_topic);
+  private_nh_.param("cloud_topic", scan_topic_, default_point_cloud_scan_topic);
   std::string tmp_model_type;
-  private_nh_.param("point_cloud_model_type", tmp_model_type, std::string("point cloud"));
-  if (tmp_model_type == "point cloud")
+  private_nh_.param("laser_model_type", tmp_model_type, std::string("likelihood_field_gompertz"));
+  if (tmp_model_type == "likelihood_field")
   {
     model_type_ = POINT_CLOUD_MODEL;
   }
-  else if (tmp_model_type == "point cloud gompertz")
+  else if (tmp_model_type == "likelihood_field_gompertz")
   {
     model_type_ = POINT_CLOUD_MODEL_GOMPERTZ;
   }
