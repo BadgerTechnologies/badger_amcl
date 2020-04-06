@@ -81,6 +81,7 @@ private:
   bool isMapInitialized();
   void deactivateGlobalLocalizationParams();
   int getFrameToScannerIndex(const std::string& frame_id);
+  bool getFootprintToFrameTransform(const std::string& frame_id, tf::StampedTransform* StampedTransform);
   int initFrameToScanner(const std::string& frame_id);
   void initLatestScanData(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan, int scanner_index);
   void checkScanReceived(const ros::TimerEvent& event);
@@ -110,7 +111,6 @@ private:
   ros::Timer check_scanner_timer_;
   ros::Time latest_scan_received_ts_;
   tf::TransformListener tf_;
-  tf::StampedTransform scanner_to_footprint_tf_;
   int occupancy_map_scale_up_factor_;
   int max_beams_;
   int resample_interval_;
