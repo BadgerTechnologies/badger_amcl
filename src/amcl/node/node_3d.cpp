@@ -104,18 +104,6 @@ Node3D::Node3D(Node* node, std::mutex& configuration_mutex)
   // 15s timer to warn on lack of receipt of point cloud scans, #5209
   scanner_check_interval_ = ros::Duration(15.0);
   check_scanner_timer_ = nh_.createTimer(scanner_check_interval_, boost::bind(&Node3D::checkScanReceived, this, _1));
-
-  try
-  {
-    tf_.waitForTransform("base_footprint", "top_laser", ros::Time::now(), ros::Duration(5.0));
-    tf_.lookupTransform("base_footprint", "top_laser", ros::Time::now(), scanner_to_footprint_tf_);
-  }
-  catch (tf::TransformException& e)
-  {
-    ROS_ERROR("failed to get top laser to base footprint transform.");
-    return;
-  }
-
   force_update_ = false;
   first_octomap_received_ = false;
   octo_map_sub_ = nh_.subscribe("octomap_binary", 1, &Node3D::octoMapMsgReceived, this);
@@ -409,8 +397,16 @@ int Node3D::getFrameToScannerIndex(const std::string& frame_id)
     scanner_index = initFrameToScanner(frame_id);
     if(scanner_index >= 0)
     {
-      frame_to_scanner_[frame_id] = scanner_index;
-      scanners_[scanner_index]->setPointCloudScannerToFootprintTF(scanner_to_footprint_tf_);
+      frame_to_scanner_[frame_id] = scanner_index; 
+      tf::StampedTransform scanner_to_footprint_tf;
+      if(getFootprintToFrameTransform(frame_id, &scanner_to_footprint_tf))
+      {
+        scanners_[scanner_index]->setPointCloudScannerToFootprintTF(scanner_to_footprint_tf);
+      }
+      else
+      {
+        scanner_index = -1;
+      }
     }
   }
   else
@@ -419,6 +415,20 @@ int Node3D::getFrameToScannerIndex(const std::string& frame_id)
     scanner_index = frame_to_scanner_[frame_id];
   }
   return scanner_index;
+}
+
+bool Node3D::getFootprintToFrameTransform(const std::string& frame_id, tf::StampedTransform* stamped_transform)
+{
+  try
+  {
+    std::string footprint_frame_id = node_->getBaseFrameId();
+    tf_.waitForTransform(footprint_frame_id, frame_id, ros::Time::now(), ros::Duration(5.0));
+    tf_.lookupTransform(footprint_frame_id, frame_id, ros::Time::now(), *stamped_transform);
+  }
+  catch (tf::TransformException& e)
+  {
+    ROS_ERROR("Failed to get transform from base footprint to given frame.");
+  }
 }
 
 int Node3D::initFrameToScanner(const std::string& frame_id)
