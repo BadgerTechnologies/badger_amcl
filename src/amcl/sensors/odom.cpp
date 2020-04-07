@@ -34,12 +34,6 @@
 namespace amcl
 {
 
-////////////////////////////////////////////////////////////////////////////////
-// Default constructor
-Odom::Odom() : Sensor()
-{
-}
-
 void Odom::setModelDiff(double alpha1, double alpha2, double alpha3, double alpha4)
 {
   model_type_ = ODOM_MODEL_DIFF;
@@ -81,8 +75,6 @@ void Odom::setModel(OdomModelType type, double alpha1, double alpha2, double alp
   alpha5_ = alpha5;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// Apply the action model
 bool Odom::updateAction(std::shared_ptr<ParticleFilter> pf, std::shared_ptr<SensorData> data)
 {
   std::shared_ptr<OdomData> ndata;

@@ -61,7 +61,7 @@ class Odom : public Sensor
 {
   // Default constructor
 public:
-  Odom();
+  Odom() = default;
 
   void setModelDiff(double alpha1, double alpha2, double alpha3, double alpha4);
 
