@@ -241,7 +241,7 @@ void ParticleFilter::updateSensor(std::function<double(std::shared_ptr<SensorDat
       w_avg += update_sample->weight;
       update_sample->weight /= total;
     }
-    // Update running averages of likelihood of samples (Prob Rob p258)
+    // Update running averages of likelihood of samples (from Probabilistic Robotics 'Augmented_MCL' algorithm)
     w_avg /= update_set->sample_count;
     if (w_slow_ == 0.0)
       w_slow_ = w_avg;
@@ -270,13 +270,12 @@ double ParticleFilter::resampleSystematic(double w_diff)
   std::shared_ptr<PFSampleSet> set_a, set_b;
   PFSample *sample_a, *sample_b;
 
-  std::vector<double> c;
 
   set_a = sets_[current_set_];
   set_b = sets_[(current_set_ + 1) % 2];
 
   // Build up cumulative probability table for resampling.
-  c = std::vector<double>(set_a->sample_count + 1);
+  std::vector<double> c = std::vector<double>(set_a->sample_count + 1);
   c[0] = 0.0;
   for (i = 0; i < set_a->sample_count; i++)
   {
@@ -382,7 +381,9 @@ double ParticleFilter::resampleMultinomial(double w_diff)
     sample_b = &(set_b->samples[set_b->sample_count++]);
 
     if (drand48() < w_diff)
+    {
       sample_b->pose = random_pose_fn_();
+    }
     else
     {
       // Naive discrete event sampler
@@ -576,11 +577,13 @@ void ParticleFilter::clusterStats(std::shared_ptr<PFSampleSet> set)
 
     // Compute covariance in linear components
     for (j = 0; j < 2; j++)
+    {
       for (k = 0; k < 2; k++)
       {
         cluster->c[j][k] += sample->weight * sample->pose.v[j] * sample->pose.v[k];
         c[j][k] += sample->weight * sample->pose.v[j] * sample->pose.v[k];
       }
+    }
   }
 
   // Normalize
