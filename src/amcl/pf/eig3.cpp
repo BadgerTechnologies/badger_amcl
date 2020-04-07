@@ -15,11 +15,6 @@
 namespace amcl
 {
 
-double EIG3::hypot2(double x, double y)
-{
-  return std::sqrt(x * x + y * y);
-}
-
 // Symmetric Householder reduction to tridiagonal form.
 
 void EIG3::tred2(PFMatrix& V, PFVector* d, PFVector* e)
@@ -212,7 +207,7 @@ void EIG3::tql2(PFMatrix& V, PFVector& d, PFVector& e)
 
         g = d.v[l];
         p = (d.v[l + 1] - g) / (2.0 * e.v[l]);
-        r = hypot2(p, 1.0);
+        r = std::hypot(p, 1.0);
         if (p < 0)
         {
           r = -r;
@@ -243,7 +238,7 @@ void EIG3::tql2(PFMatrix& V, PFVector& d, PFVector& e)
           s2 = s;
           g = c * e.v[i];
           h = c * p;
-          r = hypot2(p, e.v[i]);
+          r = std::hypot(p, e.v[i]);
           e.v[i + 1] = s * r;
           s = e.v[i] / r;
           c = p / r;

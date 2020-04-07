@@ -22,7 +22,6 @@ public:
 
 private:
   static constexpr int N = 3;
-  static double hypot2(double x, double y);
   static void tred2(PFMatrix& V, PFVector* d, PFVector* e);
   static void tql2(PFMatrix& V, PFVector& d, PFVector& e);
 };
