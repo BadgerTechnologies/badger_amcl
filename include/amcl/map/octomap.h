@@ -16,9 +16,6 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
-/*****************************************************
- * Desc: Octomap for 3D AMCL
- *****************************************************/
 
 #ifndef AMCL_MAP_OCTOMAP_H
 #define AMCL_MAP_OCTOMAP_H

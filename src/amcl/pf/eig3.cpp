@@ -1,7 +1,3 @@
-/**************************************************************************
- * Desc: Eigen-decomposition functions
- *************************************************************************/
-
 /* Eigen decomposition code for symmetric 3x3 matrices, copied from the public
    domain Java Matrix library JAMA. */
 

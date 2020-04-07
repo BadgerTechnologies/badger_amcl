@@ -1,7 +1,3 @@
-/**************************************************************************
- * Desc: Eigen-decomposition functions
- *************************************************************************/
-
 /* Eigen-decomposition for symmetric 3x3 real matrices.
    Public domain, copied from the public domain Java library JAMA. */
 

@@ -16,9 +16,6 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
-/*************************************************************************
- * Desc: Point Cloud Scanner sensor model for 3D AMCL
- *************************************************************************/
 
 #include "sensors/point_cloud_scanner.h"
 
