@@ -23,6 +23,7 @@
 #include <ros/spinner.h>
 #include <signal.h>
 
+#include <ctime>
 #include <iostream>
 
 #include "node/node.h"
@@ -34,6 +35,7 @@ void sigHandler(int sig)
 
 int main(int argc, char** argv)
 {
+  srand48(std::time(NULL));
   ros::init(argc, argv, "amcl", ros::init_options::NoSigintHandler);
   ros::NodeHandle nh;
 
