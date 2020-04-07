@@ -85,7 +85,7 @@ private:
   double calcPointCloudModel(std::shared_ptr<PointCloudData> data, std::shared_ptr<PFSampleSet> set);
   double calcPointCloudModelGompertz(std::shared_ptr<PointCloudData> data, std::shared_ptr<PFSampleSet> set);
   double recalcWeight(std::shared_ptr<PFSampleSet> set);
-  bool getMapCloud(std::shared_ptr<PointCloudData> data, PFVector pose,
+  void getMapCloud(std::shared_ptr<PointCloudData> data, PFVector pose,
                    pcl::PointCloud<pcl::PointXYZ>& map_cloud);
 
   std::shared_ptr<OctoMap> map_;

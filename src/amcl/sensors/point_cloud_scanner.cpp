@@ -155,11 +155,7 @@ double PointCloudScanner::calcPointCloudModel(std::shared_ptr<PointCloudData> da
     p = 1.0;
     pcl::PointCloud<pcl::PointXYZ>::iterator it;
     pcl::PointCloud<pcl::PointXYZ> map_cloud;
-    if (!getMapCloud(data, pose, map_cloud))
-    {
-      total_weight = 0.0;
-      break;
-    }
+    getMapCloud(data, pose, map_cloud);
     for (it = map_cloud.begin(); it != map_cloud.end(); ++it)
     {
       world_vec_[0] = it->x;
@@ -193,11 +189,7 @@ double PointCloudScanner::calcPointCloudModelGompertz(std::shared_ptr<PointCloud
     pose = sample->pose;
     pcl::PointCloud<pcl::PointXYZ>::iterator it;
     pcl::PointCloud<pcl::PointXYZ> map_cloud;
-    if (!getMapCloud(data, pose, map_cloud))
-    {
-      total_weight = 0.0;
-      break;
-    }
+    getMapCloud(data, pose, map_cloud);
     sum_pz = 0;
     int count = 0;
     for (it = map_cloud.begin(); it != map_cloud.end(); ++it)
@@ -250,25 +242,14 @@ double PointCloudScanner::recalcWeight(std::shared_ptr<PFSampleSet> set)
   return rv;
 }
 
-bool PointCloudScanner::getMapCloud(std::shared_ptr<PointCloudData> data,
+void PointCloudScanner::getMapCloud(std::shared_ptr<PointCloudData> data,
                                     PFVector pose, pcl::PointCloud<pcl::PointXYZ>& map_cloud)
 {
-  pcl::PointCloud<pcl::PointXYZ> footprint_cloud;
   tf::Vector3 footprint_to_map_origin(pose.v[0], pose.v[1], 0.0);
   tf::Quaternion footprint_to_map_q(tf::Vector3(0.0, 0.0, 1.0), pose.v[2]);
   tf::Transform footprint_to_map_tf(footprint_to_map_q, footprint_to_map_origin);
-  try
-  {
-    pcl_ros::transformPointCloud(data->points_, footprint_cloud,
-                                 point_cloud_scanner_to_footprint_tf_);
-    pcl_ros::transformPointCloud(footprint_cloud, map_cloud, footprint_to_map_tf);
-  }
-  catch (tf::TransformException& e)
-  {
-    ROS_ERROR("Failed to transform sensor point cloud to map point cloud.");
-    return false;
-  }
-  return true;
+  pcl_ros::transformPointCloud(data->points_, map_cloud,
+                               point_cloud_scanner_to_footprint_tf_ * footprint_to_map_tf);
 }
 
 double PointCloudScanner::applyGompertz(double p)
