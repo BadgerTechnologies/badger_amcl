@@ -239,7 +239,7 @@ void PFKDTree::clusterNode(PFKDTreeNode* node, int depth)
 {
   int i;
   int nkey[3];
-  PFKDTreeNode* nnode;
+  PFKDTreeNode* next_node;
 
   for (i = 0; i < 3 * 3 * 3; i++)
   {
@@ -247,24 +247,24 @@ void PFKDTree::clusterNode(PFKDTreeNode* node, int depth)
     nkey[1] = node->key[1] + ((i % 9) / 3) - 1;
     nkey[2] = node->key[2] + ((i % 9) % 3) - 1;
 
-    nnode = findNode(root_, nkey);
-    if (nnode == NULL)
+    next_node = findNode(root_, nkey);
+    if (next_node == NULL)
       continue;
 
-    ROS_ASSERT(nnode->leaf);
+    ROS_ASSERT(next_node->leaf);
 
     // This node already has a label; skip it.  The label should be
     // consistent, however.
-    if (nnode->cluster >= 0)
+    if (next_node->cluster >= 0)
     {
-      ROS_ASSERT(nnode->cluster == node->cluster);
+      ROS_ASSERT(next_node->cluster == node->cluster);
       continue;
     }
 
     // Label this node and recurse
-    nnode->cluster = node->cluster;
+    next_node->cluster = node->cluster;
 
-    clusterNode(nnode, depth + 1);
+    clusterNode(next_node, depth + 1);
   }
 }
 
