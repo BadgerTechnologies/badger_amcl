@@ -17,10 +17,6 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
-/**************************************************************************
- * Desc: Simple particle filter for localization.
- * Author: Andrew Howard
- *************************************************************************/
 
 #ifndef AMCL_PF_PARTICLE_FILTER_H
 #define AMCL_PF_PARTICLE_FILTER_H

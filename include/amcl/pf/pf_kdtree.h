@@ -17,10 +17,6 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
-/**************************************************************************
- * Desc: KD tree functions
- * Author: Andrew Howard
- *************************************************************************/
 
 #ifndef AMCL_PF_PF_KDTREE_H
 #define AMCL_PF_PF_KDTREE_H

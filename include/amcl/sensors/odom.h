@@ -16,12 +16,6 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
-///////////////////////////////////////////////////////////////////////////
-//
-// Desc: Odometry sensor model for AMCL
-// Author: Andrew Howard
-//
-///////////////////////////////////////////////////////////////////////////
 
 #ifndef AMCL_SENSORS_ODOM_H
 #define AMCL_SENSORS_ODOM_H

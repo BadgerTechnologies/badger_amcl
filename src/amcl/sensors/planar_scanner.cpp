@@ -17,10 +17,6 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
-/***********************************************************************
- * Desc: AMCL planar scanner routines
- * Author: Andrew Howard
- ***********************************************************************/
 
 #include "sensors/planar_scanner.h"
 

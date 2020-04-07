@@ -17,19 +17,11 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
-/**************************************************************************
- * Desc: Useful pdf functions
- * Author: Andrew Howard
- *************************************************************************/
 
 #ifndef AMCL_PF_PDF_GAUSSIAN_H
 #define AMCL_PF_PDF_GAUSSIAN_H
 
 #include "pf/pf_vector.h"
-
-/**************************************************************************
- * Gaussian
- *************************************************************************/
 
 namespace amcl
 {
