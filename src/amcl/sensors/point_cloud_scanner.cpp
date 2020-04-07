@@ -36,16 +36,13 @@ namespace amcl
 PointCloudScanner::PointCloudScanner() : Sensor()
 {
   max_beams_ = 0;
-  map_ = nullptr;
 
   off_map_factor_ = 1.0;
   non_free_space_factor_ = 1.0;
   non_free_space_radius_ = 0.0;
 
-  if(map_vec_.size() != 3)
-    map_vec_ = { 0, 0, 0 };
-  if(world_vec_.size() != 3)
-    world_vec_ = {0.0, 0.0, 0.0};
+  map_vec_.resize(3);
+  world_vec_.resize(3);
 }
 
 void PointCloudScanner::init(int max_beams, std::shared_ptr<OctoMap> map)
