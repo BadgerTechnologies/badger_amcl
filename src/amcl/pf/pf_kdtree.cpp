@@ -34,8 +34,6 @@
 namespace amcl
 {
 
-///////////////////////////////////////////////////////////////////////////////
-// Create a tree
 PFKDTree::PFKDTree(int max_size)
 {
   cell_size_[0] = 0.50;
@@ -51,15 +49,11 @@ PFKDTree::PFKDTree(int max_size)
   leaf_count_ = 0;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// Destroy a tree
 PFKDTree::~PFKDTree()
 {
   std::free(nodes_);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// Clear all entries from the tree
 void PFKDTree::clearKDTree()
 {
   root_ = NULL;
@@ -67,8 +61,6 @@ void PFKDTree::clearKDTree()
   node_count_ = 0;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// Insert a pose into the tree.
 void PFKDTree::insertPose(PFVector pose, double value)
 {
   int key[3];
@@ -80,7 +72,6 @@ void PFKDTree::insertPose(PFVector pose, double value)
   root_ = insertNode(NULL, root_, key, value);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 // Determine the cluster label for the given pose
 int PFKDTree::getCluster(PFVector pose)
 {
@@ -97,15 +88,11 @@ int PFKDTree::getCluster(PFVector pose)
   return node->cluster;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// Compare keys to see if they are equal
 bool PFKDTree::equals(int key_a[], int key_b[])
 {
   return (key_a[0] == key_b[0]) and (key_a[1] == key_b[1]) and (key_a[2] == key_b[2]);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// Insert a node into the tree
 PFKDTreeNode* PFKDTree::insertNode(PFKDTreeNode* parent, PFKDTreeNode* node, int key[], double value)
 {
   int i;
@@ -132,7 +119,6 @@ PFKDTreeNode* PFKDTree::insertNode(PFKDTreeNode* parent, PFKDTreeNode* node, int
     node->value = value;
     leaf_count_ += 1;
   }
-
   // If the node exists, and it is a leaf node...
   else if (node->leaf)
   {
@@ -141,7 +127,6 @@ PFKDTreeNode* PFKDTree::insertNode(PFKDTreeNode* parent, PFKDTreeNode* node, int
     {
       node->value += value;
     }
-
     // The keys are not equal, so split this node
     else
     {
@@ -177,7 +162,6 @@ PFKDTreeNode* PFKDTree::insertNode(PFKDTreeNode* parent, PFKDTreeNode* node, int
       leaf_count_ -= 1;
     }
   }
-
   // If the node exists, and it has children...
   else
   {
@@ -193,14 +177,10 @@ PFKDTreeNode* PFKDTree::insertNode(PFKDTreeNode* parent, PFKDTreeNode* node, int
   return node;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// Recursive node search
 PFKDTreeNode* PFKDTree::findNode(PFKDTreeNode* node, int key[])
 {
   if (node->leaf)
   {
-    // printf("find  : leaf %p %d %d %d\n", node, node->key[0], node->key[1], node->key[2]);
-
     // If the keys are the same...
     if (equals(key, node->key))
       return node;
@@ -220,7 +200,6 @@ PFKDTreeNode* PFKDTree::findNode(PFKDTreeNode* node, int key[])
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 // Cluster the leaves in the tree
 void PFKDTree::cluster()
 {
@@ -241,9 +220,6 @@ void PFKDTree::cluster()
       ROS_ASSERT(queue_count < node_count_);
       queue.push_back(node);
       queue_count++;
-
-      // TESTING; remove
-      ROS_ASSERT(node == findNode(root_, node->key));
     }
   }
 
@@ -266,7 +242,6 @@ void PFKDTree::cluster()
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 // Recursively label nodes in this cluster
 void PFKDTree::clusterNode(PFKDTreeNode* node, int depth)
 {
