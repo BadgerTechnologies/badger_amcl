@@ -30,7 +30,6 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdlib>
-#include <ctime>
 
 #include "pf/pdf_gaussian.h"
 #include "sensors/sensor.h"
@@ -45,8 +44,6 @@ ParticleFilter::ParticleFilter(int min_samples, int max_samples, double alpha_sl
   int i, j;
   std::shared_ptr<PFSampleSet> set;
   PFSample* sample;
-
-  srand48(std::time(NULL));
 
   resample_model_ = PF_RESAMPLE_MULTINOMIAL;
   random_pose_fn_ = random_pose_fn;
