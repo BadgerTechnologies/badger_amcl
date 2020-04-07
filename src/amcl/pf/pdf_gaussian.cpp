@@ -31,11 +31,6 @@
 namespace amcl
 {
 
-/**************************************************************************
- * Gaussian
- *************************************************************************/
-
-// Create a gaussian pdf
 PDFGaussian::PDFGaussian(PFVector x, PFMatrix cx)
 {
   PFMatrix m;
