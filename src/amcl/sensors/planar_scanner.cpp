@@ -366,11 +366,11 @@ double PlanarScanner::calcLikelihoodFieldModelProb(std::shared_ptr<PlanarData> d
   }
 
   // we need a count the no of particles for which the beam agreed with the map
-  int* obs_count = new int[max_beams_]();
+  std::vector<int> obs_count(max_beams_);
 
   // we also need a mask of which observations to integrate
   // (to decide which beams to integrate to all particles)
-  bool* obs_mask = new bool[max_beams_]();
+  std::vector<bool> obs_mask(max_beams_);
 
   int beam_ind = 0;
 
@@ -532,8 +532,6 @@ double PlanarScanner::calcLikelihoodFieldModelProb(std::shared_ptr<PlanarData> d
     }
   }
 
-  delete[] obs_count;
-  delete[] obs_mask;
   return total_weight;
 }
 
