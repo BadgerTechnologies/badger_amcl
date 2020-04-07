@@ -32,7 +32,6 @@
 namespace amcl
 {
 
-// Return a zero vector
 PFVector::PFVector()
 {
   v[0] = 0.0;
@@ -46,8 +45,8 @@ bool PFVector::isFinite()
   int i;
   for (i = 0; i < 3; i++)
     if (!std::isfinite(v[i]))
-      return 0;
-  return 1;
+      return false;
+  return true;
 }
 
 // Simple vector addition
