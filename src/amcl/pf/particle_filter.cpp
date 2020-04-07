@@ -79,8 +79,7 @@ ParticleFilter::ParticleFilter(int min_samples, int max_samples, double alpha_sl
       sample->weight = 1.0 / max_samples_;
     }
 
-    // HACK: is 3 times max_samples_ enough?
-    set->kdtree = std::make_shared<PFKDTree>(3 * max_samples_);
+    set->kdtree = std::make_shared<PFKDTree>();
 
     set->cluster_count = 0;
     set->cluster_max_count = max_samples_;
@@ -111,16 +110,11 @@ void ParticleFilter::init(PFVector mean, PFMatrix cov)
   int i;
   std::shared_ptr<PFSampleSet> set;
   PFSample* sample;
-
   set = sets_[current_set_];
-
   // Create the kd tree for adaptive sampling
   set->kdtree->clearKDTree();
-
   set->sample_count = max_samples_;
-
   PDFGaussian pdf(mean, cov);
-
   // Compute the new sample poses
   for (i = 0; i < set->sample_count; i++)
   {

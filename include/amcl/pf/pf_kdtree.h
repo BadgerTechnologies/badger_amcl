@@ -25,6 +25,9 @@
 #ifndef AMCL_PF_PF_KDTREE_H
 #define AMCL_PF_PF_KDTREE_H
 
+#include <memory>
+#include <vector>
+
 #include "pf/pf_vector.h"
 
 namespace amcl
@@ -59,10 +62,7 @@ class PFKDTree
 {
 public:
   // Create a tree
-  PFKDTree(int max_size);
-
-  // Destroy a tree
-  ~PFKDTree();
+  PFKDTree();
 
   // Clear all entries from the tree
   void clearKDTree();
@@ -97,9 +97,9 @@ private:
   // The root node of the tree
   PFKDTreeNode* root_;
 
-  // The number of nodes in the tree
-  int node_count_, node_max_count_;
-  PFKDTreeNode* nodes_;
+  // The maximum number of nodes in the tree
+  int node_count_;
+  std::vector<std::unique_ptr<PFKDTreeNode>> nodes_;
 
   // The number of leaf nodes in the tree
   int leaf_count_;

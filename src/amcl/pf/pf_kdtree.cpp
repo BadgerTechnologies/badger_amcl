@@ -34,7 +34,7 @@
 namespace amcl
 {
 
-PFKDTree::PFKDTree(int max_size)
+PFKDTree::PFKDTree()
 {
   cell_size_[0] = 0.50;
   cell_size_[1] = 0.50;
@@ -43,15 +43,8 @@ PFKDTree::PFKDTree(int max_size)
   root_ = NULL;
 
   node_count_ = 0;
-  node_max_count_ = max_size;
-  nodes_ = (PFKDTreeNode*)std::calloc(node_max_count_, sizeof(PFKDTreeNode));
 
   leaf_count_ = 0;
-}
-
-PFKDTree::~PFKDTree()
-{
-  std::free(nodes_);
 }
 
 void PFKDTree::clearKDTree()
@@ -59,6 +52,7 @@ void PFKDTree::clearKDTree()
   root_ = NULL;
   leaf_count_ = 0;
   node_count_ = 0;
+  nodes_.clear();
 }
 
 void PFKDTree::insertPose(PFVector pose, double value)
@@ -101,10 +95,8 @@ PFKDTreeNode* PFKDTree::insertNode(PFKDTreeNode* parent, PFKDTreeNode* node, int
   // If the node doesnt exist yet...
   if (node == NULL)
   {
-    ROS_ASSERT(node_count_ < node_max_count_);
-    node = nodes_ + node_count_++;
-    // TODO: refactor memset
-    std::memset(node, 0, sizeof(PFKDTreeNode));
+    nodes_.push_back(std::unique_ptr<PFKDTreeNode>(new PFKDTreeNode()));
+    node = nodes_[node_count_++].get();
 
     node->leaf = 1;
 
@@ -213,7 +205,7 @@ void PFKDTree::cluster()
   // Put all the leaves in a queue
   for (i = 0; i < node_count_; i++)
   {
-    node = nodes_ + i;
+    node = nodes_[i].get();
     if (node->leaf)
     {
       node->cluster = -1;
