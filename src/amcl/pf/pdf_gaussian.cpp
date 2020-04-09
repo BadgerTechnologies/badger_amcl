@@ -20,6 +20,8 @@
 
 #include "pf/pdf_gaussian.h"
 
+#include <stdlib.h>
+
 #include <cmath>
 
 #include <ros/console.h>
