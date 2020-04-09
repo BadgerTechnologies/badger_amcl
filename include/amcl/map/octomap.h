@@ -64,8 +64,10 @@ public:
   virtual void updateCSpace();
   virtual void updateMaxOccDist(double max_occ_dist);
   virtual void initFromOctree(std::shared_ptr<octomap::OcTree> octree);
-  virtual double getOccDist(int i, int j, int k);
   virtual double getMaxOccDist();
+  // This function is called very frequently.
+  // Do not make it virtual as this would hinder performance.
+  double getOccDist(int i, int j, int k);
 
 protected:
   struct OctoMapCellData;
