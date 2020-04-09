@@ -20,6 +20,16 @@
 #ifndef AMCL_NODE_NODE_H
 #define AMCL_NODE_NODE_H
 
+#include <algorithm>
+#include <cmath>
+#include <exception>
+#include <map>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <utility>
+#include <vector>
+
 #include <dynamic_reconfigure/server.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <message_filters/subscriber.h>
@@ -39,16 +49,6 @@
 #include <tf/transform_listener.h>
 #include <tf2_ros/buffer.h>
 #include <yaml-cpp/yaml.h>
-
-#include <algorithm>
-#include <cmath>
-#include <exception>
-#include <map>
-#include <memory>
-#include <mutex>
-#include <string>
-#include <utility>
-#include <vector>
 
 #include "amcl/AMCLConfig.h"
 #include "map/map.h"

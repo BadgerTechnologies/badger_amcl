@@ -20,6 +20,12 @@
 #ifndef AMCL_NODE_NODE_3D_H
 #define AMCL_NODE_NODE_3D_H
 
+#include <map>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <vector>
+
 #include <message_filters/subscriber.h>
 #include <nav_msgs/OccupancyGrid.h>
 #include <octomap_msgs/Octomap.h>
@@ -30,12 +36,6 @@
 #include <ros/timer.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <tf/message_filter.h>
-
-#include <map>
-#include <memory>
-#include <mutex>
-#include <string>
-#include <vector>
 
 #include "amcl/AMCLConfig.h"
 #include "map/octomap.h"

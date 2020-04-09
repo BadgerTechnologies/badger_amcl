@@ -19,15 +19,15 @@
 
 #include "map/octomap.h"
 
+#include <algorithm>
+#include <cmath>
+#include <cstdlib>
+
 #include <boost/functional/hash.hpp>
 #include <octomap/OcTreeKey.h>
 #include <octomap/OcTreeDataNode.h>
 #include <octomap/OcTreeNode.h>
 #include <ros/console.h>
-
-#include <algorithm>
-#include <cmath>
-#include <cstdlib>
 
 namespace amcl
 {

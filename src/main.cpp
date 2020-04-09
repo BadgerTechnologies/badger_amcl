@@ -18,13 +18,14 @@
  *
  */
 
-#include <ros/init.h>
-#include <ros/node_handle.h>
-#include <ros/spinner.h>
 #include <signal.h>
 
 #include <ctime>
 #include <iostream>
+
+#include <ros/init.h>
+#include <ros/node_handle.h>
+#include <ros/spinner.h>
 
 #include "node/node.h"
 

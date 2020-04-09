@@ -20,10 +20,10 @@
 
 #include "sensors/odom.h"
 
-#include <ros/console.h>
-
 #include <algorithm>
 #include <cmath>
+
+#include <ros/console.h>
 
 #include "pf/pdf_gaussian.h"
 

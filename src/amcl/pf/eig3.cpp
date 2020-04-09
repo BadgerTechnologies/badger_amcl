@@ -3,10 +3,10 @@
 
 #include "pf/eig3.h"
 
-#include <ros/console.h>
-
 #include <algorithm>
 #include <cmath>
+
+#include <ros/console.h>
 
 namespace amcl
 {

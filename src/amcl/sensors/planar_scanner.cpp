@@ -20,12 +20,12 @@
 
 #include "sensors/planar_scanner.h"
 
-#include <ros/assert.h>
-#include <ros/console.h>
-
 #include <cmath>
 #include <cstdlib>
 #include <functional>
+
+#include <ros/assert.h>
+#include <ros/console.h>
 
 namespace amcl
 {

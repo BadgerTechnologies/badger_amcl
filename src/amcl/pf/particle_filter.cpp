@@ -20,12 +20,12 @@
 
 #include "pf/particle_filter.h"
 
-#include <ros/assert.h>
-#include <ros/console.h>
-
 #include <cmath>
 #include <cstddef>
 #include <cstdlib>
+
+#include <ros/assert.h>
+#include <ros/console.h>
 
 #include "pf/pdf_gaussian.h"
 #include "sensors/sensor.h"

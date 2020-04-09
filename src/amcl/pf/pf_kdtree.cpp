@@ -20,12 +20,12 @@
 
 #include "pf/pf_kdtree.h"
 
-#include <ros/assert.h>
-
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
 #include <vector>
+
+#include <ros/assert.h>
 
 namespace amcl
 {

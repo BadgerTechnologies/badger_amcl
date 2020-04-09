@@ -19,13 +19,13 @@
 
 #include "sensors/point_cloud_scanner.h"
 
+#include <cmath>
+#include <functional>
+
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl_ros/transforms.h>
 #include <ros/assert.h>
 #include <tf/exceptions.h>
-
-#include <cmath>
-#include <functional>
 
 namespace amcl
 {

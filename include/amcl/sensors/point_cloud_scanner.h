@@ -20,11 +20,11 @@
 #ifndef AMCL_SENSORS_POINT_CLOUD_SCANNER_H
 #define AMCL_SENSORS_POINT_CLOUD_SCANNER_H
 
+#include <memory>
+
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
 #include <tf/transform_broadcaster.h>
-
-#include <memory>
 
 #include "map/octomap.h"
 #include "pf/particle_filter.h"
