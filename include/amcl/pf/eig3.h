@@ -18,8 +18,8 @@ public:
 
 private:
   static constexpr int N = 3;
-  static void tred2(PFMatrix& V, PFVector* d, PFVector* e);
-  static void tql2(PFMatrix& V, PFVector& d, PFVector& e);
+  static void tred2(PFMatrix* V, PFVector* d, PFVector* e);
+  static void tql2(PFMatrix* V, PFVector* d, PFVector* e);
 };
 
 }  // namespace amcl
