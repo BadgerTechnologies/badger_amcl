@@ -558,7 +558,7 @@ bool Node::loadPoseFromFile()
   }
   catch (std::exception& e)
   {
-    ROS_WARN("Exception while loading pose from file. Failed to parse saved YAML pose. %s", e.what());
+    ROS_WARN_STREAM("Exception while loading pose from file. Failed to parse saved YAML pose. " << e.what());
     return false;
   }
   if (std::isnan(x) or std::isnan(y) or std::isnan(yaw) or std::isnan(xx) or std::isnan(yy) or std::isnan(aa))
@@ -1161,7 +1161,7 @@ void Node::transformMsgToTfPose(const geometry_msgs::PoseWithCovarianceStamped& 
     // startup condition doesn't really cost us anything.
     std::lock_guard<std::mutex> tfl(tf_mutex_);
     if (sent_first_transform_)
-      ROS_WARN("Failed to transform initial pose in time (%s)", e.what());
+      ROS_WARN_STREAM("Failed to transform initial pose in time (" << e.what() << ")");
     tx_odom.setIdentity();
   }
 
