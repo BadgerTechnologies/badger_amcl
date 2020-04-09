@@ -92,7 +92,7 @@ Node::Node()
     odom_model_type_ = ODOM_MODEL_GAUSSIAN;
   else
   {
-    ROS_WARN("Unknown odom model type \"%s\"; defaulting to diff model", tmp_model_type.c_str());
+    ROS_WARN_STREAM("Unknown odom model type \"" << tmp_model_type << "\"; defaulting to diff model");
     odom_model_type_ = ODOM_MODEL_DIFF;
   }
 
@@ -109,8 +109,7 @@ Node::Node()
     resample_model_type_ = PF_RESAMPLE_SYSTEMATIC;
   else
   {
-    ROS_WARN("Unknown resample model type \"%s\"; defaulting to multinomial model",
-             tmp_model_type.c_str());
+    ROS_WARN_STREAM("Unknown resample model type \"" << tmp_model_type << "\"; defaulting to multinomial model");
     resample_model_type_ = PF_RESAMPLE_MULTINOMIAL;
   }
 
@@ -195,7 +194,8 @@ void Node::reconfigureCB(AMCLConfig& config, uint32_t level)
     resample_model_type_ = PF_RESAMPLE_SYSTEMATIC;
   else
   {
-    ROS_WARN("Unknown resample model type \"%s\"; defaulting to multinomial model", config.resample_model_type.c_str());
+    ROS_WARN_STREAM("Unknown resample model type \"" << config.resample_model_type
+                    << "\"; defaulting to multinomial model");
     resample_model_type_ = PF_RESAMPLE_MULTINOMIAL;
   }
 
@@ -1101,8 +1101,8 @@ bool Node::checkInitialPose(const geometry_msgs::PoseWithCovarianceStamped& msg)
   // We only accept initial pose estimates in the global frame, #5148.
   else if (tf_.resolve(msg.header.frame_id) != tf_.resolve(global_frame_id_))
   {
-    ROS_WARN("Ignoring initial pose in frame \"%s\"; initial poses must be in the global frame, \"%s\"",
-             msg.header.frame_id.c_str(), global_frame_id_.c_str());
+    ROS_WARN_STREAM("Ignoring initial pose in frame \"" << msg.header.frame_id
+                    << "\"; initial poses must be in the global frame, \"" << global_frame_id_ << "\"");
     return false;
   }
 

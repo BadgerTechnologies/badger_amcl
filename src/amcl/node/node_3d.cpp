@@ -87,8 +87,8 @@ Node3D::Node3D(Node* node, std::mutex& configuration_mutex)
   }
   else
   {
-    ROS_WARN("Unknown point cloud scanner model type \"%s\"; defaulting to point cloud scanner "
-             "model", tmp_model_type.c_str());
+    ROS_WARN_STREAM("Unknown point cloud scanner model type \"" << tmp_model_type
+                    << "\"; defaulting to point cloud scanner model");
     model_type_ = POINT_CLOUD_MODEL;
   }
   private_nh_.param("map_scale_up_factor", occupancy_map_scale_up_factor_, 1);
@@ -556,9 +556,9 @@ void Node3D::checkScanReceived(const ros::TimerEvent& event)
   ros::Duration d = ros::Time::now() - latest_scan_received_ts_;
   if (d > scanner_check_interval_)
   {
-    ROS_DEBUG("No point cloud scan received (and thus no pose updates have been published) for %f seconds. "
-              "Verify that data is being published on the %s topic.",
-              d.toSec(), ros::names::resolve(scan_topic_).c_str());
+    ROS_DEBUG_STREAM("No point cloud scan received (and thus no pose updates have been published) for " << d.toSec()
+                     << " seconds. Verify that data is being published on the " << ros::names::resolve(scan_topic_)
+                     << " topic.");
   }
 }
 
