@@ -70,14 +70,15 @@ public:
   virtual void updateCSpace(double max_occ_dist);
   // Extract a single range reading from the map
   virtual double calcRange(double ox, double oy, double oa, double max_range);
-  // Find the distance to nearest occupied cell
-  virtual float getOccDist(int i, int j);
   // Compute the cell index for the given map coords.
   virtual unsigned int computeCellIndex(int i, int j);
   virtual double getMaxOccDist();
   virtual void initCells(int num);
   virtual MapCellState getCellState(int i, int j);
   virtual void setCellState(int index, MapCellState state);
+  // This function is called very frequently.
+  // Do not make it virtual as this would hinder performance.
+  float getOccDist(int i, int j);
 
 protected:
   struct OccupancyMapCellData;
