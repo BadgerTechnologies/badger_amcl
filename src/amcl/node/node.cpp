@@ -19,6 +19,8 @@
 
 #include "node/node.h"
 
+#include <stdlib.h>
+
 #include <cstdlib>
 #include <functional>
 
@@ -629,6 +631,7 @@ YAML::Node Node::loadYamlFromFile()
   }
 }
 
+// Caller must be holding tf_mutex_
 void Node::savePoseToServer()
 {
   if (!save_pose_)
@@ -636,6 +639,7 @@ void Node::savePoseToServer()
     ROS_DEBUG("As specified, not saving pose to server");
     return;
   }
+
   // We need to apply the last transform to the latest odom pose to get
   // the latest map pose to store.  We'll take the covariance from
   // last_published_pose_.
@@ -840,7 +844,7 @@ bool Node::getOdomPose(const ros::Time& t, PFVector* map_pose)
   }
   catch (tf::TransformException e)
   {
-    ROS_DEBUG("Failed to compute odom pose, skipping scan (%s)", e.what());
+    ROS_DEBUG_STREAM("Failed to compute odom pose, skipping scan (" << e.what() << ")");
     return false;
   }
   map_pose->v[0] = latest_odom_pose_.getOrigin().x();
