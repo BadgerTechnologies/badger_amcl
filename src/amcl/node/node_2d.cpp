@@ -84,8 +84,7 @@ Node2D::Node2D(Node* node, std::mutex& configuration_mutex)
     model_type_ = PLANAR_MODEL_LIKELIHOOD_FIELD_GOMPERTZ;
   else
   {
-    ROS_WARN("Unknown planar model type \"%s\"; defaulting to likelihood_field model",
-             tmp_model_type.c_str());
+    ROS_WARN_STREAM("Unknown planar model type \"" << tmp_model_type << "\"; defaulting to likelihood_field model");
     model_type_ = PLANAR_MODEL_LIKELIHOOD_FIELD;
   }
   private_nh_.param("map_scale_up_factor", map_scale_up_factor_, 1);
@@ -426,9 +425,8 @@ int Node2D::getFrameToScannerIndex(const std::string& frame_id)
 
 bool Node2D::initFrameToScanner(const std::string& frame_id, tf::Stamped<tf::Pose>* scanner_pose, int* scanner_index)
 {
-  ROS_DEBUG("Setting up planar_scanner %d (frame_id=%s)\n",
-            static_cast<int>(frame_to_scanner_.size()),
-            frame_id.c_str());
+  ROS_DEBUG_STREAM("Setting up planar_scanner " << static_cast<int>(frame_to_scanner_.size())
+                   << " (frame_id=" << frame_id << ")");
   scanners_.push_back(std::make_shared<PlanarScanner>(scanner_));
   scanners_update_.push_back(true);
   *scanner_index = frame_to_scanner_.size();
@@ -441,8 +439,8 @@ bool Node2D::initFrameToScanner(const std::string& frame_id, tf::Stamped<tf::Pos
   }
   catch (tf::TransformException& e)
   {
-    ROS_ERROR("Couldn't transform from %s to %s, even though the message notifier is in use",
-              frame_id.c_str(), node_->getBaseFrameId().c_str());
+    ROS_ERROR_STREAM("Couldn't transform from " << frame_id << " to " << node_->getBaseFrameId()
+                     << ", even though the message notifier is in use");
     return false;
   }
   return true;
@@ -619,9 +617,9 @@ void Node2D::checkScanReceived(const ros::TimerEvent& event)
   ros::Duration d = ros::Time::now() - latest_scan_received_ts_;
   if (d > check_scanner_interval_)
   {
-    ROS_WARN("No planar scan received (and thus no pose updates have been published) for %f seconds. "
-             "Verify that data is being published on the %s topic.",
-             d.toSec(), ros::names::resolve(scan_topic_).c_str());
+    ROS_WARN_STREAM("No planar scan received (and thus no pose updates have been published) for " << d.toSec()
+                    << " seconds. Verify that data is being published on the " << ros::names::resolve(scan_topic_)
+                    << " topic.");
   }
 }
 
