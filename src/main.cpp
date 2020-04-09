@@ -19,6 +19,7 @@
  */
 
 #include <signal.h>
+#include <stdlib.h>
 
 #include <ctime>
 #include <iostream>
@@ -31,12 +32,12 @@
 
 void sigHandler(int sig)
 {
-  ros::shutdown();
+  ros::requestShutdown();
 }
 
 int main(int argc, char** argv)
 {
-  srand48(std::time(NULL));
+  srand48(std::time(nullptr));
   ros::init(argc, argv, "amcl", ros::init_options::NoSigintHandler);
   ros::NodeHandle nh;
 
@@ -44,15 +45,12 @@ int main(int argc, char** argv)
   signal(SIGINT, sigHandler);
   signal(SIGTERM, sigHandler);
 
-  std::unique_ptr<amcl::Node> amcl_node_ptr(new amcl::Node());
+  amcl::Node amcl_node;
 
-  ros::MultiThreadedSpinner spinner(4);
+  ros::MultiThreadedSpinner spinner;
   spinner.spin();
 
-  amcl_node_ptr->savePoseToFile();
-
-  // Without this, our locks are not shut down nicely
-  amcl_node_ptr.reset();
+  amcl_node.savePoseToFile();
 
   return 0;
 }
