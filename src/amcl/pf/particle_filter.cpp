@@ -20,6 +20,8 @@
 
 #include "pf/particle_filter.h"
 
+#include <stdlib.h>
+
 #include <cmath>
 #include <cstddef>
 #include <cstdlib>
