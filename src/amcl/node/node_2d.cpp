@@ -484,7 +484,7 @@ bool Node2D::getAngleStats(const sensor_msgs::LaserScanConstPtr& planar_scan, do
   }
   catch (tf::TransformException& e)
   {
-    ROS_WARN("Unable to transform min/max planar scanner angles into base frame: %s", e.what());
+    ROS_WARN_STREAM("Unable to transform min/max planar scanner angles into base frame: " << e.what());
     success = false;
   }
   if(success)
