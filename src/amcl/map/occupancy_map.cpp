@@ -73,6 +73,11 @@ void OccupancyMap::convertMapToWorld(const std::vector<int>& map_coords,
   std::vector<double> return_vals;
   int i = map_coords[0];
   int j = map_coords[1];
+  /*
+  * This legacy code centers the map at 0, 0.
+  * It could be made to have the origin at the bottom left similar to nav_msgs/OccupancyGrid.
+  * However, the potential for breaking the code is there, so this is left as-is.
+  */
   (*world_coords)[0] = origin_.x + (i - size_x_ / 2) * resolution_;
   (*world_coords)[1] = origin_.y + (j - size_y_ / 2) * resolution_;
 }
