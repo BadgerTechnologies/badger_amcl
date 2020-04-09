@@ -21,10 +21,10 @@
 #ifndef AMCL_MAP_MAP_H
 #define AMCL_MAP_MAP_H
 
-#include <pcl/point_types.h>
-
 #include <atomic>
 #include <vector>
+
+#include <pcl/point_types.h>
 
 namespace amcl
 {

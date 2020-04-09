@@ -20,9 +20,9 @@
 
 #include "pf/pdf_gaussian.h"
 
-#include <ros/console.h>
-
 #include <cmath>
+
+#include <ros/console.h>
 
 namespace amcl
 {

@@ -20,13 +20,13 @@
 #ifndef AMCL_MAP_OCTOMAP_H
 #define AMCL_MAP_OCTOMAP_H
 
-#include <octomap/OcTree.h>
-#include <tsl/sparse_map.h>
-
 #include <limits>
 #include <memory>
 #include <queue>
 #include <vector>
+
+#include <octomap/OcTree.h>
+#include <tsl/sparse_map.h>
 
 #include "map/map.h"
 

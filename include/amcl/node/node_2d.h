@@ -20,6 +20,12 @@
 #ifndef AMCL_NODE_NODE_2D_H
 #define AMCL_NODE_NODE_2D_H
 
+#include <map>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <vector>
+
 #include <message_filters/subscriber.h>
 #include <nav_msgs/OccupancyGrid.h>
 #include <sensor_msgs/LaserScan.h>
@@ -28,12 +34,6 @@
 #include <ros/time.h>
 #include <ros/timer.h>
 #include <tf/message_filter.h>
-
-#include <map>
-#include <memory>
-#include <mutex>
-#include <string>
-#include <vector>
 
 #include "amcl/AMCLConfig.h"
 #include "map/occupancy_map.h"

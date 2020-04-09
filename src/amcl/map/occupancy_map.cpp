@@ -20,10 +20,10 @@
 
 #include "map/occupancy_map.h"
 
-#include <ros/console.h>
-
 #include <algorithm>
 #include <cstdlib>
+
+#include <ros/console.h>
 
 namespace amcl
 {

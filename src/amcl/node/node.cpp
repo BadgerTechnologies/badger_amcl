@@ -19,6 +19,9 @@
 
 #include "node/node.h"
 
+#include <cstdlib>
+#include <functional>
+
 #include <angles/angles.h>
 #include <badger_file_lib/atomic_ofstream.h>
 #include <boost/bind.hpp>
@@ -31,9 +34,6 @@
 #include <ros/console.h>
 #include <tf/exceptions.h>
 #include <tf/transform_datatypes.h>
-
-#include <cstdlib>
-#include <functional>
 
 #include "node/node_2d.h"
 #include "node/node_3d.h"
