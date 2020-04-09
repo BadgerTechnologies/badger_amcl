@@ -557,7 +557,7 @@ void Node3D::checkScanReceived(const ros::TimerEvent& event)
   ros::Duration d = ros::Time::now() - latest_scan_received_ts_;
   if (d > scanner_check_interval_)
   {
-    ROS_DEBUG_STREAM("No point cloud scan received (and thus no pose updates have been published) for " << d.toSec()
+    ROS_DEBUG_STREAM("No point cloud scan received (and thus no pose updates have been published) for " << d
                      << " seconds. Verify that data is being published on the " << ros::names::resolve(scan_topic_)
                      << " topic.");
   }

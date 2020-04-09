@@ -617,7 +617,7 @@ void Node2D::checkScanReceived(const ros::TimerEvent& event)
   ros::Duration d = ros::Time::now() - latest_scan_received_ts_;
   if (d > check_scanner_interval_)
   {
-    ROS_WARN_STREAM("No planar scan received (and thus no pose updates have been published) for " << d.toSec()
+    ROS_WARN_STREAM("No planar scan received (and thus no pose updates have been published) for " << d
                     << " seconds. Verify that data is being published on the " << ros::names::resolve(scan_topic_)
                     << " topic.");
   }
