@@ -294,6 +294,7 @@ double Node3D::scorePose(const PFVector& p)
 
 void Node3D::updateFreeSpaceIndices()
 {
+  // TODO: update free space indices with initialized 2D map
   // Index of free space
   // Must be calculated after the occ_dist is setup by the laser model
   std::vector<std::pair<int, int>> fsi;
