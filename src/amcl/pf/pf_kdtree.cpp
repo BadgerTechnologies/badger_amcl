@@ -38,8 +38,6 @@ PFKDTree::PFKDTree()
 
   root_ = NULL;
 
-  node_count_ = 0;
-
   leaf_count_ = 0;
 }
 
@@ -47,7 +45,6 @@ void PFKDTree::clearKDTree()
 {
   root_ = NULL;
   leaf_count_ = 0;
-  node_count_ = 0;
   nodes_.clear();
 }
 
@@ -92,7 +89,7 @@ PFKDTreeNode* PFKDTree::insertNode(PFKDTreeNode* parent, PFKDTreeNode* node, int
   if (node == NULL)
   {
     nodes_.push_back(std::unique_ptr<PFKDTreeNode>(new PFKDTreeNode()));
-    node = nodes_[node_count_++].get();
+    node = nodes_.back().get();
 
     node->leaf = 1;
 
@@ -191,42 +188,25 @@ PFKDTreeNode* PFKDTree::findNode(PFKDTreeNode* node, int key[])
 // Cluster the leaves in the tree
 void PFKDTree::cluster()
 {
-  int i;
-  int queue_count, cluster_count;
-  std::vector<PFKDTreeNode*> queue;
-  PFKDTreeNode* node;
-
-  queue_count = 0;
-
-  // Put all the leaves in a queue
-  for (i = 0; i < node_count_; i++)
+  for (int i = 0; i < nodes_.size(); i++)
   {
-    node = nodes_[i].get();
-    if (node->leaf)
-    {
-      node->cluster = -1;
-      ROS_ASSERT(queue_count < node_count_);
-      queue.push_back(node);
-      queue_count++;
-    }
+    nodes_[i]->cluster = -1;
   }
 
-  cluster_count = 0;
-
+  PFKDTreeNode* node;
+  int cluster_count = 0;
   // Do connected components for each node
-  while (queue_count > 0)
+  for (int i = 0; i < nodes_.size(); i++)
   {
-    node = queue[--queue_count];
-
+    node = nodes_[i].get();
     // If this node has already been labelled, skip it
-    if (node->cluster >= 0)
-      continue;
-
-    // Assign a label to this cluster
-    node->cluster = cluster_count++;
-
-    // Recursively label nodes in this cluster
-    clusterNode(node, 0);
+    if (node->cluster < 0)
+    {
+      // Assign a label to this cluster
+      node->cluster = cluster_count++;
+      // Recursively label nodes in this cluster
+      clusterNode(node, 0);
+    }
   }
 }
 

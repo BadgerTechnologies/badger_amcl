@@ -93,8 +93,6 @@ private:
   // The root node of the tree
   PFKDTreeNode* root_;
 
-  // The maximum number of nodes in the tree
-  int node_count_;
   std::vector<std::unique_ptr<PFKDTreeNode>> nodes_;
 
   // The number of leaf nodes in the tree
