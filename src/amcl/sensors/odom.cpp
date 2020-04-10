@@ -23,6 +23,7 @@
 #include <algorithm>
 #include <cmath>
 
+#include <angles/angles.h>
 #include <ros/console.h>
 
 #include "pf/pdf_gaussian.h"
@@ -312,22 +313,12 @@ bool Odom::updateAction(std::shared_ptr<ParticleFilter> pf, std::shared_ptr<Sens
 
 double Odom::normalize(double z)
 {
-  return std::atan2(std::sin(z), std::cos(z));
+  return angles::normalize_angle(z);
 }
 
 double Odom::angleDiff(double a, double b)
 {
-  double d1, d2;
-  a = normalize(a);
-  b = normalize(b);
-  d1 = a - b;
-  d2 = 2 * M_PI - std::fabs(d1);
-  if (d1 > 0)
-    d2 *= -1.0;
-  if (std::fabs(d1) < std::fabs(d2))
-    return d1;
-  else
-    return d2;
+  return angles::shortest_angular_distance(b, a);
 }
 
 }  // namespace amcl
