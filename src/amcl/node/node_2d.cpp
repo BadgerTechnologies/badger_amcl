@@ -19,6 +19,7 @@
 
 #include "node/node_2d.h"
 
+#include <angles/angles.h>
 #include <boost/bind.hpp>
 #include <geometry_msgs/PoseArray.h>
 #include <geometry_msgs/Pose2D.h>
@@ -492,7 +493,7 @@ bool Node2D::getAngleStats(const sensor_msgs::LaserScanConstPtr& planar_scan, do
     *angle_min = tf::getYaw(min_q);
     *angle_increment = tf::getYaw(inc_q) - *angle_min;
     // wrapping angle to [-pi .. pi]
-    *angle_increment = std::fmod(*angle_increment + 5 * M_PI, 2 * M_PI) - M_PI;
+    *angle_increment = angles::normalize_angle(*angle_increment);
   }
   return success;
 }

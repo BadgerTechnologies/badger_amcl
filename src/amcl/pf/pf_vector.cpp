@@ -23,6 +23,8 @@
 #include <cmath>
 #include <vector>
 
+#include <angles/angles.h>
+
 #include "pf/eig3.h"
 
 namespace amcl
@@ -72,7 +74,7 @@ PFVector PFVector::pfVectorCoordAdd(PFVector a, PFVector b)
   c.v[0] = b.v[0] + a.v[0] * std::cos(b.v[2]) - a.v[1] * std::sin(b.v[2]);
   c.v[1] = b.v[1] + a.v[0] * std::sin(b.v[2]) + a.v[1] * std::cos(b.v[2]);
   c.v[2] = b.v[2] + a.v[2];
-  c.v[2] = std::atan2(std::sin(c.v[2]), std::cos(c.v[2]));
+  c.v[2] = angles::normalize_angle(c.v[2]);
   return c;
 }
 
@@ -83,7 +85,7 @@ PFVector PFVector::pfVectorCoordSub(PFVector a, PFVector b)
   c.v[0] = +(a.v[0] - b.v[0]) * std::cos(b.v[2]) + (a.v[1] - b.v[1]) * std::sin(b.v[2]);
   c.v[1] = -(a.v[0] - b.v[0]) * std::sin(b.v[2]) + (a.v[1] - b.v[1]) * std::cos(b.v[2]);
   c.v[2] = a.v[2] - b.v[2];
-  c.v[2] = std::atan2(std::sin(c.v[2]), std::cos(c.v[2]));
+  c.v[2] = angles::normalize_angle(c.v[2]);
   return c;
 }
 
