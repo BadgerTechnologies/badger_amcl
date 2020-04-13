@@ -19,8 +19,9 @@
 
 #include "node/node_2d.h"
 
+#include <functional>
+
 #include <angles/angles.h>
-#include <boost/bind.hpp>
 #include <geometry_msgs/PoseArray.h>
 #include <geometry_msgs/Pose2D.h>
 #include <ros/assert.h>
@@ -99,11 +100,12 @@ Node2D::Node2D(Node* node, std::mutex& configuration_mutex)
       new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, scan_topic_, 100));
   scan_filter_ = std::unique_ptr<tf::MessageFilter<sensor_msgs::LaserScan>>(
       new tf::MessageFilter<sensor_msgs::LaserScan>(*scan_sub_.get(), tf_, node_->getOdomFrameId(), 100));
-  scan_filter_->registerCallback(boost::bind(&Node2D::scanReceived, this, _1));
+  scan_filter_->registerCallback(std::bind(&Node2D::scanReceived, this, std::placeholders::_1));
 
   // 15s timer to warn on lack of receipt of planar scans, #5209
   check_scanner_interval_ = ros::Duration(15.0);
-  check_scanner_timer_ = nh_.createTimer(check_scanner_interval_, boost::bind(&Node2D::checkScanReceived, this, _1));
+  check_scanner_timer_ = nh_.createTimer(check_scanner_interval_, std::bind(&Node2D::checkScanReceived, this,
+                                                                            std::placeholders::_1));
 
   force_update_ = false;
   first_map_received_ = false;
@@ -181,7 +183,7 @@ void Node2D::reconfigure(AMCLConfig& config)
   scanner_.setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
   scan_filter_ = std::unique_ptr<tf::MessageFilter<sensor_msgs::LaserScan>>(
       new tf::MessageFilter<sensor_msgs::LaserScan>(*scan_sub_.get(), tf_, node_->getOdomFrameId(), 100));
-  scan_filter_->registerCallback(boost::bind(&Node2D::scanReceived, this, _1));
+  scan_filter_->registerCallback(std::bind(&Node2D::scanReceived, this, std::placeholders::_1));
   pf_ = node_->getPfPtr();
 }
 
