@@ -20,7 +20,8 @@
 
 #include "node/node_3d.h"
 
-#include <boost/bind.hpp>
+#include <functional>
+
 #include <geometry_msgs/PoseArray.h>
 #include <geometry_msgs/Pose2D.h>
 #include <pcl/conversions.h>
@@ -97,10 +98,11 @@ Node3D::Node3D(Node* node, std::mutex& configuration_mutex)
       new message_filters::Subscriber<sensor_msgs::PointCloud2>(nh_, scan_topic_, 1));
   scan_filter_ = std::unique_ptr<tf::MessageFilter<sensor_msgs::PointCloud2>>(
       new tf::MessageFilter<sensor_msgs::PointCloud2>(*scan_sub_, tf_, node_->getOdomFrameId(), 1));
-  scan_filter_->registerCallback(boost::bind(&Node3D::scanReceived, this, _1));
+  scan_filter_->registerCallback(std::bind(&Node3D::scanReceived, this, std::placeholders::_1));
   // 15s timer to warn on lack of receipt of point cloud scans, #5209
   scanner_check_interval_ = ros::Duration(15.0);
-  check_scanner_timer_ = nh_.createTimer(scanner_check_interval_, boost::bind(&Node3D::checkScanReceived, this, _1));
+  check_scanner_timer_ = nh_.createTimer(scanner_check_interval_, std::bind(&Node3D::checkScanReceived, this,
+                                                                            std::placeholders::_1));
   force_update_ = false;
   first_octomap_received_ = false;
   octo_map_sub_ = nh_.subscribe("octomap_binary", 1, &Node3D::octoMapMsgReceived, this);
@@ -160,7 +162,7 @@ void Node3D::reconfigure(amcl::AMCLConfig& config)
   scan_filter_ = std::unique_ptr<tf::MessageFilter<sensor_msgs::PointCloud2>>(
       new tf::MessageFilter<sensor_msgs::PointCloud2>(*scan_sub_, tf_,
                                                       node_->getOdomFrameId(), 100));
-  scan_filter_->registerCallback(boost::bind(&Node3D::scanReceived, this, _1));
+  scan_filter_->registerCallback(std::bind(&Node3D::scanReceived, this, std::placeholders::_1));
   pf_ = node_->getPfPtr();
 }
 

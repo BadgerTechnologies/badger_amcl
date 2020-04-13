@@ -100,8 +100,7 @@ bool PointCloudScanner::updateSensor(std::shared_ptr<ParticleFilter> pf,
     return false;
   // Apply the point cloud scanner sensor model
   std::function<double(std::shared_ptr<SensorData>, std::shared_ptr<PFSampleSet>)> sensor_fn = (
-          std::bind(&PointCloudScanner::applyModelToSampleSet, this,
-                    std::placeholders::_1, std::placeholders::_2));
+          std::bind(&PointCloudScanner::applyModelToSampleSet, this, std::placeholders::_1, std::placeholders::_2));
   pf->updateSensor(sensor_fn, data);
   return true;
 }

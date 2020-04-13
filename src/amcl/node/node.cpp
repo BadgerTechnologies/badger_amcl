@@ -26,7 +26,6 @@
 
 #include <angles/angles.h>
 #include <badger_file_lib/atomic_ofstream.h>
-#include <boost/bind.hpp>
 #include <geometry_msgs/PoseArray.h>
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/Pose2D.h>
@@ -131,7 +130,7 @@ Node::Node()
 
   initial_pose_sub_ = nh_.subscribe("initialpose", 2, &Node::initialPoseReceived, this);
   initial_pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>(
-      "initialpose", 1, boost::bind(&Node::newInitialPoseSubscriber, this, _1));
+      "initialpose", 1, std::bind(&Node::newInitialPoseSubscriber, this, std::placeholders::_1));
 
   pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("amcl_pose", 2, true);
   particlecloud_pub_ = nh_.advertise<geometry_msgs::PoseArray>("particlecloud", 2, true);
@@ -161,10 +160,12 @@ Node::Node()
     node_ = std::make_shared<Node3D>(this, configuration_mutex_);
   }
 
-  dynamic_reconfigure::Server<AMCLConfig>::CallbackType cb = boost::bind(&Node::reconfigureCB, this, _1, _2);
+  dynamic_reconfigure::Server<AMCLConfig>::CallbackType cb = std::bind(&Node::reconfigureCB, this,
+                                                                       std::placeholders::_1, std::placeholders::_2);
   dsrv_.setCallback(cb);
 
-  publish_transform_timer_ = nh_.createTimer(transform_publish_period_, boost::bind(&Node::publishTransform, this, _1));
+  publish_transform_timer_ = nh_.createTimer(transform_publish_period_, std::bind(&Node::publishTransform, this,
+                                                                                  std::placeholders::_1));
 }
 
 void Node::reconfigureCB(AMCLConfig& config, uint32_t level)
@@ -273,7 +274,8 @@ void Node::reconfigureCB(AMCLConfig& config, uint32_t level)
   save_pose_ = config.save_pose;
   saved_pose_filepath_ = config.saved_pose_filepath;
   initial_pose_sub_ = nh_.subscribe("initialpose", 2, &Node::initialPoseReceived, this);
-  publish_transform_timer_ = nh_.createTimer(transform_publish_period_, boost::bind(&Node::publishTransform, this, _1));
+  publish_transform_timer_ = nh_.createTimer(transform_publish_period_, std::bind(&Node::publishTransform, this,
+                                                                                  std::placeholders::_1));
 }
 
 void Node::setPfDecayRateNormal()
