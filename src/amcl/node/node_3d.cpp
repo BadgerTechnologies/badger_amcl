@@ -109,7 +109,7 @@ Node3D::Node3D(Node* node, std::mutex& configuration_mutex)
   occupancy_map_sub_ = nh_.subscribe("map", 1, &Node3D::occupancyMapMsgReceived, this);
 }
 
-void Node3D::reconfigure(amcl::AMCLConfig& config)
+void Node3D::reconfigure(AMCLConfig& config)
 {
   scan_topic_ = config.cloud_topic;
   resample_interval_ = config.resample_interval;
