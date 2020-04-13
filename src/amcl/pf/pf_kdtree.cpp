@@ -88,8 +88,8 @@ PFKDTreeNode* PFKDTree::insertNode(PFKDTreeNode* parent, PFKDTreeNode* node, int
   // If the node doesnt exist yet...
   if (node == NULL)
   {
-    nodes_.push_back(std::unique_ptr<PFKDTreeNode>(new PFKDTreeNode()));
-    node = nodes_.back().get();
+    nodes_.push_back(PFKDTreeNode());
+    node = &nodes_.back();
 
     node->leaf = 1;
 
@@ -188,24 +188,23 @@ PFKDTreeNode* PFKDTree::findNode(PFKDTreeNode* node, int key[])
 // Cluster the leaves in the tree
 void PFKDTree::cluster()
 {
-  for (int i = 0; i < nodes_.size(); i++)
+  for (auto node : nodes_)
   {
-    nodes_[i]->cluster = -1;
+    node.cluster = -1;
   }
 
   PFKDTreeNode* node;
   int cluster_count = 0;
   // Do connected components for each node
-  for (int i = 0; i < nodes_.size(); i++)
+  for (auto node : nodes_)
   {
-    node = nodes_[i].get();
     // If this node has already been labelled, skip it
-    if (node->cluster < 0)
+    if (node.cluster < 0)
     {
       // Assign a label to this cluster
-      node->cluster = cluster_count++;
+      node.cluster = cluster_count++;
       // Recursively label nodes in this cluster
-      clusterNode(node, 0);
+      clusterNode(&node, 0);
     }
   }
 }

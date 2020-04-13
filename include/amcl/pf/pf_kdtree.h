@@ -22,7 +22,7 @@
 #define AMCL_PF_PF_KDTREE_H
 
 #include <memory>
-#include <vector>
+#include <deque>
 
 #include "pf/pf_vector.h"
 
@@ -93,7 +93,7 @@ private:
   // The root node of the tree
   PFKDTreeNode* root_;
 
-  std::vector<std::unique_ptr<PFKDTreeNode>> nodes_;
+  std::deque<PFKDTreeNode> nodes_;
 
   // The number of leaf nodes in the tree
   int leaf_count_;
