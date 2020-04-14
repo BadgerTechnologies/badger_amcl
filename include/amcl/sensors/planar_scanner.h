@@ -29,7 +29,7 @@
 #include "pf/pf_vector.h"
 #include "sensors/sensor.h"
 
-namespace amcl
+namespace badger_amcl
 {
 
 enum PlanarModelType

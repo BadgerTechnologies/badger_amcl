@@ -26,7 +26,7 @@
 
 #include <ros/console.h>
 
-namespace amcl
+namespace badger_amcl
 {
 
 PDFGaussian::PDFGaussian(PFVector x, PFMatrix cx)

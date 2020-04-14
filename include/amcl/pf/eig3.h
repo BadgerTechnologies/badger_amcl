@@ -9,7 +9,7 @@
 
 #include "pf/pf_vector.h"
 
-namespace amcl
+namespace badger_amcl
 {
 class EIG3
 {

@@ -27,7 +27,7 @@
 #include <ros/assert.h>
 #include <tf/exceptions.h>
 
-namespace amcl
+namespace badger_amcl
 {
 
 PointCloudScanner::PointCloudScanner() : Sensor()

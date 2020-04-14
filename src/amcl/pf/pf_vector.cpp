@@ -27,7 +27,7 @@
 
 #include "pf/eig3.h"
 
-namespace amcl
+namespace badger_amcl
 {
 
 PFVector::PFVector()

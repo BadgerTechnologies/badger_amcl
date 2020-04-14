@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(amcl)
+project(badger_amcl)
 
 set(CMAKE_CXX_STANDARD 11)
 
@@ -52,7 +52,7 @@ include_directories(
     ${catkin_INCLUDE_DIRS}
 )
 
-add_library(amcl_core
+add_library(badger_amcl_core
     src/amcl/pf/particle_filter.cpp
     src/amcl/pf/pf_kdtree.cpp
     src/amcl/pf/pdf_gaussian.cpp
@@ -68,7 +68,7 @@ add_library(amcl_core
     src/amcl/node/node_3d.cpp
     src/amcl/node/node.cpp
 )
-target_link_libraries(amcl_core
+target_link_libraries(badger_amcl_core
     ${OCTOMAP_LIBRARIES}
     ${Boost_LIBRARIES}
     ${catkin_LIBRARIES}
@@ -76,17 +76,17 @@ target_link_libraries(amcl_core
     tsl::sparse_map
 )
 
-add_executable(amcl
+add_executable(badger_amcl
 	src/main.cpp)
-add_dependencies(amcl amcl_gencfg)
+add_dependencies(badger_amcl ${PROJECT_NAME}_gencfg)
 
 target_link_libraries(
-    amcl
-    amcl_core
+    badger_amcl
+    badger_amcl_core
 )
 
 install( TARGETS
-    amcl amcl_core
+    badger_amcl badger_amcl_core
     ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
     LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
     RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

@@ -41,7 +41,7 @@
 
 #include "node/node.h"
 
-namespace amcl
+namespace badger_amcl
 {
 
 Node3D::Node3D(Node* node, std::mutex& configuration_mutex)

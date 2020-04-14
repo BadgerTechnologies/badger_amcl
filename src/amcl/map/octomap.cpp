@@ -29,7 +29,7 @@
 #include <octomap/OcTreeNode.h>
 #include <ros/console.h>
 
-namespace amcl
+namespace badger_amcl
 {
 
 OctoMap::OctoMap(double resolution, bool wait_for_occupancy_map)

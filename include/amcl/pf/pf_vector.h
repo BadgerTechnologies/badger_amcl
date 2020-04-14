@@ -21,7 +21,7 @@
 #ifndef AMCL_PF_PF_VECTOR_H
 #define AMCL_PF_PF_VECTOR_H
 
-namespace amcl
+namespace badger_amcl
 {
 // The basic vector
 class PFVector

@@ -26,7 +26,7 @@
 
 #include <pcl/point_types.h>
 
-namespace amcl
+namespace badger_amcl
 {
 
 class Map

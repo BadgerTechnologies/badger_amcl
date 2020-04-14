@@ -27,7 +27,7 @@
 
 #include <ros/assert.h>
 
-namespace amcl
+namespace badger_amcl
 {
 
 PFKDTree::PFKDTree()

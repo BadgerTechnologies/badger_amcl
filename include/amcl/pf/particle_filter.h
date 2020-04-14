@@ -27,7 +27,7 @@
 #include "pf/pf_kdtree.h"
 #include "pf/pf_vector.h"
 
-namespace amcl
+namespace badger_amcl
 {
 
 enum PFResampleModelType
