@@ -26,7 +26,7 @@
 
 #include "pf/pf_vector.h"
 
-namespace amcl
+namespace badger_amcl
 {
 
 // Info for a node in the tree

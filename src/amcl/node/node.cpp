@@ -39,7 +39,7 @@
 #include "node/node_2d.h"
 #include "node/node_3d.h"
 
-namespace amcl
+namespace badger_amcl
 {
 
 Node::Node()

@@ -23,7 +23,7 @@
 
 #include "pf/particle_filter.h"
 
-namespace amcl
+namespace badger_amcl
 {
 // Forward declarations
 class SensorData;

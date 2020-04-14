@@ -8,7 +8,7 @@
 
 #include <ros/console.h>
 
-namespace amcl
+namespace badger_amcl
 {
 
 // Symmetric Householder reduction to tridiagonal form.

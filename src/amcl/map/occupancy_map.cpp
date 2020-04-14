@@ -25,7 +25,7 @@
 
 #include <ros/console.h>
 
-namespace amcl
+namespace badger_amcl
 {
 
 OccupancyMap::OccupancyMap(double resolution)

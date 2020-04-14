@@ -20,10 +20,10 @@
 #ifndef AMCL_NODE_NODE_ND_H
 #define AMCL_NODE_NODE_ND_H
 
-#include "amcl/AMCLConfig.h"
+#include "badger_amcl/AMCLConfig.h"
 #include "pf/pf_vector.h"
 
-namespace amcl
+namespace badger_amcl
 {
 
 class NodeND

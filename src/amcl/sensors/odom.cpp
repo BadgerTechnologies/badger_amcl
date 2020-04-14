@@ -28,7 +28,7 @@
 
 #include "pf/pdf_gaussian.h"
 
-namespace amcl
+namespace badger_amcl
 {
 
 void Odom::setModelDiff(double alpha1, double alpha2, double alpha3, double alpha4)

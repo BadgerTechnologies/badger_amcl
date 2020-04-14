@@ -29,7 +29,7 @@
 
 #include "map/map.h"
 
-namespace amcl
+namespace badger_amcl
 {
 
 // Description for a single map cell.

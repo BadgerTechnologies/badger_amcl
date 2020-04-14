@@ -45,7 +45,7 @@ int main(int argc, char** argv)
   signal(SIGINT, sigHandler);
   signal(SIGTERM, sigHandler);
 
-  amcl::Node amcl_node;
+  badger_amcl::Node amcl_node;
 
   ros::MultiThreadedSpinner spinner;
   spinner.spin();

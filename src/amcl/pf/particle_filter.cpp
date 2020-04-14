@@ -32,7 +32,7 @@
 #include "pf/pdf_gaussian.h"
 #include "sensors/sensor.h"
 
-namespace amcl
+namespace badger_amcl
 {
 
 // Create a new filter

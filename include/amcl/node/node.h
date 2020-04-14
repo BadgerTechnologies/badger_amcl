@@ -50,14 +50,14 @@
 #include <tf2_ros/buffer.h>
 #include <yaml-cpp/yaml.h>
 
-#include "amcl/AMCLConfig.h"
+#include "badger_amcl/AMCLConfig.h"
 #include "map/map.h"
 #include "node/node_nd.h"
 #include "pf/particle_filter.h"
 #include "pf/pf_vector.h"
 #include "sensors/odom.h"
 
-namespace amcl
+namespace badger_amcl
 {
 
 // Convenience constants for covariance indices.

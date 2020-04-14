@@ -20,7 +20,7 @@
 
 #include "map/map.h"
 
-namespace amcl
+namespace badger_amcl
 {
 
 // Create a new map

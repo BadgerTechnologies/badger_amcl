@@ -23,7 +23,7 @@
 
 #include "pf/pf_vector.h"
 
-namespace amcl
+namespace badger_amcl
 {
 
 // Creates a gaussian probability density function (PDF) with a mean and covariance

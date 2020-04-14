@@ -37,13 +37,13 @@
 #include <sensor_msgs/PointCloud2.h>
 #include <tf/message_filter.h>
 
-#include "amcl/AMCLConfig.h"
+#include "badger_amcl/AMCLConfig.h"
 #include "map/octomap.h"
 #include "node/node_nd.h"
 #include "pf/pf_vector.h"
 #include "sensors/point_cloud_scanner.h"
 
-namespace amcl
+namespace badger_amcl
 {
 
 class Node;

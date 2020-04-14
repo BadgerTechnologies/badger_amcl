@@ -32,7 +32,7 @@
 
 #include "node/node.h"
 
-namespace amcl
+namespace badger_amcl
 {
 
 Node2D::Node2D(Node* node, std::mutex& configuration_mutex)
