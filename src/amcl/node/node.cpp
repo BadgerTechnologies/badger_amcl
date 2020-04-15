@@ -55,7 +55,6 @@ Node::Node()
   std::lock_guard<std::mutex> cfl(configuration_mutex_);
 
   private_nh_.param("map_type", map_type_, 0);
-  private_nh_.param("wait_for_occupancy_map", wait_for_occupancy_map_, false);
 
   double tmp;
   private_nh_.param("transform_publish_rate", tmp, 50.0);
