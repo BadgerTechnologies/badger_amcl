@@ -397,10 +397,10 @@ int Node3D::getFrameToScannerIndex(const std::string& frame_id)
     scanner_index = initFrameToScanner(frame_id);
     if(scanner_index >= 0)
     {
-      frame_to_scanner_[frame_id] = scanner_index; 
       tf::StampedTransform scanner_to_footprint_tf;
       if(getFootprintToFrameTransform(frame_id, &scanner_to_footprint_tf))
       {
+        frame_to_scanner_[frame_id] = scanner_index;
         scanners_[scanner_index]->setPointCloudScannerToFootprintTF(scanner_to_footprint_tf);
       }
       else
@@ -428,7 +428,9 @@ bool Node3D::getFootprintToFrameTransform(const std::string& frame_id, tf::Stamp
   catch (tf::TransformException& e)
   {
     ROS_ERROR("Failed to get transform from base footprint to given frame.");
+    return false;
   }
+  return true;
 }
 
 int Node3D::initFrameToScanner(const std::string& frame_id)
