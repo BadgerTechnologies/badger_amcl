@@ -262,7 +262,6 @@ double ParticleFilter::resampleSystematic(double w_diff)
   std::shared_ptr<PFSampleSet> set_a, set_b;
   PFSample *sample_a, *sample_b;
 
-
   set_a = sets_[current_set_];
   set_b = sets_[(current_set_ + 1) % 2];
 

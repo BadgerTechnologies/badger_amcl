@@ -32,9 +32,8 @@
 namespace badger_amcl
 {
 
-OctoMap::OctoMap(double resolution, bool wait_for_occupancy_map)
+OctoMap::OctoMap(double resolution)
     : Map(resolution),
-      wait_for_occupancy_map_(wait_for_occupancy_map_),
       cdm_(resolution, 0.0)
 {
   cropped_min_cells_ = std::vector<int>(3);

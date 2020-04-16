@@ -47,7 +47,7 @@ public:
 class OctoMap : public Map
 {
 public:
-  OctoMap(double resolution, bool wait_for_occupancy_map);
+  OctoMap(double resolution);
   virtual ~OctoMap() = default;
   // Convert from map index to world coords
   virtual void convertMapToWorld(const std::vector<int>& map_coords,
@@ -88,7 +88,6 @@ protected:
   // Map dimensions (number of cells)
   std::vector<double> map_min_bounds_, map_max_bounds_;
   std::vector<int> cropped_min_cells_, cropped_max_cells_;
-  bool wait_for_occupancy_map_;
   CachedDistanceOctoMap cdm_;
 
   struct OctoMapCellData
