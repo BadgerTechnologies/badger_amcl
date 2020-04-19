@@ -816,9 +816,9 @@ void Node::calcOdomDelta(const PFVector& pose)
   }
   else
   {
+    double angle_a = std::atan2(delta.v[1], delta.v[0]);
     double angle_b = odom_integrator_last_pose_.v[2] + delta_rot / 2;
-    double angle_a = std::atan2(delta.v[1], delta.v[2]);
-    angles::shortest_angular_distance(angle_b, angle_a);
+    delta_bearing = angles::shortest_angular_distance(angle_b, angle_a);
   }
   double cs_bearing = std::cos(delta_bearing);
   double sn_bearing = std::sin(delta_bearing);
