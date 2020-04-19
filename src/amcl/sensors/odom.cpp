@@ -151,16 +151,13 @@ bool Odom::updateAction(std::shared_ptr<ParticleFilter> pf, std::shared_ptr<Sens
         PFSample* sample = &(set->samples[i]);
 
         // Sample pose differences
-        delta_rot1_hat = angleDiff(delta_rot1,
-                                   PDFGaussian::draw(alpha1_ * delta_rot1_noise * delta_rot1_noise
-                                                     + alpha2_ * delta_trans * delta_trans));
-        delta_trans_hat = (delta_trans
-                           - PDFGaussian::draw(alpha3_ * delta_trans * delta_trans +
-                                               alpha4_ * delta_rot1_noise * delta_rot1_noise +
-                                               alpha4_ * delta_rot2_noise * delta_rot2_noise));
-        delta_rot2_hat = angleDiff(delta_rot2,
-                                   PDFGaussian::draw(alpha1_ * delta_rot2_noise * delta_rot2_noise
-                                                     + alpha2_ * delta_trans * delta_trans));
+        delta_rot1_hat = angleDiff(delta_rot1, PDFGaussian::draw(alpha1_ * delta_rot1_noise * delta_rot1_noise
+                                                                 + alpha2_ * delta_trans * delta_trans));
+        delta_trans_hat = (delta_trans - PDFGaussian::draw(alpha3_ * delta_trans * delta_trans +
+                                                           alpha4_ * delta_rot1_noise * delta_rot1_noise +
+                                                           alpha4_ * delta_rot2_noise * delta_rot2_noise));
+        delta_rot2_hat = angleDiff(delta_rot2, PDFGaussian::draw(alpha1_ * delta_rot2_noise * delta_rot2_noise
+                                                                 + alpha2_ * delta_trans * delta_trans));
 
         // Apply sampled update to particle pose
         sample->pose.v[0] += delta_trans_hat * std::cos(sample->pose.v[2] + delta_rot1_hat);
