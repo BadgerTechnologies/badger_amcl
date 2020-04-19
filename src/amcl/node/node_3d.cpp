@@ -507,8 +507,7 @@ void Node3D::getMaxWeightPose(double* max_weight_rtn, PFVector* max_pose)
   {
     double weight;
     PFVector pose_mean;
-    PFMatrix pose_cov;
-    if (!pf_->getClusterStats(hyp_count, &weight, &pose_mean, &pose_cov))
+    if (!pf_->getClusterStats(hyp_count, &weight, &pose_mean))
     {
       ROS_ERROR("Couldn't get stats on cluster %d", hyp_count);
       break;
@@ -516,7 +515,6 @@ void Node3D::getMaxWeightPose(double* max_weight_rtn, PFVector* max_pose)
 
     hyps[hyp_count].weight = weight;
     hyps[hyp_count].mean = pose_mean;
-    hyps[hyp_count].covariance = pose_cov;
 
     if (hyps[hyp_count].weight > max_weight)
     {
