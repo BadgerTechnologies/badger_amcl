@@ -208,8 +208,7 @@ bool ParticleFilter::updateConverged()
 }
 
 // Update the filter with some new sensor observation
-void ParticleFilter::updateSensor(std::function<double(std::shared_ptr<SensorData>,
-                                                       std::shared_ptr<PFSampleSet>)
+void ParticleFilter::updateSensor(std::function<double(std::shared_ptr<SensorData>, std::shared_ptr<PFSampleSet>)
                                                > sensor_fn,
                                   std::shared_ptr<SensorData> sensor_data)
 {
