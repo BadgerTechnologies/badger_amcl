@@ -648,7 +648,7 @@ void ParticleFilter::getCepStats(PFVector* mean, double* var)
 }
 
 // Get the statistics for a particular cluster.
-bool ParticleFilter::getClusterStats(int clabel, double* weight, PFVector* mean, PFMatrix* cov)
+bool ParticleFilter::getClusterStats(int clabel, double* weight, PFVector* mean)
 {
   std::shared_ptr<PFSampleSet> set;
   PFCluster* cluster;
@@ -661,7 +661,6 @@ bool ParticleFilter::getClusterStats(int clabel, double* weight, PFVector* mean,
 
   *weight = cluster->weight;
   *mean = cluster->mean;
-  *cov = cluster->cov;
 
   return true;
 }
