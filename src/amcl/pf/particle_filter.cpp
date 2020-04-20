@@ -290,19 +290,19 @@ double ParticleFilter::resampleSystematic(double w_diff)
     }
   }
   set_b->sample_count = new_count;
-  int n_rand = w_diff * set_b->sample_count;
-  int n_systematic_sampled = set_b->sample_count - n_rand;
+  int num_random_poses = w_diff * set_b->sample_count;
+  int num_systematic_sampled_poses = set_b->sample_count - num_random_poses;
 
   // Find the starting point for systematic sampling.
   double systematic_sample_start = drand48();
-  double systematic_sample_delta = 1.0 / n_systematic_sampled;
+  double systematic_sample_delta = 1.0 / num_systematic_sampled_poses;
   int c_i;
   for (c_i = 0; c_i < set_a->sample_count; c_i++)
   {
     if ((c[c_i] <= systematic_sample_start) && (systematic_sample_start < c[c_i + 1]))
       break;
   }
-  for (i = 0; i < n_rand; ++i)
+  for (i = 0; i < num_random_poses; ++i)
   {
     sample_b = &(set_b->samples[i]);
     sample_b->pose = random_pose_fn_();
@@ -325,7 +325,7 @@ double ParticleFilter::resampleSystematic(double w_diff)
     target += systematic_sample_delta;
     if (target > 1.0)
     {
-      target = 0.0;
+      target -= 1.0;
     }
     sample_a = &(set_a->samples[c_i]);
     sample_b = &(set_b->samples[i]);
