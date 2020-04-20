@@ -118,13 +118,13 @@ CachedDistanceOccupancyMap::CachedDistanceOccupancyMap(double resolution, double
     : resolution_(resolution), max_dist_(max_dist)
 {
   cell_radius_ = static_cast<int>(std::floor(max_dist / resolution));
-  distances_.resize(cell_radius_ + 2);
+  cached_distances_.resize(cell_radius_ + 2);
   for (int i = 0; i <= cell_radius_ + 1; i++)
   {
-    distances_[i].resize(cell_radius_ + 2);
+    cached_distances_[i].resize(cell_radius_ + 2);
     for (int j = 0; j <= cell_radius_ + 1; j++)
     {
-      distances_[i][j] = std::sqrt(i * i + j * j);
+      cached_distances_[i][j] = std::sqrt(i * i + j * j);
     }
   }
 }
@@ -221,7 +221,7 @@ bool OccupancyMap::enqueue(int i, int j, int src_i, int src_j,
 {
   int di = std::abs(i - src_i);
   int dj = std::abs(j - src_j);
-  double distance = cdm_.distances_[di][dj];
+  double distance = cdm_.cached_distances_[di][dj];
   if (distance <= cdm_.cell_radius_)
   {
     setMapOccDist(i, j, distance * resolution_);

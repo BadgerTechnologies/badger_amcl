@@ -38,7 +38,7 @@ class CachedDistanceOctoMap
 public:
   CachedDistanceOctoMap(double resolution, double max_dist);
 
-  std::vector<std::vector<std::vector<double>>> distances_;
+  std::vector<std::vector<std::vector<double>>> cached_distances_;
   double resolution_;
   double max_dist_;
   int cell_radius_;
