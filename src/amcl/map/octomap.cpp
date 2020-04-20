@@ -137,16 +137,16 @@ CachedDistanceOctoMap::CachedDistanceOctoMap(double resolution, double max_dist)
     : resolution_(resolution), max_dist_(max_dist)
 {
   cell_radius_ = static_cast<int>(std::floor(max_dist / resolution));
-  distances_.resize(cell_radius_ + 2);
+  cached_distances_.resize(cell_radius_ + 2);
   for (int i = 0; i <= cell_radius_ + 1; i++)
   {
-    distances_[i].resize(cell_radius_ + 2);
+    cached_distances_[i].resize(cell_radius_ + 2);
     for (int j = 0; j <= cell_radius_ + 1; j++)
     {
-      distances_[i][j].resize(cell_radius_ + 2);
+      cached_distances_[i][j].resize(cell_radius_ + 2);
       for (int k = 0; k <= cell_radius_ + 1; k++)
       {
-        distances_[i][j][k] = std::sqrt(i * i + j * j + k * k);
+        cached_distances_[i][j][k] = std::sqrt(i * i + j * j + k * k);
       }
     }
   }
@@ -271,7 +271,7 @@ bool OctoMap::enqueue(int i, int j, int k, int src_i, int src_j, int src_k,
   int di = std::abs(i - src_i);
   int dj = std::abs(j - src_j);
   int dk = std::abs(k - src_k);
-  double distance = cdm_.distances_[di][dj][dk];
+  double distance = cdm_.cached_distances_[di][dj][dk];
 
   if (distance <= cdm_.cell_radius_)
   {
