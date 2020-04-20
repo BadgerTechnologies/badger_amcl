@@ -222,7 +222,7 @@ bool OccupancyMap::enqueue(int i, int j, int src_i, int src_j,
   int di = std::abs(i - src_i);
   int dj = std::abs(j - src_j);
   double distance = cdm_.distances_[di][dj];
-  if (distance > cdm_.cell_radius_)
+  if (distance <= cdm_.cell_radius_)
   {
     setMapOccDist(i, j, distance * resolution_);
     OccupancyMapCellData cell = OccupancyMapCellData(this);
