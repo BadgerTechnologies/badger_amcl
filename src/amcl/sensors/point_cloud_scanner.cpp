@@ -244,7 +244,7 @@ void PointCloudScanner::getMapCloud(std::shared_ptr<PointCloudData> data, PFVect
   tf::Vector3 footprint_to_map_origin(pose.v[0], pose.v[1], 0.0);
   tf::Quaternion footprint_to_map_q(tf::Vector3(0.0, 0.0, 1.0), pose.v[2]);
   tf::Transform footprint_to_map_tf(footprint_to_map_q, footprint_to_map_origin);
-  tf::Transform point_cloud_scanner_to_map_tf = point_cloud_scanner_to_footprint_tf_ * footprint_to_map_tf;
+  tf::Transform point_cloud_scanner_to_map_tf = footprint_to_map_tf * point_cloud_scanner_to_footprint_tf_;
   pcl_ros::transformPointCloud(data->points_, map_cloud, point_cloud_scanner_to_map_tf);
 }
 
