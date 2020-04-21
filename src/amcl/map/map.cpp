@@ -35,11 +35,6 @@ pcl::PointXYZ Map::getOrigin()
   return origin_;
 }
 
-void Map::setOrigin(const pcl::PointXYZ& origin)
-{
-  origin_ = origin;
-}
-
 bool Map::isCSpaceCreated()
 {
   return cspace_created_;

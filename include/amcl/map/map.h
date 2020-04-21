@@ -42,7 +42,6 @@ public:
 
   virtual bool isCSpaceCreated();
   virtual pcl::PointXYZ getOrigin();
-  virtual void setOrigin(const pcl::PointXYZ& origin);
 
 protected:
   // Map origin; the map is a viewport onto a conceptual larger map.
