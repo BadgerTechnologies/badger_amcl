@@ -72,14 +72,17 @@ public:
 protected:
   struct OctoMapCellData;
   using CellDataQueue = std::priority_queue<OctoMapCellData>;
-  using HashMapBool = tsl::sparse_map<std::size_t, bool>;
-  using HashMapDouble = tsl::sparse_map<std::size_t, double>;
+  using HashMapBool = tsl::sparse_map<std::vector<int>, bool, std::function<size_t(const std::vector<int>& key)>>;
+  using HashMapDouble = tsl::sparse_map<std::vector<int>, double,
+                                        std::function<std::size_t(const std::vector<int>& key)>>;
   static constexpr double EPSILON = std::numeric_limits<double>::epsilon();
 
   virtual void iterateObstacleCells(CellDataQueue& q, HashMapBool& marked);
   virtual void iterateEmptyCells(CellDataQueue& q, HashMapBool& marked);
   virtual bool enqueue(int i, int j, int k, int src_i, int src_j, int src_k,
                        CellDataQueue& q);
+
+  std::function<std::size_t(const std::vector<int>& key)> hash_function_ptr_;
 
   std::shared_ptr<octomap::OcTree> octree_;
   HashMapDouble distances_;
@@ -107,7 +110,7 @@ private:
   inline void setOccDist(int i, int j, int k, double d);
   inline void updateNode(int i, int j, int k, const OctoMapCellData& current_cell,
                          CellDataQueue& q, HashMapBool& marked);
-  inline std::size_t makeHash(int i, int j, int k);
+  inline std::size_t makeHash(const std::vector<int>& key);
 };
 }  // namespace amcl
 

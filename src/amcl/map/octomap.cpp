@@ -42,6 +42,8 @@ OctoMap::OctoMap(double resolution)
   map_max_bounds_ = std::vector<double>(2);
   max_occ_dist_ = 0.0;
   octree_ = std::make_shared<octomap::OcTree>(resolution_);
+  hash_function_ptr_ = std::bind(&OctoMap::makeHash, this, std::placeholders::_1);
+  distances_ = HashMapDouble(0, hash_function_ptr_);
 }
 
 // initialize octomap from octree
@@ -171,7 +173,7 @@ void OctoMap::updateCSpace()
 
   ROS_INFO("Updating OctoMap CSpace");
   CellDataQueue q = CellDataQueue();
-  HashMapBool marked;
+  HashMapBool marked(0, hash_function_ptr_);
   distances_.clear();
   if ((cdm_.resolution_ != resolution_) || (std::fabs(cdm_.max_dist_ - max_occ_dist_) > EPSILON))
   {
@@ -209,7 +211,7 @@ void OctoMap::iterateObstacleCells(CellDataQueue& q, HashMapBool& marked)
       cell.src_i = cell.i = i;
       cell.src_j = cell.j = j;
       cell.src_k = cell.k = k;
-      marked.insert_or_assign(makeHash(i, j, k), true);
+      marked.insert_or_assign({i, j, k}, true);
       q.push(cell);
     }
   }
@@ -253,13 +255,13 @@ void OctoMap::updateNode(int i, int j, int k, const OctoMapCellData& current_cel
                          CellDataQueue& q, HashMapBool& marked)
 {
   double occThresh = octree_->getOccupancyThres();
-  std::size_t hash = makeHash(i, j, k);
-  HashMapBool::iterator node = marked.find(hash);
+  std::vector<int> key = {i, j, k};
+  HashMapBool::iterator node = marked.find(key);
   if (node == marked.end() or node->second == false)
   {
     bool enqueued = enqueue(i, j, k, current_cell.src_i, current_cell.src_j,
                             current_cell.src_k, q);
-    marked.insert_or_assign(hash, enqueued);
+    marked.insert_or_assign(key, enqueued);
   }
 }
 
@@ -293,15 +295,15 @@ bool OctoMap::enqueue(int i, int j, int k, int src_i, int src_j, int src_k,
 // Sets the distance from the voxel to the nearest object in the static map
 void OctoMap::setOccDist(int i, int j, int k, double d)
 {
-  std::size_t hash = makeHash(i, j, k);
-  distances_.insert_or_assign(hash, d);
+  std::vector<int> key = {i, j, k};
+  distances_.insert_or_assign(key, d);
 }
 
 // returns the distance from the 3d voxel to the nearest object in the static map
 double OctoMap::getOccDist(int i, int j, int k)
 {
-  std::size_t hash = makeHash(i, j, k);
-  distances_iterator_ = distances_.find(hash);
+  std::vector<int> key = {i, j, k};
+  distances_iterator_ = distances_.find(key);
   if(distances_iterator_ != distances_end_)
   {
     return distances_iterator_->second;
@@ -309,12 +311,12 @@ double OctoMap::getOccDist(int i, int j, int k)
   return max_occ_dist_;
 }
 
-std::size_t OctoMap::makeHash(int i, int j, int k)
+std::size_t OctoMap::makeHash(const std::vector<int>& key)
 {
   std::size_t hash(0);
-  boost::hash_combine(hash, i);
-  boost::hash_combine(hash, j);
-  boost::hash_combine(hash, k);
+  boost::hash_combine(hash, key[0]);
+  boost::hash_combine(hash, key[1]);
+  boost::hash_combine(hash, key[2]);
   return hash;
 }
 
