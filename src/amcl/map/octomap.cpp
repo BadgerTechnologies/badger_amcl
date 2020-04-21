@@ -43,7 +43,6 @@ OctoMap::OctoMap(double resolution)
   max_occ_dist_ = 0.0;
   octree_ = std::make_shared<octomap::OcTree>(resolution_);
   hash_function_ptr_ = std::bind(&OctoMap::makeHash, this, std::placeholders::_1);
-  distances_ = HashMapDouble(0, hash_function_ptr_);
   key_ = {0, 0, 0};
 }
 
@@ -173,7 +172,9 @@ void OctoMap::updateCSpace()
 
   ROS_INFO("Updating OctoMap CSpace");
   CellDataQueue q = CellDataQueue();
-  HashMapBool marked(0, hash_function_ptr_);
+  int bucket_count = std::ceil(max_occ_dist_ / resolution_ * octree_->calcNumNodes());
+  distances_ = HashMapDouble(bucket_count, hash_function_ptr_);
+  HashMapBool marked(bucket_count, hash_function_ptr_);
   distances_.clear();
   if ((cdm_.resolution_ != resolution_) || (std::fabs(cdm_.max_dist_ - max_occ_dist_) > EPSILON))
   {
@@ -184,6 +185,8 @@ void OctoMap::updateCSpace()
   distances_end_ = distances_.end();
   cspace_created_ = true;
   ROS_INFO("Done updating OctoMap CSpace");
+  ROS_INFO("marked bucket count: %lu, marked max bucket count: %lu", marked.bucket_count(), marked.max_bucket_count());
+  ROS_INFO("distances bucket count; %lu, distances max bucket count: %lu", distances_.bucket_count(), distances_.max_bucket_count());
 }
 
 void OctoMap::iterateObstacleCells(CellDataQueue& q, HashMapBool& marked)
