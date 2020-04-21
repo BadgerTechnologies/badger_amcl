@@ -292,6 +292,8 @@ bool OctoMap::enqueue(int i, int j, int k, int src_i, int src_j, int src_k,
 
 // Helper function for updateCSpace
 // Sets the distance from the voxel to the nearest object in the static map
+// If this function is called in the future outside of the updateCSpace pipeline,
+// distances_end_ will need to be updated
 void OctoMap::setOccDist(int i, int j, int k, double d)
 {
   std::vector<int> key = {i, j, k};
