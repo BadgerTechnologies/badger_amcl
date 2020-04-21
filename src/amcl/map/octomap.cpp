@@ -44,6 +44,7 @@ OctoMap::OctoMap(double resolution)
   octree_ = std::make_shared<octomap::OcTree>(resolution_);
   hash_function_ptr_ = std::bind(&OctoMap::makeHash, this, std::placeholders::_1);
   distances_ = HashMapDouble(0, hash_function_ptr_);
+  key_ = {0, 0, 0};
 }
 
 // initialize octomap from octree
@@ -210,7 +211,10 @@ void OctoMap::iterateObstacleCells(CellDataQueue& q, HashMapBool& marked)
       cell.src_i = cell.i = i;
       cell.src_j = cell.j = j;
       cell.src_k = cell.k = k;
-      marked.insert_or_assign({i, j, k}, true);
+      key_[0] = i;
+      key_[1] = j;
+      key_[2] = k;
+      marked.insert_or_assign(key_, true);
       q.push(cell);
     }
   }
@@ -254,13 +258,15 @@ void OctoMap::updateNode(int i, int j, int k, const OctoMapCellData& current_cel
                          CellDataQueue& q, HashMapBool& marked)
 {
   double occThresh = octree_->getOccupancyThres();
-  std::vector<int> key = {i, j, k};
-  HashMapBool::iterator node = marked.find(key);
+  key_[0] = i;
+  key_[1] = j;
+  key_[2] = k;
+  HashMapBool::iterator node = marked.find(key_);
   if (node == marked.end() or node->second == false)
   {
     bool enqueued = enqueue(i, j, k, current_cell.src_i, current_cell.src_j,
                             current_cell.src_k, q);
-    marked.insert_or_assign(key, enqueued);
+    marked.insert_or_assign(key_, enqueued);
   }
 }
 
@@ -296,15 +302,19 @@ bool OctoMap::enqueue(int i, int j, int k, int src_i, int src_j, int src_k,
 // distances_end_ will need to be updated
 void OctoMap::setOccDist(int i, int j, int k, double d)
 {
-  std::vector<int> key = {i, j, k};
-  distances_.insert_or_assign(key, d);
+  key_[0] = i;
+  key_[1] = j;
+  key_[2] = k;
+  distances_.insert_or_assign(key_, d);
 }
 
 // returns the distance from the 3d voxel to the nearest object in the static map
 double OctoMap::getOccDist(int i, int j, int k)
 {
-  std::vector<int> key = {i, j, k};
-  distances_iterator_ = distances_.find(key);
+  key_[0] = i;
+  key_[1] = j;
+  key_[2] = k;
+  distances_iterator_ = distances_.find(key_);
   if(distances_iterator_ != distances_end_)
   {
     return distances_iterator_->second;
