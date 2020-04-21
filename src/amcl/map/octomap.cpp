@@ -43,6 +43,7 @@ OctoMap::OctoMap(double resolution)
   max_occ_dist_ = 0.0;
   octree_ = std::make_shared<octomap::OcTree>(resolution_);
   hash_function_ptr_ = std::bind(&OctoMap::makeHash, this, std::placeholders::_1);
+  keys_equal_function_ptr_ = std::bind(&OctoMap::keysEqual, this, std::placeholders::_1, std::placeholders::_2);
   key_ = {0, 0, 0};
 }
 
@@ -173,8 +174,8 @@ void OctoMap::updateCSpace()
   ROS_INFO("Updating OctoMap CSpace");
   CellDataQueue q = CellDataQueue();
   int bucket_count = std::ceil(max_occ_dist_ / resolution_ * octree_->calcNumNodes());
-  distances_ = HashMapDouble(bucket_count, hash_function_ptr_);
-  HashMapBool marked(bucket_count, hash_function_ptr_);
+  distances_ = HashMapDouble(bucket_count, hash_function_ptr_, keys_equal_function_ptr_);
+  HashMapBool marked(bucket_count, hash_function_ptr_, keys_equal_function_ptr_);
   distances_.clear();
   if ((cdm_.resolution_ != resolution_) || (std::fabs(cdm_.max_dist_ - max_occ_dist_) > EPSILON))
   {
@@ -332,6 +333,11 @@ std::size_t OctoMap::makeHash(const std::vector<int>& key)
   boost::hash_combine(hash, key[1]);
   boost::hash_combine(hash, key[2]);
   return hash;
+}
+
+bool OctoMap::keysEqual(const std::vector<int>& lhs, const std::vector<int>& rhs)
+{
+  return lhs[0] == rhs[0] && lhs[1] == rhs[1] && lhs[2] == rhs[2];
 }
 
 }  // namespace amcl
