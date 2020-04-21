@@ -88,6 +88,7 @@ protected:
   HashMapDouble distances_;
   HashMapDouble::iterator distances_end_;
   HashMapDouble::iterator distances_iterator_;
+  std::vector<int> key_;
   // Map dimensions (number of cells)
   std::vector<double> map_min_bounds_, map_max_bounds_;
   std::vector<int> cropped_min_cells_, cropped_max_cells_;
