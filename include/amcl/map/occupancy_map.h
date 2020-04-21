@@ -64,6 +64,7 @@ public:
                                  std::vector<int>* map_coords);
   // Test to see if the given map coords lie within the absolute map bounds.
   virtual bool isValid(const std::vector<int>& coords);
+  virtual void setOrigin(const pcl::PointXYZ& origin);
   virtual std::vector<int> getSize();
   virtual void setSize(std::vector<int> size_vec);
   // Update the cspace distance values

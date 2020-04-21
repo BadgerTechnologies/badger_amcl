@@ -56,7 +56,6 @@ void OctoMap::initFromOctree(std::shared_ptr<octomap::OcTree> octree)
   double min_x, min_y, min_z, max_x, max_y, max_z;
   octree_->getMetricMin(min_x, min_y, min_z);
   octree_->getMetricMax(max_x, max_y, max_z);
-  setOrigin(pcl::PointXYZ(min_x, min_y, min_z));
   // crop values here if required
   convertWorldToMap({ min_x, min_y, min_z }, &cropped_min_cells_);
   convertWorldToMap({ max_x, max_y, max_z }, &cropped_max_cells_);
@@ -74,12 +73,12 @@ void OctoMap::convertMapToWorld(const std::vector<int>& map_coords, std::vector<
   std::vector<double> return_vals;
   int i = map_coords[0];
   int j = map_coords[1];
-  (*world_coords)[0] = origin_.x + i * resolution_;
-  (*world_coords)[1] = origin_.y + j * resolution_;
+  (*world_coords)[0] = i * resolution_;
+  (*world_coords)[1] = j * resolution_;
   if (map_coords.size() > 2)
   {
     int k = map_coords[2];
-    (*world_coords)[2] = origin_.z + k * resolution_;
+    (*world_coords)[2] = k * resolution_;
   }
 }
 
@@ -88,12 +87,12 @@ void OctoMap::convertWorldToMap(const std::vector<double>& world_coords, std::ve
 {
   double x = world_coords[0];
   double y = world_coords[1];
-  (*map_coords)[0] = std::floor((x - origin_.x) / resolution_ + 0.5);
-  (*map_coords)[1] = std::floor((y - origin_.y) / resolution_ + 0.5);
+  (*map_coords)[0] = std::floor(x / resolution_ + 0.5);
+  (*map_coords)[1] = std::floor(y / resolution_ + 0.5);
   if (world_coords.size() > 2)
   {
     double z = world_coords[2];
-    (*map_coords)[2] = std::floor((z - origin_.z) / resolution_ + 0.5);
+    (*map_coords)[2] = std::floor(z / resolution_ + 0.5);
   }
 }
 

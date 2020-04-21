@@ -37,6 +37,11 @@ OccupancyMap::OccupancyMap(double resolution)
   max_occ_dist_ = 0.0;
 }
 
+void OccupancyMap::setOrigin(const pcl::PointXYZ& origin)
+{
+  origin_ = origin;
+}
+
 std::vector<int> OccupancyMap::getSize()
 {
   return { size_x_, size_y_ };
