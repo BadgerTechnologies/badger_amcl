@@ -216,7 +216,6 @@ void OctoMap::iterateObstacleCells(CellDataQueue& q)
       cell.src_i = cell.i = i;
       cell.src_j = cell.j = j;
       cell.src_k = cell.k = k;
-      cell.occ_dist = 0.0;
       key_[0] = i;
       key_[1] = j;
       key_[2] = k;
@@ -229,7 +228,7 @@ void OctoMap::iterateEmptyCells(CellDataQueue& q)
 {
   while (!q.empty())
   {
-    OctoMapCellData current_cell = q.top();
+    OctoMapCellData current_cell = q.front();
     if (current_cell.i > cropped_min_cells_[0])
     {
       updateNode(current_cell.i - 1, current_cell.j, current_cell.k, current_cell, q);
@@ -265,22 +264,24 @@ void OctoMap::updateNode(int i, int j, int k, const OctoMapCellData& current_cel
   key_[1] = j;
   key_[2] = k;
   HashMapDouble::iterator node = distances_.find(key_);
-  if (node == distances_.end())
+  double old_distance = max_occ_dist_;
+  if (node != distances_.end())
   {
-    enqueue(i, j, k, current_cell.src_i, current_cell.src_j, current_cell.src_k, q);
+    old_distance = node->second;
   }
+  enqueue(i, j, k, current_cell.src_i, current_cell.src_j, current_cell.src_k, q, old_distance);
 }
 
 // Helper function for updateCSpace
 // Adds the voxel to the queue if the voxel is close enough to an object
-void OctoMap::enqueue(int i, int j, int k, int src_i, int src_j, int src_k, CellDataQueue& q)
+void OctoMap::enqueue(int i, int j, int k, int src_i, int src_j, int src_k, CellDataQueue& q, double old_distance)
 {
   int di = std::abs(i - src_i);
   int dj = std::abs(j - src_j);
   int dk = std::abs(k - src_k);
   double distance = cdm_.cached_distances_[di][dj][dk] * resolution_;
 
-  if (distance < max_occ_dist_)
+  if (distance < old_distance)
   {
     setOccDist(i, j, k, distance);
     OctoMapCellData cell = OctoMapCellData();
@@ -290,7 +291,6 @@ void OctoMap::enqueue(int i, int j, int k, int src_i, int src_j, int src_k, Cell
     cell.src_i = src_i;
     cell.src_j = src_j;
     cell.src_k = src_k;
-    cell.occ_dist = distance;
     q.push(cell);
   }
 }

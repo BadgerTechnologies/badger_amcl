@@ -71,7 +71,7 @@ public:
 
 protected:
   struct OctoMapCellData;
-  using CellDataQueue = std::priority_queue<OctoMapCellData>;
+  using CellDataQueue = std::queue<OctoMapCellData>;
   using HashMapDouble = tsl::sparse_map<std::vector<int>, double,
                                         std::function<std::size_t(const std::vector<int>& key)>,
                                         std::function<bool(const std::vector<int>& lhs, const std::vector<int>& rhs)>>;
@@ -79,7 +79,7 @@ protected:
 
   virtual void iterateObstacleCells(CellDataQueue& q);
   virtual void iterateEmptyCells(CellDataQueue& q);
-  virtual void enqueue(int i, int j, int k, int src_i, int src_j, int src_k, CellDataQueue& q);
+  virtual void enqueue(int i, int j, int k, int src_i, int src_j, int src_k, CellDataQueue& q, double old_distance);
 
   std::function<std::size_t(const std::vector<int>& key)> hash_function_ptr_;
   std::function<bool(const std::vector<int>& lhs, const std::vector<int>& rhs)> keys_equal_function_ptr_;
@@ -97,11 +97,6 @@ protected:
     OctoMapCellData() = default;
     int i, j, k;
     int src_i, src_j, src_k;
-    double occ_dist;
-    inline bool operator<(const OctoMapCellData& b) const
-    {
-      return occ_dist > b.occ_dist;
-    }
   };
 
 private:
