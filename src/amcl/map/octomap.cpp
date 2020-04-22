@@ -321,10 +321,10 @@ double OctoMap::getOccDist(int i, int j, int k)
   key_[0] = i;
   key_[1] = j;
   key_[2] = k;
-  distances_iterator_ = distances_.find(key_);
-  if(distances_iterator_ != distances_.end())
+  HashMapDouble::iterator distances_iterator = distances_.find(key_);
+  if(distances_iterator != distances_.end())
   {
-    return distances_iterator_->second;
+    return distances_iterator->second;
   }
   return max_occ_dist_;
 }
