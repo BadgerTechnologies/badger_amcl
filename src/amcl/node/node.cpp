@@ -385,7 +385,7 @@ bool Node::updateOdomToMapTransform(const tf::Stamped<tf::Pose>& odom_to_map)
   std::lock_guard<std::mutex> tfl(tf_mutex_);
   latest_tf_ = tf::Transform(tf::Quaternion(odom_to_map.getRotation()),
                              tf::Point(odom_to_map.getOrigin()));
-  latest_tf_valid_ = true;
+  latest_tf_valid_ = false;
 
   try
   {
