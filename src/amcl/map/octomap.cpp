@@ -223,18 +223,12 @@ void OctoMap::iterateObstacleCells(CellDataQueue& q)
       q.push(cell);
     }
   }
-  ROS_INFO("num_leaf_cells: %lu, num obstacle cells: %d", octree_->getNumLeafNodes(), count);
 }
 
 void OctoMap::iterateEmptyCells(CellDataQueue& q)
 {
-  int count = 0;
   while (!q.empty())
   {
-    count += 1;
-    count %= 1000000;
-    if(count == 999)
-      ROS_INFO("queue size: %lu", q.size());
     OctoMapCellData current_cell = q.top();
     if (current_cell.i > cropped_min_cells_[0])
     {
