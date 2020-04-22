@@ -72,17 +72,14 @@ public:
 protected:
   struct OctoMapCellData;
   using CellDataQueue = std::priority_queue<OctoMapCellData>;
-  using HashMapBool = tsl::sparse_map<std::vector<int>, bool, std::function<size_t(const std::vector<int>& key)>,
-                                      std::function<bool(const std::vector<int>& lhs, const std::vector<int>& rhs)>>;
   using HashMapDouble = tsl::sparse_map<std::vector<int>, double,
                                         std::function<std::size_t(const std::vector<int>& key)>,
                                         std::function<bool(const std::vector<int>& lhs, const std::vector<int>& rhs)>>;
   static constexpr double EPSILON = std::numeric_limits<double>::epsilon();
 
-  virtual void iterateObstacleCells(CellDataQueue& q, HashMapBool& marked);
-  virtual void iterateEmptyCells(CellDataQueue& q, HashMapBool& marked);
-  virtual bool enqueue(int i, int j, int k, int src_i, int src_j, int src_k,
-                       CellDataQueue& q);
+  virtual void iterateObstacleCells(CellDataQueue& q);
+  virtual void iterateEmptyCells(CellDataQueue& q);
+  virtual void enqueue(int i, int j, int k, int src_i, int src_j, int src_k, CellDataQueue& q);
 
   std::function<std::size_t(const std::vector<int>& key)> hash_function_ptr_;
   std::function<bool(const std::vector<int>& lhs, const std::vector<int>& rhs)> keys_equal_function_ptr_;
@@ -97,21 +94,19 @@ protected:
 
   struct OctoMapCellData
   {
-    OctoMapCellData() = delete;
-    OctoMapCellData(OctoMap& o_map) : octo_map(&o_map) {};
-    OctoMap* octo_map;
+    OctoMapCellData() = default;
     int i, j, k;
     int src_i, src_j, src_k;
+    double occ_dist;
     inline bool operator<(const OctoMapCellData& b) const
     {
-      return octo_map->getOccDist(i, j, k) > b.octo_map->getOccDist(b.i, b.j, b.k);
+      return occ_dist > b.occ_dist;
     }
   };
 
 private:
   inline void setOccDist(int i, int j, int k, double d);
-  inline void updateNode(int i, int j, int k, const OctoMapCellData& current_cell,
-                         CellDataQueue& q, HashMapBool& marked);
+  inline void updateNode(int i, int j, int k, const OctoMapCellData& current_cell, CellDataQueue& q);
   inline std::size_t makeHash(const std::vector<int>& key);
   inline bool keysEqual(const std::vector<int>& lhs, const std::vector<int>& rhs);
 };
