@@ -199,11 +199,13 @@ void OctoMap::iterateObstacleCells(CellDataQueue& q, HashMapBool& marked)
   std::vector<int> map_coords(3);
 
   octree_->expand();
+  int count = 0;
   for (octomap::OcTree::leaf_iterator it = octree_->begin_leafs(),
           end = octree_->end_leafs(); it != end; ++it)
   {
     if (octree_->isNodeOccupied(*it))
     {
+      count++;
       int i, j, k;
       world_coords[0] = it.getX();
       world_coords[1] = it.getY();
@@ -220,9 +222,12 @@ void OctoMap::iterateObstacleCells(CellDataQueue& q, HashMapBool& marked)
       key_[1] = j;
       key_[2] = k;
       marked.insert_or_assign(key_, true);
+      if(!marked.find(key_)->second)
+        ROS_INFO("boolean not working for key %d, %d, %d", key_[0], key_[1], key_[2]);
       q.push(cell);
     }
   }
+  ROS_INFO("num_leaf_cells: %lu, num obstacle cells: %d", octree_->getNumLeafNodes(), count);
 }
 
 void OctoMap::iterateEmptyCells(CellDataQueue& q, HashMapBool& marked)
