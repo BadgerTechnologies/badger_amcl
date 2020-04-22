@@ -181,13 +181,14 @@ void OctoMap::updateCSpace()
   {
     cdm_ = CachedDistanceOctoMap(resolution_, max_occ_dist_);
   }
+  ROS_INFO("Iterating obstacle cells");
   iterateObstacleCells(q, marked);
+  ROS_INFO("Iterating empty cells");
   iterateEmptyCells(q, marked);
-  distances_end_ = distances_.end();
   cspace_created_ = true;
   ROS_INFO("Done updating OctoMap CSpace");
-  ROS_INFO("marked bucket count: %lu, marked max bucket count: %lu", marked.bucket_count(), marked.max_bucket_count());
-  ROS_INFO("distances bucket count; %lu, distances max bucket count: %lu", distances_.bucket_count(), distances_.max_bucket_count());
+  ROS_INFO("Marked bucket count: %lu, marked max bucket count: %lu", marked.bucket_count(), marked.max_bucket_count());
+  ROS_INFO("Distances bucket count; %lu, distances max bucket count: %lu", distances_.bucket_count(), distances_.max_bucket_count());
 }
 
 void OctoMap::iterateObstacleCells(CellDataQueue& q, HashMapBool& marked)
@@ -224,11 +225,15 @@ void OctoMap::iterateObstacleCells(CellDataQueue& q, HashMapBool& marked)
   }
 }
 
-void OctoMap::iterateEmptyCells(CellDataQueue& q,
-                                HashMapBool& marked)
+void OctoMap::iterateEmptyCells(CellDataQueue& q, HashMapBool& marked)
 {
+  int count = 0;
   while (!q.empty())
   {
+    count += 1;
+    count %= 1000000;
+    if(count == 999)
+      ROS_INFO("queue size: %lu", q.size());
     OctoMapCellData current_cell = q.top();
     if (current_cell.i > cropped_min_cells_[0])
     {
@@ -302,8 +307,6 @@ bool OctoMap::enqueue(int i, int j, int k, int src_i, int src_j, int src_k,
 
 // Helper function for updateCSpace
 // Sets the distance from the voxel to the nearest object in the static map
-// If this function is called in the future outside of the updateCSpace pipeline,
-// distances_end_ will need to be updated
 void OctoMap::setOccDist(int i, int j, int k, double d)
 {
   key_[0] = i;
@@ -319,7 +322,7 @@ double OctoMap::getOccDist(int i, int j, int k)
   key_[1] = j;
   key_[2] = k;
   distances_iterator_ = distances_.find(key_);
-  if(distances_iterator_ != distances_end_)
+  if(distances_iterator_ != distances_.end())
   {
     return distances_iterator_->second;
   }

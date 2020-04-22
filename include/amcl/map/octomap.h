@@ -89,7 +89,6 @@ protected:
 
   std::shared_ptr<octomap::OcTree> octree_;
   HashMapDouble distances_;
-  HashMapDouble::iterator distances_end_;
   HashMapDouble::iterator distances_iterator_;
   std::vector<int> key_;
   // Map dimensions (number of cells)
