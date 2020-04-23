@@ -173,7 +173,8 @@ void OctoMap::updateCSpace()
 
   ROS_INFO("Updating OctoMap CSpace");
   CellDataQueue q = CellDataQueue();
-  int bucket_count = std::ceil(max_occ_dist_ / resolution_ * octree_->calcNumNodes());
+  int bucket_count = 4 * std::ceil(max_occ_dist_ / resolution_ * octree_->calcNumNodes());
+  ROS_INFO("starting bucket count: %d", bucket_count);
   distances_ = HashMapDouble(bucket_count, hash_function_ptr_, keys_equal_function_ptr_);
   distances_.clear();
   if ((cdm_.resolution_ != resolution_) || (std::fabs(cdm_.max_dist_ - max_occ_dist_) > EPSILON))
@@ -184,9 +185,22 @@ void OctoMap::updateCSpace()
   iterateObstacleCells(q);
   ROS_INFO("Iterating empty cells");
   iterateEmptyCells(q);
-  cspace_created_ = true;
   ROS_INFO("Done updating OctoMap CSpace");
-  ROS_INFO("Distances bucket count; %lu, distances max bucket count: %lu", distances_.bucket_count(), distances_.max_bucket_count());
+
+  ROS_INFO("Distances bucket count; %lu", distances_.bucket_count());
+  ROS_INFO("Distances size: %lu", distances_.size());
+  std::vector<int> counts(distances_.bucket_count());
+  size_t mask = distances_.bucket_count() - 1;
+  for(auto hash : hashes_)
+  {
+    counts[mask & hash]++;
+  }
+  int max_count = *std::max_element(counts.begin(), counts.end());
+  ROS_INFO("Max collisions: %d", max_count);
+  hashes_.clear();
+  hashes_.shrink_to_fit();
+
+  cspace_created_ = true;
 }
 
 void OctoMap::iterateObstacleCells(CellDataQueue& q)
@@ -319,18 +333,20 @@ double OctoMap::getOccDist(int i, int j, int k)
   return max_occ_dist_;
 }
 
-std::size_t OctoMap::makeHash(const std::vector<int>& key)
+std::size_t OctoMap::makeHash(const Eigen::Vector3i& key)
 {
-  std::size_t hash(0);
-  boost::hash_combine(hash, key[0]);
-  boost::hash_combine(hash, key[1]);
-  boost::hash_combine(hash, key[2]);
+  std::size_t c0 = 1;
+  std::size_t c1 = 37633;
+  std::size_t c2 = 2654435761;
+  std::size_t hash = c0 * key[0] + c1 * key[1] + c2 * key[2];
+  if(!cspace_created_)
+    hashes_.push_back(hash);
   return hash;
 }
 
-bool OctoMap::keysEqual(const std::vector<int>& lhs, const std::vector<int>& rhs)
+bool OctoMap::keysEqual(const Eigen::Vector3i& lhs, const Eigen::Vector3i& rhs)
 {
-  return lhs[0] == rhs[0] && lhs[1] == rhs[1] && lhs[2] == rhs[2];
+  return lhs == rhs;
 }
 
 }  // namespace amcl

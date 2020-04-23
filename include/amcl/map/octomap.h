@@ -20,6 +20,7 @@
 #ifndef AMCL_MAP_OCTOMAP_H
 #define AMCL_MAP_OCTOMAP_H
 
+#include <Eigen/Dense>
 #include <limits>
 #include <memory>
 #include <queue>
@@ -71,22 +72,23 @@ public:
 
 protected:
   struct OctoMapCellData;
+
   using CellDataQueue = std::queue<OctoMapCellData>;
-  using HashMapDouble = tsl::sparse_map<std::vector<int>, double,
-                                        std::function<std::size_t(const std::vector<int>& key)>,
-                                        std::function<bool(const std::vector<int>& lhs, const std::vector<int>& rhs)>>;
+  using HashMapDouble = tsl::sparse_map<Eigen::Vector3i, double,
+                                        std::function<std::size_t(const Eigen::Vector3i& key)>,
+                                        std::function<bool(const Eigen::Vector3i& lhs, const Eigen::Vector3i& rhs)>>;
   static constexpr double EPSILON = std::numeric_limits<double>::epsilon();
 
   virtual void iterateObstacleCells(CellDataQueue& q);
   virtual void iterateEmptyCells(CellDataQueue& q);
   virtual void enqueue(int i, int j, int k, int src_i, int src_j, int src_k, CellDataQueue& q, double old_distance);
 
-  std::function<std::size_t(const std::vector<int>& key)> hash_function_ptr_;
-  std::function<bool(const std::vector<int>& lhs, const std::vector<int>& rhs)> keys_equal_function_ptr_;
+  std::function<std::size_t(const Eigen::Vector3i& key)> hash_function_ptr_;
+  std::function<bool(const Eigen::Vector3i& lhs, const Eigen::Vector3i& rhs)> keys_equal_function_ptr_;
 
   std::shared_ptr<octomap::OcTree> octree_;
   HashMapDouble distances_;
-  std::vector<int> key_;
+  Eigen::Vector3i key_;
   // Map dimensions (number of cells)
   std::vector<double> map_min_bounds_, map_max_bounds_;
   std::vector<int> cropped_min_cells_, cropped_max_cells_;
@@ -102,8 +104,10 @@ protected:
 private:
   inline void setOccDist(int i, int j, int k, double d);
   inline void updateNode(int i, int j, int k, const OctoMapCellData& current_cell, CellDataQueue& q);
-  inline std::size_t makeHash(const std::vector<int>& key);
-  inline bool keysEqual(const std::vector<int>& lhs, const std::vector<int>& rhs);
+  inline std::size_t makeHash(const Eigen::Vector3i& key);
+  inline bool keysEqual(const Eigen::Vector3i& lhs, const Eigen::Vector3i& rhs);
+
+  std::deque<std::size_t> hashes_;
 };
 }  // namespace amcl
 
