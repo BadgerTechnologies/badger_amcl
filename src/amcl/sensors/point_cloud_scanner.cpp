@@ -48,21 +48,17 @@ void PointCloudScanner::init(int max_beams, std::shared_ptr<OctoMap> map)
   map_ = map;
 }
 
-void PointCloudScanner::setPointCloudModel(double z_hit, double z_rand, double sigma_hit,
-                                           double max_occ_dist)
+void PointCloudScanner::setPointCloudModel(double z_hit, double z_rand, double sigma_hit)
 {
   model_type_ = POINT_CLOUD_MODEL;
   z_hit_ = z_hit;
   z_rand_ = z_rand;
   sigma_hit_ = sigma_hit;
-  map_->updateMaxOccDist(max_occ_dist);
 }
 
-void PointCloudScanner::setPointCloudModelGompertz(double z_hit, double z_rand, double sigma_hit,
-                                                   double max_occ_dist, double gompertz_a,
-                                                   double gompertz_b, double gompertz_c,
-                                                   double input_shift, double input_scale,
-                                                   double output_shift)
+void PointCloudScanner::setPointCloudModelGompertz(double z_hit, double z_rand, double sigma_hit, double gompertz_a,
+                                                   double gompertz_b, double gompertz_c, double input_shift,
+                                                   double input_scale, double output_shift)
 {
   model_type_ = POINT_CLOUD_MODEL_GOMPERTZ;
   z_hit_ = z_hit;
@@ -74,7 +70,6 @@ void PointCloudScanner::setPointCloudModelGompertz(double z_hit, double z_rand, 
   input_shift_ = input_shift;
   input_scale_ = input_scale;
   output_shift_ = output_shift;
-  map_->updateMaxOccDist(max_occ_dist);
 }
 
 void PointCloudScanner::setMapFactors(double off_map_factor, double non_free_space_factor,
