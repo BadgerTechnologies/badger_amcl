@@ -48,12 +48,10 @@ OctoMap::OctoMap(double resolution)
 }
 
 // initialize octomap from octree
-void OctoMap::initFromOctree(std::shared_ptr<octomap::OcTree> octree)
+void OctoMap::initFromOctree(std::shared_ptr<octomap::OcTree> octree, double max_occ_dist)
 {
   octree_ = octree;
-  // set size
-  double x_meters, y_meters, z_meters;
-  octree_->getMetricSize(x_meters, y_meters, z_meters);
+  max_occ_dist_ = max_occ_dist;
   double min_x, min_y, min_z, max_x, max_y, max_z;
   octree_->getMetricMin(min_x, min_y, min_z);
   octree_->getMetricMax(max_x, max_y, max_z);
@@ -152,13 +150,6 @@ CachedDistanceOctoMap::CachedDistanceOctoMap(double resolution, double max_dist)
       }
     }
   }
-}
-
-// This version also updates the max_occ_dist_ variable and
-// calls the base non-parameter updateCSpace
-void OctoMap::updateMaxOccDist(double max_occ_dist)
-{
-  max_occ_dist_ = max_occ_dist;
 }
 
 // Creates the distances lookup object populated with the distance from

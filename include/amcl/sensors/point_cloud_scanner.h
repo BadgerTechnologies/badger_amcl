@@ -56,10 +56,9 @@ public:
 
   void init(int max_beams, std::shared_ptr<OctoMap> map);
 
-  void setPointCloudModel(double z_hit, double z_rand, double sigma_hit, double max_occ_dist);
-  void setPointCloudModelGompertz(double z_hit, double z_rand, double sigma_hit, double max_occ_dist, double gompertz_a,
-                                  double gompertz_b, double gompertz_c, double input_shift, double input_scale,
-                                  double output_shift);
+  void setPointCloudModel(double z_hit, double z_rand, double sigma_hit);
+  void setPointCloudModelGompertz(double z_hit, double z_rand, double sigma_hit, double gompertz_a, double gompertz_b,
+                                  double gompertz_c, double input_shift, double input_scale, double output_shift);
 
   // Update the filter based on the sensor model.  Returns true if the
   // filter has been updated.

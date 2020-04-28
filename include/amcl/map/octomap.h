@@ -63,8 +63,7 @@ public:
                             const std::vector<double>& map_max);
   // Update the cspace distance values
   virtual void updateCSpace();
-  virtual void updateMaxOccDist(double max_occ_dist);
-  virtual void initFromOctree(std::shared_ptr<octomap::OcTree> octree);
+  virtual void initFromOctree(std::shared_ptr<octomap::OcTree> octree, double max_occ_dist);
   virtual double getMaxOccDist();
   // This function is called very frequently.
   // Do not make it virtual as this would hinder performance.
