@@ -96,14 +96,10 @@ void OctoMap::convertWorldToMap(const std::vector<double>& world_coords, std::ve
 }
 
 // returns true if all coordinates are within the represented map
-bool OctoMap::isPoseValid(const std::vector<int>& coords)
+bool OctoMap::isPoseValid(const int i, const int j)
 {
-  int i = coords[0];
-  int j = coords[1];
-  if ((i < cropped_min_cells_[0]) || (i >= cropped_max_cells_[0]) || (j < cropped_min_cells_[1]) ||
-      (j >= cropped_max_cells_[1]))
-    return false;
-  return true;
+  return (i <= cropped_max_cells_[0] and i >= cropped_min_cells_[0]
+          and j <= cropped_max_cells_[1] and j >= cropped_min_cells_[1]);
 }
 
 double OctoMap::getMaxOccDist()
@@ -246,15 +242,15 @@ void OctoMap::iterateEmptyCells(CellDataQueue& q)
     {
       updateNode(current_cell.i, current_cell.j, current_cell.k - 1, current_cell, q);
     }
-    if (current_cell.i < cropped_max_cells_[0] - 1)
+    if (current_cell.i < cropped_max_cells_[0])
     {
       updateNode(current_cell.i + 1, current_cell.j, current_cell.k, current_cell, q);
     }
-    if (current_cell.j < cropped_max_cells_[1] - 1)
+    if (current_cell.j < cropped_max_cells_[1])
     {
       updateNode(current_cell.i, current_cell.j + 1, current_cell.k, current_cell, q);
     }
-    if (current_cell.k < cropped_max_cells_[2] - 1)
+    if (current_cell.k < cropped_max_cells_[2])
     {
       updateNode(current_cell.i, current_cell.j, current_cell.k + 1, current_cell, q);
     }
