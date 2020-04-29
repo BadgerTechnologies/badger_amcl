@@ -69,6 +69,7 @@ public:
   double getOccDist(int i, int j, int k);
 
 protected:
+  const std::vector<std::vector<int>> SHIFTS = {{-1, 0, 0}, {0, -1, 0}, {0, 0, -1}, {1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
   struct OctoMapCellData;
 
   using CellDataQueue = std::queue<OctoMapCellData>;
@@ -79,7 +80,7 @@ protected:
 
   virtual void iterateObstacleCells(CellDataQueue& q);
   virtual void iterateEmptyCells(CellDataQueue& q);
-  virtual void enqueue(int i, int j, int k, int src_i, int src_j, int src_k, CellDataQueue& q, double old_distance);
+  virtual void enqueue(const int shift_index, const OctoMapCellData& current_cell, CellDataQueue& q);
 
   std::function<std::size_t(const Eigen::Vector3i& key)> hash_function_ptr_;
   std::function<bool(const Eigen::Vector3i& lhs, const Eigen::Vector3i& rhs)> keys_equal_function_ptr_;
@@ -101,7 +102,6 @@ protected:
 
 private:
   inline void setOccDist(int i, int j, int k, double d);
-  inline void updateNode(int i, int j, int k, const OctoMapCellData& current_cell, CellDataQueue& q);
   inline std::size_t makeHash(const Eigen::Vector3i& key);
   inline bool keysEqual(const Eigen::Vector3i& lhs, const Eigen::Vector3i& rhs);
 

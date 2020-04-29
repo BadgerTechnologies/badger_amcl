@@ -142,7 +142,7 @@ CachedDistanceOctoMap::CachedDistanceOctoMap(double resolution, double max_dist)
       cached_distances_[i][j].resize(cell_radius_ + 2);
       for (int k = 0; k <= cell_radius_ + 1; k++)
       {
-        cached_distances_[i][j][k] = std::sqrt(i * i + j * j + k * k);
+        cached_distances_[i][j][k] = std::sqrt(i * i + j * j + k * k) * resolution;
       }
     }
   }
@@ -232,66 +232,55 @@ void OctoMap::iterateEmptyCells(CellDataQueue& q)
     OctoMapCellData current_cell = q.front();
     if (current_cell.i > cropped_min_cells_[0])
     {
-      updateNode(current_cell.i - 1, current_cell.j, current_cell.k, current_cell, q);
+      enqueue(0, current_cell, q);
     }
     if (current_cell.j > cropped_min_cells_[1])
     {
-      updateNode(current_cell.i, current_cell.j - 1, current_cell.k, current_cell, q);
+      enqueue(1, current_cell, q);
     }
     if (current_cell.k > cropped_min_cells_[2])
     {
-      updateNode(current_cell.i, current_cell.j, current_cell.k - 1, current_cell, q);
+      enqueue(2, current_cell, q);
     }
     if (current_cell.i < cropped_max_cells_[0])
     {
-      updateNode(current_cell.i + 1, current_cell.j, current_cell.k, current_cell, q);
+      enqueue(3, current_cell, q);
     }
     if (current_cell.j < cropped_max_cells_[1])
     {
-      updateNode(current_cell.i, current_cell.j + 1, current_cell.k, current_cell, q);
+      enqueue(4, current_cell, q);
     }
     if (current_cell.k < cropped_max_cells_[2])
     {
-      updateNode(current_cell.i, current_cell.j, current_cell.k + 1, current_cell, q);
+      enqueue(5, current_cell, q);
     }
     q.pop();
   }
 }
 
-void OctoMap::updateNode(int i, int j, int k, const OctoMapCellData& current_cell, CellDataQueue& q)
-{
-  double occThresh = octree_->getOccupancyThres();
-  key_[0] = i;
-  key_[1] = j;
-  key_[2] = k;
-  HashMapDouble::iterator node = distances_.find(key_);
-  double old_distance = max_occ_dist_;
-  if (node != distances_.end())
-  {
-    old_distance = node->second;
-  }
-  enqueue(i, j, k, current_cell.src_i, current_cell.src_j, current_cell.src_k, q, old_distance);
-}
-
 // Helper function for updateCSpace
 // Adds the voxel to the queue if the voxel is close enough to an object
-void OctoMap::enqueue(int i, int j, int k, int src_i, int src_j, int src_k, CellDataQueue& q, double old_distance)
+void OctoMap::enqueue(const int shift_index, const OctoMapCellData& current_cell, CellDataQueue& q)
 {
-  int di = std::abs(i - src_i);
-  int dj = std::abs(j - src_j);
-  int dk = std::abs(k - src_k);
-  double distance = cdm_.cached_distances_[di][dj][dk] * resolution_;
+  int i = current_cell.i + SHIFTS[shift_index][0];
+  int j = current_cell.j + SHIFTS[shift_index][1];
+  int k = current_cell.k + SHIFTS[shift_index][2];
+  int di = std::abs(i - current_cell.src_i);
+  int dj = std::abs(j - current_cell.src_j);
+  int dk = std::abs(k - current_cell.src_k);
+  double new_distance = cdm_.cached_distances_[di][dj][dk];
+  double old_distance = getOccDist(i, j, k);
 
-  if (distance < old_distance)
+  if (new_distance < old_distance)
   {
-    setOccDist(i, j, k, distance);
+    setOccDist(i, j, k, new_distance);
     OctoMapCellData cell = OctoMapCellData();
     cell.i = i;
     cell.j = j;
     cell.k = k;
-    cell.src_i = src_i;
-    cell.src_j = src_j;
-    cell.src_k = src_k;
+    cell.src_i = current_cell.src_i;
+    cell.src_j = current_cell.src_j;
+    cell.src_k = current_cell.src_k;
     q.push(cell);
   }
 }
