@@ -23,7 +23,6 @@
 #include <cmath>
 #include <cstdlib>
 
-#include <boost/functional/hash.hpp>
 #include <octomap/OcTreeKey.h>
 #include <octomap/OcTreeDataNode.h>
 #include <octomap/OcTreeNode.h>
@@ -40,11 +39,8 @@ OctoMap::OctoMap(double resolution)
   cropped_max_cells_ = std::vector<int>(3);
   map_min_bounds_ = std::vector<double>(2);
   map_max_bounds_ = std::vector<double>(2);
-  max_occ_dist_ = 0.0;
   octree_ = std::make_shared<octomap::OcTree>(resolution_);
-  hash_function_ptr_ = std::bind(&OctoMap::makeHash, this, std::placeholders::_1);
-  keys_equal_function_ptr_ = std::bind(&OctoMap::keysEqual, this, std::placeholders::_1, std::placeholders::_2);
-  key_ = {0, 0, 0};
+  ROS_INFO("dtype max: %d", static_cast<uint8_t>(-1));
 }
 
 // initialize octomap from octree
@@ -52,12 +48,16 @@ void OctoMap::initFromOctree(std::shared_ptr<octomap::OcTree> octree, double max
 {
   octree_ = octree;
   max_occ_dist_ = max_occ_dist;
+  max_occ_dist_ratio_ = max_occ_dist_ / UINT8_MAX;
   double min_x, min_y, min_z, max_x, max_y, max_z;
   octree_->getMetricMin(min_x, min_y, min_z);
   octree_->getMetricMax(max_x, max_y, max_z);
   // crop values here if required
   convertWorldToMap({ min_x, min_y, min_z }, &cropped_min_cells_);
   convertWorldToMap({ max_x, max_y, max_z }, &cropped_max_cells_);
+  map_cells_width_ = cropped_max_cells_[0] - cropped_min_cells_[0] + 1;
+  num_poses_ = map_cells_width_ * (cropped_max_cells_[1] - cropped_min_cells_[1] + 1);
+  num_z_column_indices_ = cropped_max_cells_[2] - cropped_min_cells_[2] + 1;
 }
 
 void OctoMap::getMinMaxCells(std::vector<int>* min_cells, std::vector<int>* max_cells)
@@ -102,13 +102,17 @@ bool OctoMap::isPoseValid(const int i, const int j)
           and j <= cropped_max_cells_[1] and j >= cropped_min_cells_[1]);
 }
 
+bool OctoMap::isVoxelValid(const int i, const int j, const int k)
+{
+  return isPoseValid(i, j) and k <= cropped_max_cells_[2] and k >= cropped_min_cells_[2];
+}
+
 double OctoMap::getMaxOccDist()
 {
   return max_occ_dist_;
 }
 
-void OctoMap::setMapBounds(const std::vector<double>& map_min,
-                           const std::vector<double>& map_max)
+void OctoMap::setMapBounds(const std::vector<double>& map_min, const std::vector<double>& map_max)
 {
   std::vector<int> cells_min(map_min.size()), cells_max(map_max.size());
   std::vector<double> map_min_local(map_min), map_max_local(map_max);
@@ -126,6 +130,9 @@ void OctoMap::setMapBounds(const std::vector<double>& map_min,
     cropped_min_cells_[i] = std::max(cropped_min_cells_[i], cells_min[i]);
     cropped_max_cells_[i] = std::min(cropped_max_cells_[i], cells_max[i]);
   }
+  map_cells_width_ = cropped_max_cells_[0] - cropped_min_cells_[0] + 1;
+  num_poses_ = map_cells_width_ * (cropped_max_cells_[1] - cropped_min_cells_[1] + 1);
+  num_z_column_indices_ = cropped_max_cells_[2] - cropped_min_cells_[2] + 1;
   updateCSpace();
 }
 
@@ -142,7 +149,8 @@ CachedDistanceOctoMap::CachedDistanceOctoMap(double resolution, double max_dist)
       cached_distances_[i][j].resize(cell_radius_ + 2);
       for (int k = 0; k <= cell_radius_ + 1; k++)
       {
-        cached_distances_[i][j][k] = std::sqrt(i * i + j * j + k * k) * resolution;
+        double distance = std::sqrt(i * i + j * j + k * k) * resolution;
+        cached_distances_[i][j][k] = distance;
       }
     }
   }
@@ -160,10 +168,12 @@ void OctoMap::updateCSpace()
 
   ROS_INFO("Updating OctoMap CSpace");
   CellDataQueue q = CellDataQueue();
-  int bucket_count = 4 * std::ceil(max_occ_dist_ / resolution_ * octree_->calcNumNodes());
-  ROS_INFO("starting bucket count: %d", bucket_count);
-  distances_ = HashMapDouble(bucket_count, hash_function_ptr_, keys_equal_function_ptr_);
-  distances_.clear();
+  pose_indices_.clear();
+  pose_indices_.resize(num_poses_, 0);
+  pose_indices_.shrink_to_fit();
+  distance_ratios_.clear();
+  distance_ratios_.resize(num_z_column_indices_, UINT8_MAX);
+  distance_ratios_.shrink_to_fit();
   if ((cdm_.resolution_ != resolution_) || (std::fabs(cdm_.max_dist_ - max_occ_dist_) > EPSILON))
   {
     cdm_ = CachedDistanceOctoMap(resolution_, max_occ_dist_);
@@ -173,20 +183,6 @@ void OctoMap::updateCSpace()
   ROS_INFO("Iterating empty cells");
   iterateEmptyCells(q);
   ROS_INFO("Done updating OctoMap CSpace");
-
-  ROS_INFO("Distances bucket count; %lu", distances_.bucket_count());
-  ROS_INFO("Distances size: %lu", distances_.size());
-  std::vector<int> counts(distances_.bucket_count());
-  size_t mask = distances_.bucket_count() - 1;
-  for(auto hash : hashes_)
-  {
-    counts[mask & hash]++;
-  }
-  int max_count = *std::max_element(counts.begin(), counts.end());
-  ROS_INFO("Max collisions: %d", max_count);
-  hashes_.clear();
-  hashes_.shrink_to_fit();
-
   cspace_created_ = true;
 }
 
@@ -198,13 +194,10 @@ void OctoMap::iterateObstacleCells(CellDataQueue& q)
   std::vector<int> map_coords(3);
 
   octree_->expand();
-  int count = 0;
-  for (octomap::OcTree::leaf_iterator it = octree_->begin_leafs(),
-          end = octree_->end_leafs(); it != end; ++it)
+  for (octomap::OcTree::leaf_iterator it = octree_->begin_leafs(), end = octree_->end_leafs(); it != end; ++it)
   {
     if (octree_->isNodeOccupied(*it))
     {
-      count++;
       int i, j, k;
       world_coords[0] = it.getX();
       world_coords[1] = it.getY();
@@ -213,13 +206,12 @@ void OctoMap::iterateObstacleCells(CellDataQueue& q)
       i = map_coords[0];
       j = map_coords[1];
       k = map_coords[2];
+      if(!isVoxelValid(i, j, k))
+        continue;
       setOccDist(i, j, k, 0.0);
       cell.src_i = cell.i = i;
       cell.src_j = cell.j = j;
       cell.src_k = cell.k = k;
-      key_[0] = i;
-      key_[1] = j;
-      key_[2] = k;
       q.push(cell);
     }
   }
@@ -258,7 +250,6 @@ void OctoMap::iterateEmptyCells(CellDataQueue& q)
   }
 }
 
-// Helper function for updateCSpace
 // Adds the voxel to the queue if the voxel is close enough to an object
 void OctoMap::enqueue(const int shift_index, const OctoMapCellData& current_cell, CellDataQueue& q)
 {
@@ -270,8 +261,7 @@ void OctoMap::enqueue(const int shift_index, const OctoMapCellData& current_cell
   int dk = std::abs(k - current_cell.src_k);
   double new_distance = cdm_.cached_distances_[di][dj][dk];
   double old_distance = getOccDist(i, j, k);
-
-  if (new_distance < old_distance)
+  if (old_distance - new_distance > max_occ_dist_ratio_)
   {
     setOccDist(i, j, k, new_distance);
     OctoMapCellData cell = OctoMapCellData();
@@ -285,44 +275,44 @@ void OctoMap::enqueue(const int shift_index, const OctoMapCellData& current_cell
   }
 }
 
-// Helper function for updateCSpace
 // Sets the distance from the voxel to the nearest object in the static map
 void OctoMap::setOccDist(int i, int j, int k, double d)
 {
-  key_[0] = i;
-  key_[1] = j;
-  key_[2] = k;
-  distances_.insert_or_assign(key_, d);
+  int i_shifted = i - cropped_min_cells_[0];
+  int j_shifted = j - cropped_min_cells_[1];
+  int k_shifted = k - cropped_min_cells_[2];
+  uint32_t pose_index = makePoseIndex(i_shifted, j_shifted);
+  uint32_t distances_start_index = pose_indices_[pose_index];
+  if(distances_start_index == 0)
+  {
+    distances_start_index = distance_ratios_.size();
+    pose_indices_[pose_index] = distances_start_index;
+    distance_ratios_.resize(distances_start_index + num_z_column_indices_, UINT8_MAX);
+  }
+  uint8_t distance_ratio = std::min(UINT8_MAX, static_cast<int>(std::floor(d / max_occ_dist_ * (UINT8_MAX + 1))));
+  distance_ratios_[distances_start_index + k_shifted] = distance_ratio;
 }
 
 // returns the distance from the 3d voxel to the nearest object in the static map
 double OctoMap::getOccDist(int i, int j, int k)
 {
-  key_[0] = i;
-  key_[1] = j;
-  key_[2] = k;
-  HashMapDouble::iterator distances_iterator = distances_.find(key_);
-  if(distances_iterator != distances_.end())
-  {
-    return distances_iterator->second;
-  }
-  return max_occ_dist_;
+  // Checking if cspace is created first will prevent checking validity while creating the cspace.
+  // The cspace is assumed to not send invalid coordinates and checking every time is inefficient.
+  if(cspace_created_ and !isVoxelValid(i, j, k))
+    return max_occ_dist_;
+  int i_shifted = i - cropped_min_cells_[0];
+  int j_shifted = j - cropped_min_cells_[1];
+  int k_shifted = k - cropped_min_cells_[2];
+  uint32_t pose_index = makePoseIndex(i_shifted, j_shifted);
+  uint32_t distances_start_index = pose_indices_[pose_index];
+  uint8_t distance_ratio = distance_ratios_[distances_start_index + k_shifted];
+  double distance = distance_ratio * max_occ_dist_ratio_;
+  return distance;
 }
 
-std::size_t OctoMap::makeHash(const Eigen::Vector3i& key)
+uint32_t OctoMap::makePoseIndex(int i, int j)
 {
-  std::size_t c0 = 1;
-  std::size_t c1 = 37633;
-  std::size_t c2 = 2654435761;
-  std::size_t hash = c0 * key[0] + c1 * key[1] + c2 * key[2];
-  if(!cspace_created_)
-    hashes_.push_back(hash);
-  return hash;
-}
-
-bool OctoMap::keysEqual(const Eigen::Vector3i& lhs, const Eigen::Vector3i& rhs)
-{
-  return lhs == rhs;
+  return j * map_cells_width_ + i;
 }
 
 }  // namespace amcl

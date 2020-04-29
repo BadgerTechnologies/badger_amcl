@@ -20,14 +20,13 @@
 #ifndef AMCL_MAP_OCTOMAP_H
 #define AMCL_MAP_OCTOMAP_H
 
-#include <Eigen/Dense>
+#include <cstdint>
 #include <limits>
 #include <memory>
 #include <queue>
 #include <vector>
 
 #include <octomap/OcTree.h>
-#include <tsl/sparse_map.h>
 
 #include "map/map.h"
 
@@ -58,6 +57,7 @@ public:
                                  std::vector<int>* map_coords);
   // Test to see if the given map coords lie within the absolute map bounds.
   virtual bool isPoseValid(const int i, const int j);
+  virtual bool isVoxelValid(const int i, const int j, const int k);
   virtual void getMinMaxCells(std::vector<int>* min_cells, std::vector<int>* max_cells);
   virtual void setMapBounds(const std::vector<double>& map_min, const std::vector<double>& map_max);
   // Update the cspace distance values
@@ -73,25 +73,25 @@ protected:
   struct OctoMapCellData;
 
   using CellDataQueue = std::queue<OctoMapCellData>;
-  using HashMapDouble = tsl::sparse_map<Eigen::Vector3i, double,
-                                        std::function<std::size_t(const Eigen::Vector3i& key)>,
-                                        std::function<bool(const Eigen::Vector3i& lhs, const Eigen::Vector3i& rhs)>>;
   static constexpr double EPSILON = std::numeric_limits<double>::epsilon();
 
   virtual void iterateObstacleCells(CellDataQueue& q);
   virtual void iterateEmptyCells(CellDataQueue& q);
   virtual void enqueue(const int shift_index, const OctoMapCellData& current_cell, CellDataQueue& q);
-
-  std::function<std::size_t(const Eigen::Vector3i& key)> hash_function_ptr_;
-  std::function<bool(const Eigen::Vector3i& lhs, const Eigen::Vector3i& rhs)> keys_equal_function_ptr_;
+  virtual inline uint32_t makePoseIndex(int i, int j);
+  virtual inline void setOccDist(int i, int j, int k, double d);
 
   std::shared_ptr<octomap::OcTree> octree_;
-  HashMapDouble distances_;
-  Eigen::Vector3i key_;
+  std::vector<uint32_t> pose_indices_;
+  std::vector<uint8_t> distance_ratios_;
   // Map dimensions (number of cells)
   std::vector<double> map_min_bounds_, map_max_bounds_;
   std::vector<int> cropped_min_cells_, cropped_max_cells_;
   CachedDistanceOctoMap cdm_;
+  int map_cells_width_;
+  uint32_t num_poses_;
+  int num_z_column_indices_;
+  double max_occ_dist_ratio_;
 
   struct OctoMapCellData
   {
@@ -99,13 +99,6 @@ protected:
     int i, j, k;
     int src_i, src_j, src_k;
   };
-
-private:
-  inline void setOccDist(int i, int j, int k, double d);
-  inline std::size_t makeHash(const Eigen::Vector3i& key);
-  inline bool keysEqual(const Eigen::Vector3i& lhs, const Eigen::Vector3i& rhs);
-
-  std::deque<std::size_t> hashes_;
 };
 }  // namespace amcl
 

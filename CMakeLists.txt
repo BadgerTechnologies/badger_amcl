@@ -12,15 +12,12 @@ find_package(catkin REQUIRED
             nav_msgs
             badger_file_lib
             pcl_ros
-            eigen_conversions
             octomap_msgs
             angles
         )
 
 find_package(Boost REQUIRED)
 find_package(OCTOMAP REQUIRED)
-
-add_subdirectory(sparse-map)
 
 # dynamic reconfigure
 generate_dynamic_reconfigure_options(
@@ -35,7 +32,6 @@ catkin_package(
         tf
         badger_file_lib
         pcl_ros
-        eigen_conversions
         octomap_msgs
         angles
   INCLUDE_DIRS include
@@ -73,7 +69,6 @@ target_link_libraries(badger_amcl_core
     ${Boost_LIBRARIES}
     ${catkin_LIBRARIES}
     yaml-cpp
-    tsl::sparse_map
 )
 
 add_executable(badger_amcl
