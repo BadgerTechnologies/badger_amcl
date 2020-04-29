@@ -208,7 +208,6 @@ double PointCloudScanner::recalcWeight(std::shared_ptr<PFSampleSet> set)
   PFSample* sample;
   PFVector pose;
   std::vector<double> vec2d = {0.0, 0.0};
-  std::vector<int> vec2i = {0, 0};
   double rv = 0.0;
   int j;
   for (j = 0; j < set->sample_count; j++)
@@ -220,11 +219,9 @@ double PointCloudScanner::recalcWeight(std::shared_ptr<PFSampleSet> set)
     vec2d[0] = pose.v[0];
     vec2d[1] = pose.v[1];
     map_->convertWorldToMap(vec2d, &map_vec_);
-    vec2i[0] = map_vec_[0];
-    vec2i[1] = map_vec_[1];
 
     // Apply off map factor
-    if (!map_->isPoseValid(vec2i))
+    if (!map_->isPoseValid(map_vec_[0], map_vec_[1]))
     {
       sample->weight *= off_map_factor_;
     }
