@@ -138,7 +138,6 @@ void Node3D::reconfigure(AMCLConfig& config)
   {
     ROS_WARN("setting point cloud model type from reconfigure 3d");
     scanner_.setPointCloudModel(z_hit_, z_rand_, sigma_hit_);
-    map_->updateCSpace();
   }
   else if (model_type_ == POINT_CLOUD_MODEL_GOMPERTZ)
   {
