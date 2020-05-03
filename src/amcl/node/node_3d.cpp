@@ -267,6 +267,7 @@ std::shared_ptr<OctoMap> Node3D::convertMap(const octomap_msgs::Octomap& map_msg
   std::shared_ptr<OctoMap> octomap = std::make_shared<OctoMap>(resolution);
   ROS_ASSERT(octomap);
   octomap->initFromOctree(octree_, max_occ_dist_);
+  octree_.reset();
   return octomap;
 }
 

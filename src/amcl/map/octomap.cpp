@@ -179,6 +179,7 @@ void OctoMap::updateCSpace()
   }
   ROS_INFO("Iterating obstacle cells");
   iterateObstacleCells(q);
+  octree_.reset();
   ROS_INFO("Iterating empty cells");
   iterateEmptyCells(q);
   ROS_INFO("Done updating OctoMap CSpace");
