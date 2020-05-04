@@ -26,7 +26,10 @@
 #include <octomap/OcTreeKey.h>
 #include <octomap/OcTreeDataNode.h>
 #include <octomap/OcTreeNode.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
 #include <ros/console.h>
+#include <pcl_ros/point_cloud.h>
 
 namespace badger_amcl
 {
@@ -183,6 +186,8 @@ void OctoMap::updateCSpace()
   ROS_INFO("Iterating empty cells");
   iterateEmptyCells(q);
   ROS_INFO("Done updating OctoMap CSpace");
+  publishDistances();
+  ROS_INFO("Octree published");
   cspace_created_ = true;
 }
 
@@ -329,6 +334,49 @@ double OctoMap::getOccDist(int i, int j, int k)
 uint32_t OctoMap::makePoseIndex(int i, int j)
 {
   return j * map_cells_width_ + i;
+}
+
+void OctoMap::publishDistances()
+{
+  using PointCloud = pcl::PointCloud<pcl::PointXYZI>;
+  PointCloud::Ptr cloud(new PointCloud);
+  cloud->header.frame_id = "map";
+  cloud->height = 1;
+  pcl::PointXYZI p;
+  std::vector<int> map_coords(3);
+  std::vector<double> world_coords(3);
+  int count = 0;
+  int max_count = 1000000;
+  for(int i = cropped_min_cells_[0]; i <= cropped_max_cells_[0]; i++)
+  {
+    for(int j = cropped_min_cells_[1]; j <= cropped_max_cells_[1]; j++)
+    {
+      for(int k = cropped_min_cells_[2]; k <= cropped_max_cells_[2]; k++)
+      {
+        double d = getOccDist(i, j, k);
+        if(count < max_count and d < max_occ_dist_)
+        {
+          map_coords[0] = i;
+          map_coords[1] = j;
+          map_coords[2] = k;
+          convertMapToWorld(map_coords, &world_coords);
+          p.x = world_coords[0];
+          p.y = world_coords[1];
+          p.z = world_coords[2];
+          p.intensity = d;
+          cloud->points.push_back(p);
+          //ROS_INFO("%d, %d, %d", i, j, k);
+          //ROS_INFO("%f, %f, %f, %f", world_coords[0], world_coords[1], world_coords[2], d);
+          //ROS_INFO("%f, %f, %f, %f", p.x, p.y, p.z, p.intensity);
+          count++;
+        }
+      }
+    }
+  }
+  cloud->width = count / cloud->height;
+  distances_pub_ = nh_.advertise<PointCloud>("distances_cloud", 1, true);
+  distances_pub_.publish(cloud);
+  ROS_INFO("publishing cloud of size: %lu", cloud->points.size());
 }
 
 }  // namespace amcl

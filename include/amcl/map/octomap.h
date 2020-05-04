@@ -27,6 +27,8 @@
 #include <vector>
 
 #include <octomap/OcTree.h>
+#include <ros/node_handle.h>
+#include <ros/publisher.h>
 
 #include "map/map.h"
 
@@ -99,6 +101,12 @@ protected:
     int i, j, k;
     int src_i, src_j, src_k;
   };
+
+private:
+  void publishDistances();
+
+  ros::NodeHandle nh_;
+  ros::Publisher distances_pub_;
 };
 }  // namespace amcl
 
