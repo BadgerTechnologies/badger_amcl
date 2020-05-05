@@ -128,6 +128,7 @@ private:
   void publishPose(const geometry_msgs::PoseWithCovarianceStamped& p);
   void applyInitialPose();
   bool loadPoseFromServer();
+  bool loadParamFromServer(std::string param_name, double* val);
   bool loadPoseFromFile();
   YAML::Node loadYamlFromFile();
   double getYaw(const tf::Pose& t);
