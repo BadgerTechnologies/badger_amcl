@@ -467,77 +467,34 @@ void Node::publishInitialPose()
 
 bool Node::loadPoseFromServer()
 {
-  double tmp_pos;
-  bool success;
+  bool success = loadParamFromServer("initial_pose_x", &init_pose_[0]);
+  success = success and loadParamFromServer("initial_pose_y", &init_pose_[1]);
+  success = success and loadParamFromServer("initial_pose_a", &init_pose_[2]);
+  success = success and loadParamFromServer("initial_cov_xx", &init_cov_[0]);
+  success = success and loadParamFromServer("initial_cov_yy", &init_cov_[1]);
+  success = success and loadParamFromServer("initial_cov_aa", &init_cov_[2]);
 
-  success = private_nh_.getParam("initial_pose_x", tmp_pos);
-  if ((not success) or std::isnan(tmp_pos))
+  if(success)
   {
-    ROS_DEBUG("Failed to load initial pose X from server.");
-    return false;
+    ROS_INFO("Successfully loaded initial pose from server.");
+    ROS_INFO("Pose loaded: (%.3f, %.3f)", init_pose_[0], init_pose_[1]);
+  }
+  return success;
+}
+
+bool Node::loadParamFromServer(std::string param_name, double* val)
+{
+  double param_val;
+  bool success = private_nh_.getParam(param_name, param_val) and !std::isnan(param_val);
+  if(success)
+  {
+    *val = param_val;
   }
   else
   {
-    init_pose_[0] = tmp_pos;
+    ROS_DEBUG_STREAM("Failed to load " << param_name << " from server.");
   }
-
-  success = private_nh_.getParam("initial_pose_y", tmp_pos);
-  if ((not success) or std::isnan(tmp_pos))
-  {
-    ROS_DEBUG("Failed to load initial pose Y from server.");
-    return false;
-  }
-  else
-  {
-    init_pose_[1] = tmp_pos;
-  }
-
-  success = private_nh_.getParam("initial_pose_a", tmp_pos);
-  if ((not success) or std::isnan(tmp_pos))
-  {
-    ROS_DEBUG("Failed to load initial pose Yaw from server.");
-    return false;
-  }
-  else
-  {
-    init_pose_[2] = tmp_pos;
-  }
-
-  success = private_nh_.getParam("initial_cov_xx", tmp_pos);
-  if ((not success) or std::isnan(tmp_pos))
-  {
-    ROS_DEBUG("Failed to load initial covariance XX from server.");
-    return false;
-  }
-  else
-  {
-    init_cov_[0] = tmp_pos;
-  }
-
-  success = private_nh_.getParam("initial_cov_yy", tmp_pos);
-  if ((not success) or std::isnan(tmp_pos))
-  {
-    ROS_DEBUG("Failed to load initial covariance YY from server.");
-    return false;
-  }
-  else
-  {
-    init_cov_[1] = tmp_pos;
-  }
-
-  success = private_nh_.getParam("initial_cov_aa", tmp_pos);
-  if ((not success) or std::isnan(tmp_pos))
-  {
-    ROS_DEBUG("Failed to load initial covariance AA from server.");
-    return false;
-  }
-  else
-  {
-    init_cov_[2] = tmp_pos;
-  }
-  ROS_INFO("Successfully loaded initial pose from server.");
-  ROS_INFO("Pose loaded: (%.3f, %.3f)", init_pose_[0], init_pose_[1]);
-  return true;
+  return success;
 }
 
 bool Node::loadPoseFromFile()
