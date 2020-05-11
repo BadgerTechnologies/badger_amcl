@@ -35,6 +35,7 @@ OccupancyMap::OccupancyMap(double resolution)
       cdm_(resolution, 0.0)
 {
   max_occ_dist_ = 0.0;
+  map_vec_.resize(2);
 }
 
 void OccupancyMap::setOrigin(const pcl::PointXYZ& origin)
@@ -65,7 +66,9 @@ void OccupancyMap::initCells(int num)
 
 float OccupancyMap::getOccDist(int i, int j)
 {
-  if (isValid({ i, j }))
+  map_vec_[0] = i;
+  map_vec_[1] = j;
+  if (isValid(map_vec_))
   {
     return distances_[computeCellIndex(i, j)];
   }
@@ -243,7 +246,9 @@ bool OccupancyMap::enqueue(int i, int j, int src_i, int src_j,
 
 void OccupancyMap::setMapOccDist(int i, int j, float d)
 {
-  if (isValid({ i, j }))
+  map_vec_[0] = i;
+  map_vec_[1] = j;
+  if (isValid(map_vec_))
   {
     distances_[computeCellIndex(i, j)] = d;
   }
@@ -255,7 +260,6 @@ void OccupancyMap::setMapOccDist(int i, int j, float d)
 double OccupancyMap::calcRange(double ox, double oy, double oa, double max_range)
 {
   // Bresenham raytracing
-  std::vector<int> tmp_vec(2);
   int x0, x1, y0, y1;
   int x, y;
   int xstep, ystep;
@@ -263,12 +267,16 @@ double OccupancyMap::calcRange(double ox, double oy, double oa, double max_range
   int tmp;
   int deltax, deltay, error, deltaerr;
 
-  convertWorldToMap({ ox, oy }, &tmp_vec);
-  x0 = tmp_vec[0];
-  y0 = tmp_vec[1];
-  convertWorldToMap({ ox + max_range * std::cos(oa), oy + max_range * sin(oa) }, &tmp_vec);
-  x1 = tmp_vec[0];
-  y1 = tmp_vec[1];
+  world_vec_[0] = ox;
+  world_vec_[1] = oy;
+  convertWorldToMap(world_vec_, &map_vec_);
+  x0 = map_vec_[0];
+  y0 = map_vec_[1];
+  world_vec_[0] = ox + max_range * std::cos(oa);
+  world_vec_[1] = oy + max_range * std::sin(oa);
+  convertWorldToMap(world_vec_, &map_vec_);
+  x1 = map_vec_[0];
+  y1 = map_vec_[1];
 
   if (std::abs(y1 - y0) > std::abs(x1 - x0))
     steep = 1;
@@ -305,12 +313,16 @@ double OccupancyMap::calcRange(double ox, double oy, double oa, double max_range
 
   if (steep)
   {
-    if (!isValid({ y, x }) || cells_[computeCellIndex(y, x)] != MapCellState::CELL_FREE)
+    map_vec_[0] = y;
+    map_vec_[1] = x;
+    if (!isValid(map_vec_) || cells_[computeCellIndex(y, x)] != MapCellState::CELL_FREE)
       return std::sqrt((x - x0) * (x - x0) + (y - y0) * (y - y0)) * resolution_;
   }
   else
   {
-    if (!isValid({ x, y }) || cells_[computeCellIndex(x, y)] != MapCellState::CELL_FREE)
+    map_vec_[0] = x;
+    map_vec_[1] = y;
+    if (!isValid(map_vec_) || cells_[computeCellIndex(x, y)] != MapCellState::CELL_FREE)
       return std::sqrt((x - x0) * (x - x0) + (y - y0) * (y - y0)) * resolution_;
   }
 
@@ -326,12 +338,16 @@ double OccupancyMap::calcRange(double ox, double oy, double oa, double max_range
 
     if (steep)
     {
-      if (!isValid({ y, x }) || cells_[computeCellIndex(y, x)] != MapCellState::CELL_FREE)
+      map_vec_[0] = y;
+      map_vec_[1] = x;
+      if (!isValid(map_vec_) || cells_[computeCellIndex(y, x)] != MapCellState::CELL_FREE)
         return std::sqrt((x - x0) * (x - x0) + (y - y0) * (y - y0)) * resolution_;
     }
     else
     {
-      if (!isValid({ x, y }) || cells_[computeCellIndex(x, y)] != MapCellState::CELL_FREE)
+      map_vec_[0] = x;
+      map_vec_[1] = y;
+      if (!isValid(map_vec_) || cells_[computeCellIndex(x, y)] != MapCellState::CELL_FREE)
         return std::sqrt((x - x0) * (x - x0) + (y - y0) * (y - y0)) * resolution_;
     }
   }
