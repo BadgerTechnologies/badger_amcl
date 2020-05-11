@@ -119,6 +119,8 @@ private:
   inline void setMapOccDist(int i, int j, float d);
   inline void updateNode(int i, int j, const OccupancyMapCellData& current_cell,
                          std::priority_queue<OccupancyMapCellData>& q, std::vector<bool>& marked);
+  std::vector<int> map_vec_;
+  std::vector<double> world_vec_;
 };
 }  // namespace amcl
 

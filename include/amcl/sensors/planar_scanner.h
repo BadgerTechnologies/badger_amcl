@@ -161,6 +161,7 @@ private:
   // Making this a class variable reduces the number of
   // times we need to create an instance of this vector.
   std::vector<int> map_vec_;
+  std::vector<double> world_vec_;
 };
 
 }  // namespace amcl

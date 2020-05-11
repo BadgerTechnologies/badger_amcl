@@ -55,8 +55,15 @@ void OctoMap::initFromOctree(std::shared_ptr<octomap::OcTree> octree, double max
   octree_->getMetricMin(min_x, min_y, min_z);
   octree_->getMetricMax(max_x, max_y, max_z);
   // crop values here if required
-  convertWorldToMap({ min_x, min_y, min_z }, &cropped_min_cells_);
-  convertWorldToMap({ max_x, max_y, max_z }, &cropped_max_cells_);
+  std::vector<double> map_vec(3);
+  map_vec[0] = min_x;
+  map_vec[1] = min_y;
+  map_vec[2] = min_z;
+  convertWorldToMap(map_vec, &cropped_min_cells_);
+  map_vec[0] = max_x;
+  map_vec[1] = max_y;
+  map_vec[2] = max_z;
+  convertWorldToMap(map_vec, &cropped_max_cells_);
   map_cells_width_ = cropped_max_cells_[0] - cropped_min_cells_[0] + 1;
   num_poses_ = map_cells_width_ * (cropped_max_cells_[1] - cropped_min_cells_[1] + 1);
   num_z_column_indices_ = cropped_max_cells_[2] - cropped_min_cells_[2] + 1;
