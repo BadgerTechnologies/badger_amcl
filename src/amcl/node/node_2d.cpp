@@ -112,6 +112,12 @@ Node2D::Node2D(Node* node, std::mutex& configuration_mutex)
   map_sub_ = nh_.subscribe("map", 1, &Node2D::mapMsgReceived, this);
 }
 
+Node2D::~Node2D()
+{
+  // TF message filters must be destroyed before the underlying subsriber.
+  scan_filter_.reset();
+}
+
 void Node2D::reconfigure(AMCLConfig& config)
 {
   scan_topic_ = config.scan_topic;
