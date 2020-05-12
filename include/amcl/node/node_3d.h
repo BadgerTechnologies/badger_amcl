@@ -56,6 +56,7 @@ public:
   // Node class is designed to be coupled with a Map/Sensor combination, and the NodeND classes
   // are designed to be coupled with the Node class.
   Node3D(Node* node, std::mutex& configuration_mutex);
+  ~Node3D();
   void reconfigure(AMCLConfig& config) override;
   void globalLocalizationCallback() override;
   double scorePose(const PFVector& p) override;

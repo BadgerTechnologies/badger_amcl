@@ -109,6 +109,12 @@ Node3D::Node3D(Node* node, std::mutex& configuration_mutex)
   occupancy_map_sub_ = nh_.subscribe("map", 1, &Node3D::occupancyMapMsgReceived, this);
 }
 
+Node3D::~Node3D()
+{
+  // TF message filters must be destroyed before the underlying subsriber.
+  scan_filter_.reset();
+}
+
 void Node3D::reconfigure(AMCLConfig& config)
 {
   scan_topic_ = config.cloud_topic;
