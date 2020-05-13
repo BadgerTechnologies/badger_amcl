@@ -795,7 +795,7 @@ bool Node::getOdomPose(const ros::Time& t, PFVector* map_pose)
   tf::Stamped<tf::Pose> ident(tf::Transform(tf::createIdentityQuaternion(), tf::Vector3(0, 0, 0)), t, base_frame_id_);
   try
   {
-    tf_.waitForTransform(base_frame_id_, odom_frame_id_, ros::Time::now(), ros::Duration(0.5));
+    tf_.waitForTransform(base_frame_id_, odom_frame_id_, t, ros::Duration(0.5));
     tf_.transformPose(odom_frame_id_, ident, latest_odom_pose_);
   }
   catch (tf::TransformException e)
