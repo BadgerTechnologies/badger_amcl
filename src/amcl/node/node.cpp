@@ -800,7 +800,7 @@ bool Node::getOdomPose(const ros::Time& t, PFVector* map_pose)
   }
   catch (tf::TransformException e)
   {
-    ROS_DEBUG_STREAM("Failed to compute odom pose, skipping scan (" << e.what() << ")");
+    ROS_INFO_STREAM("Failed to compute odom pose, skipping scan (" << e.what() << ")");
     return false;
   }
   map_pose->v[0] = latest_odom_pose_.getOrigin().x();

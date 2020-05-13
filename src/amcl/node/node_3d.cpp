@@ -74,7 +74,7 @@ Node3D::Node3D(Node* node, std::mutex& configuration_mutex)
   private_nh_.param("global_localization_scanner_off_map_factor", global_localization_off_map_factor_, 1.0);
   private_nh_.param("global_localization_scanner_non_free_space_factor",
                     global_localization_non_free_space_factor_, 1.0);
-  const std::string default_point_cloud_scan_topic = "/scans/top/points_filtered";
+  const std::string default_point_cloud_scan_topic = "/cloud";
   private_nh_.param("cloud_topic", scan_topic_, default_point_cloud_scan_topic);
   std::string tmp_model_type;
   private_nh_.param("laser_model_type", tmp_model_type, std::string("likelihood_field_gompertz"));
@@ -95,9 +95,9 @@ Node3D::Node3D(Node* node, std::mutex& configuration_mutex)
   private_nh_.param("map_scale_up_factor", occupancy_map_scale_up_factor_, 1);
 
   scan_sub_ = std::unique_ptr<message_filters::Subscriber<sensor_msgs::PointCloud2>>(
-      new message_filters::Subscriber<sensor_msgs::PointCloud2>(nh_, scan_topic_, 1));
+      new message_filters::Subscriber<sensor_msgs::PointCloud2>(nh_, scan_topic_, 5));
   scan_filter_ = std::unique_ptr<tf::MessageFilter<sensor_msgs::PointCloud2>>(
-      new tf::MessageFilter<sensor_msgs::PointCloud2>(*scan_sub_, tf_, node_->getOdomFrameId(), 1));
+      new tf::MessageFilter<sensor_msgs::PointCloud2>(*scan_sub_, tf_, node_->getOdomFrameId(), 5));
   scan_filter_->registerCallback(std::bind(&Node3D::scanReceived, this, std::placeholders::_1));
   // 15s timer to warn on lack of receipt of point cloud scans, #5209
   scanner_check_interval_ = ros::Duration(15.0);
@@ -163,9 +163,11 @@ void Node3D::reconfigure(AMCLConfig& config)
   }
 
   scanner_.setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
+  scan_sub_ = std::unique_ptr<message_filters::Subscriber<sensor_msgs::PointCloud2>>(
+      new message_filters::Subscriber<sensor_msgs::PointCloud2>(nh_, scan_topic_, 5));
+
   scan_filter_ = std::unique_ptr<tf::MessageFilter<sensor_msgs::PointCloud2>>(
-      new tf::MessageFilter<sensor_msgs::PointCloud2>(*scan_sub_, tf_,
-                                                      node_->getOdomFrameId(), 100));
+      new tf::MessageFilter<sensor_msgs::PointCloud2>(*scan_sub_, tf_, node_->getOdomFrameId(), 5));
   scan_filter_->registerCallback(std::bind(&Node3D::scanReceived, this, std::placeholders::_1));
   pf_ = node_->getPfPtr();
 }

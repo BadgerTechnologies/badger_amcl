@@ -71,7 +71,7 @@ Node2D::Node2D(Node* node, std::mutex& configuration_mutex)
   private_nh_.param("global_localization_planar_off_map_factor", global_localization_off_map_factor_, 1.0);
   private_nh_.param("global_localization_planar_non_free_space_factor",
                     global_localization_non_free_space_factor_, 1.0);
-  const std::string default_planar_scan_topic = "/scans/mark_and_clear";
+  const std::string default_planar_scan_topic = "/scan";
   private_nh_.param("scan_topic", scan_topic_, default_planar_scan_topic);
 
   std::string tmp_model_type;
@@ -97,9 +97,9 @@ Node2D::Node2D(Node* node, std::mutex& configuration_mutex)
     map_scale_up_factor_ = 16;
 
   scan_sub_ = std::unique_ptr<message_filters::Subscriber<sensor_msgs::LaserScan>>(
-      new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, scan_topic_, 100));
+      new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, scan_topic_, 5));
   scan_filter_ = std::unique_ptr<tf::MessageFilter<sensor_msgs::LaserScan>>(
-      new tf::MessageFilter<sensor_msgs::LaserScan>(*scan_sub_.get(), tf_, node_->getOdomFrameId(), 100));
+      new tf::MessageFilter<sensor_msgs::LaserScan>(*scan_sub_.get(), tf_, node_->getOdomFrameId(), 5));
   scan_filter_->registerCallback(std::bind(&Node2D::scanReceived, this, std::placeholders::_1));
 
   // 15s timer to warn on lack of receipt of planar scans, #5209
@@ -187,8 +187,10 @@ void Node2D::reconfigure(AMCLConfig& config)
     ROS_INFO("Done initializing likelihood (gompertz) field model.");
   }
   scanner_.setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
+  scan_sub_ = std::unique_ptr<message_filters::Subscriber<sensor_msgs::LaserScan>>(
+      new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, scan_topic_, 5));
   scan_filter_ = std::unique_ptr<tf::MessageFilter<sensor_msgs::LaserScan>>(
-      new tf::MessageFilter<sensor_msgs::LaserScan>(*scan_sub_.get(), tf_, node_->getOdomFrameId(), 100));
+      new tf::MessageFilter<sensor_msgs::LaserScan>(*scan_sub_.get(), tf_, node_->getOdomFrameId(), 5));
   scan_filter_->registerCallback(std::bind(&Node2D::scanReceived, this, std::placeholders::_1));
   pf_ = node_->getPfPtr();
 }
