@@ -115,13 +115,14 @@ private:
 
   // Initial pose related functions
   void initialPoseReceived(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg);
+  void initialPoseReceivedInternal(geometry_msgs::PoseWithCovarianceStamped& msg_ptr);
   void handleInitialPose(geometry_msgs::PoseWithCovarianceStamped& msg);
   void resolveFrameId(geometry_msgs::PoseWithCovarianceStamped& msg);
   bool checkInitialPose(const geometry_msgs::PoseWithCovarianceStamped& msg);
   void setMsgCovarianceVals(geometry_msgs::PoseWithCovarianceStamped* msg);
   void transformMsgToTfPose(const geometry_msgs::PoseWithCovarianceStamped& msg, tf::Pose* pose);
   void transformPoseToGlobalFrame(const geometry_msgs::PoseWithCovarianceStamped& msg, const tf::Pose& pose);
-  void publishInitialPose();
+  void publishInitialPoseInternal();
   void newInitialPoseSubscriber(const ros::SingleSubscriberPublisher& single_sub_pub);
 
   void loadPose();
@@ -156,7 +157,6 @@ private:
   ros::Publisher alt_pose_pub_;
   ros::Publisher alt_particlecloud_pub_;
   ros::Publisher map_odom_transform_pub_;
-  ros::Publisher initial_pose_pub_;
   ros::Subscriber initial_pose_sub_;
   ros::ServiceServer global_loc_srv_;
 

@@ -128,8 +128,6 @@ Node::Node()
   transform_tolerance_.fromSec(tmp_tol);
 
   initial_pose_sub_ = nh_.subscribe("initialpose", 2, &Node::initialPoseReceived, this);
-  initial_pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>(
-      "initialpose", 1, std::bind(&Node::newInitialPoseSubscriber, this, std::placeholders::_1));
 
   pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("amcl_pose", 2, true);
   particlecloud_pub_ = nh_.advertise<geometry_msgs::PoseArray>("particlecloud", 2, true);
@@ -444,7 +442,7 @@ void Node::loadPose()
   }
 }
 
-void Node::publishInitialPose()
+void Node::publishInitialPoseInternal()
 {
   geometry_msgs::PoseWithCovarianceStamped pose;
   pose.header.stamp = ros::Time::now();
@@ -461,8 +459,8 @@ void Node::publishInitialPose()
   {
     pose.pose.covariance[i] = cov_vals[i];
   }
-  ROS_INFO("Publishing initial pose: (%0.3f, %0.3f)", pose.pose.pose.position.x, pose.pose.pose.position.y);
-  initial_pose_pub_.publish(pose);
+  ROS_INFO("Initial pose: (%0.3f, %0.3f)", pose.pose.pose.position.x, pose.pose.pose.position.y);
+  initialPoseReceivedInternal(pose);
 }
 
 bool Node::loadPoseFromServer()
@@ -704,7 +702,7 @@ void Node::initFromNewMap(std::shared_ptr<Map> new_map)
   odom_.setModel(odom_model_type_, alpha1_, alpha2_, alpha3_, alpha4_, alpha5_);
 
   // Publish initial pose loaded from the server or file at startup
-  publishInitialPose();
+  publishInitialPoseInternal();
 }
 
 void Node::updateFreeSpaceIndices(std::vector<std::pair<int, int>> fsi)
@@ -919,6 +917,11 @@ void Node::initialPoseReceived(const geometry_msgs::PoseWithCovarianceStampedCon
 {
   std::lock_guard<std::mutex> cfl(configuration_mutex_);
   geometry_msgs::PoseWithCovarianceStamped msg(*msg_ptr);
+  initialPoseReceivedInternal(msg);
+}
+
+void Node::initialPoseReceivedInternal(geometry_msgs::PoseWithCovarianceStamped& msg)
+{
   resolveFrameId(msg);
   if(checkInitialPose(msg))
   {
