@@ -428,7 +428,7 @@ void Node::loadPose()
   }
   else if (loadPoseFromFile())
   {
-    ROS_DEBUG("Failed to load pose from server, but successfully loaded pose from file.");
+    ROS_INFO("Failed to load pose from server, but successfully loaded pose from file.");
   }
   else
   {
