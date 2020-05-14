@@ -54,7 +54,7 @@ void OctoMap::initFromOctree(std::shared_ptr<octomap::OcTree> octree, double max
 {
   octree_ = octree;
   max_occ_dist_ = max_occ_dist;
-  max_occ_dist_ratio_ = max_occ_dist_ / UINT8_MAX;
+  max_occ_dist_ratio_ = max_occ_dist_ / std::numeric_limits<uint8_t>::max();
   double min_x, min_y, min_z, max_x, max_y, max_z;
   octree_->getMetricMin(min_x, min_y, min_z);
   octree_->getMetricMax(max_x, max_y, max_z);
@@ -185,7 +185,7 @@ void OctoMap::updateCSpace()
   pose_indices_.resize(num_poses_, 0);
   pose_indices_.shrink_to_fit();
   distance_ratios_.clear();
-  distance_ratios_.resize(num_z_column_indices_, UINT8_MAX);
+  distance_ratios_.resize(num_z_column_indices_, std::numeric_limits<uint8_t>::max());
   distance_ratios_.reserve(num_z_column_indices_ * (num_poses_ / 16));
 
   if ((cdm_.resolution_ != resolution_) || (std::fabs(cdm_.max_dist_ - max_occ_dist_) > EPSILON))
@@ -323,10 +323,10 @@ void OctoMap::setOccDist(int i, int j, int k, double d)
   {
     distances_start_index = distance_ratios_.size();
     pose_indices_[pose_index] = distances_start_index;
-    distance_ratios_.resize(distances_start_index + num_z_column_indices_, UINT8_MAX);
+    distance_ratios_.resize(distances_start_index + num_z_column_indices_, std::numeric_limits<uint8_t>::max());
   }
   d = std::min(d, max_occ_dist_);
-  uint8_t distance_ratio = static_cast<int>(std::floor(d / max_occ_dist_ * UINT8_MAX));
+  uint8_t distance_ratio = static_cast<int>(std::floor(d / max_occ_dist_ * std::numeric_limits<uint8_t>::max()));
   distance_ratios_[distances_start_index + k_shifted] = distance_ratio;
 }
 
