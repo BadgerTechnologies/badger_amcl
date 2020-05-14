@@ -186,7 +186,7 @@ void OctoMap::updateCSpace()
   pose_indices_.shrink_to_fit();
   distance_ratios_.clear();
   distance_ratios_.resize(num_z_column_indices_, UINT8_MAX);
-  distance_ratios_.shrink_to_fit();
+  distance_ratios_.reserve(num_z_column_indices_ * (num_poses_ / 16));
 
   if ((cdm_.resolution_ != resolution_) || (std::fabs(cdm_.max_dist_ - max_occ_dist_) > EPSILON))
   {
