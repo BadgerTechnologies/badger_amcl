@@ -94,7 +94,7 @@ private:
   std::shared_ptr<ParticleFilter> pf_;
   std::unique_ptr<message_filters::Subscriber<sensor_msgs::PointCloud2>> scan_sub_;
   std::unique_ptr<tf::MessageFilter<sensor_msgs::PointCloud2>> scan_filter_;
-  std::string scan_topic_;
+  std::string cloud_topic_;
   std::map<std::string, int> frame_to_scanner_;
   std::mutex& configuration_mutex_;
   std::vector<std::shared_ptr<PointCloudScanner> > scanners_;

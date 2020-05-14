@@ -71,8 +71,8 @@ Node2D::Node2D(Node* node, std::mutex& configuration_mutex)
   private_nh_.param("global_localization_planar_off_map_factor", global_localization_off_map_factor_, 1.0);
   private_nh_.param("global_localization_planar_non_free_space_factor",
                     global_localization_non_free_space_factor_, 1.0);
-  const std::string default_planar_scan_topic = "/scan";
-  private_nh_.param("scan_topic", scan_topic_, default_planar_scan_topic);
+  const std::string default_scan_topic = "scan";
+  private_nh_.param("scan_topic", scan_topic_, default_scan_topic);
 
   std::string tmp_model_type;
   private_nh_.param("laser_model_type", tmp_model_type, std::string("likelihood_field"));
