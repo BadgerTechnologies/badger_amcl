@@ -213,8 +213,8 @@ void OctoMap::iterateObstacleCells(CellDataQueue& q)
   std::vector<double> world_coords(3);
   std::vector<int> map_coords(3);
 
-  std::priority_queue<std::vector<int>> ordering_queue;
-  std::vector<int> source(3);
+  std::priority_queue<EV3> ordering_queue;
+  EV3 source;
 
   octree_->expand();
   for (octomap::OcTree::leaf_iterator it = octree_->begin_leafs(), end = octree_->end_leafs(); it != end; ++it)
@@ -232,9 +232,9 @@ void OctoMap::iterateObstacleCells(CellDataQueue& q)
       if(!isVoxelValid(i, j, k))
         continue;
       setOccDist(i, j, k, 0.0);
-      source[0] = i;
-      source[1] = j;
-      source[2] = k;
+      source.v[0] = i;
+      source.v[1] = j;
+      source.v[2] = k;
       ordering_queue.push(source);
     }
   }
@@ -243,9 +243,9 @@ void OctoMap::iterateObstacleCells(CellDataQueue& q)
   {
     source = ordering_queue.top();
     ordering_queue.pop();
-    cell.src_i = cell.i = source[0];
-    cell.src_j = cell.j = source[1];
-    cell.src_k = cell.k = source[2];
+    cell.src_i = cell.i = source.v[0];
+    cell.src_j = cell.j = source.v[1];
+    cell.src_k = cell.k = source.v[2];
     q.push(cell);
   }
 }
