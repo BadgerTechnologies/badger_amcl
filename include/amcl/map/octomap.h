@@ -50,6 +50,7 @@ class OctoMap : public Map
 {
 public:
   OctoMap(double resolution);
+  OctoMap(double resolution, bool publish_cspace);
   virtual ~OctoMap() = default;
   // Convert from map index to world coords
   virtual void convertMapToWorld(const std::vector<int>& map_coords,
@@ -103,10 +104,11 @@ protected:
   };
 
 private:
-  void publishDistances();
+  void publishCSpace();
 
   ros::NodeHandle nh_;
   ros::Publisher distances_pub_;
+  bool publish_cspace_;
 };
 }  // namespace amcl
 
