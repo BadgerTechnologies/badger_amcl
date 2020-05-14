@@ -75,7 +75,7 @@ Node::Node()
   private_nh_.param("odom_alpha5", alpha5_, 0.2);
 
   private_nh_.param("save_pose", save_pose_, false);
-  const std::string default_filepath = "savedpose_amcl.yaml";
+  const std::string default_filepath = "badger_amcl_saved_pose.yaml";
   private_nh_.param("saved_pose_filepath", saved_pose_filepath_, default_filepath);
 
   std::string tmp_model_type;
