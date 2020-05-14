@@ -59,7 +59,7 @@ Node::Node()
   double tmp;
   private_nh_.param("transform_publish_rate", tmp, 50.0);
   transform_publish_period_ = ros::Duration(1.0 / tmp);
-  private_nh_.param("save_pose_to_server_rate", tmp, 2.0);
+  private_nh_.param("save_pose_to_server_rate", tmp, 0.5);
   save_pose_to_server_period_ = ros::Duration(1.0 / tmp);
   private_nh_.param("save_pose_to_file_rate", tmp, 0.1);
   save_pose_to_file_period_ = ros::Duration(1.0 / tmp);
