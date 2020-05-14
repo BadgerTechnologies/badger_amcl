@@ -35,7 +35,11 @@ namespace badger_amcl
 {
 
 OctoMap::OctoMap(double resolution)
+    : OctoMap(resolution, false) {}
+
+OctoMap::OctoMap(double resolution, bool publish_cspace)
     : Map(resolution),
+      publish_cspace_(publish_cspace),
       cdm_(resolution, 0.0)
 {
   cropped_min_cells_ = std::vector<int>(3);
@@ -183,6 +187,7 @@ void OctoMap::updateCSpace()
   distance_ratios_.clear();
   distance_ratios_.resize(num_z_column_indices_, UINT8_MAX);
   distance_ratios_.shrink_to_fit();
+
   if ((cdm_.resolution_ != resolution_) || (std::fabs(cdm_.max_dist_ - max_occ_dist_) > EPSILON))
   {
     cdm_ = CachedDistanceOctoMap(resolution_, max_occ_dist_);
@@ -193,8 +198,11 @@ void OctoMap::updateCSpace()
   ROS_INFO("Iterating empty cells");
   iterateEmptyCells(q);
   ROS_INFO("Done updating OctoMap CSpace");
-  publishDistances();
-  ROS_INFO("Octree published");
+  if (publish_cspace_)
+  {
+    publishCSpace();
+    ROS_INFO("Octree published");
+  }
   cspace_created_ = true;
 }
 
@@ -343,7 +351,7 @@ uint32_t OctoMap::makePoseIndex(int i, int j)
   return j * map_cells_width_ + i;
 }
 
-void OctoMap::publishDistances()
+void OctoMap::publishCSpace()
 {
   using PointCloud = pcl::PointCloud<pcl::PointXYZI>;
   PointCloud::Ptr cloud(new PointCloud);
@@ -372,9 +380,6 @@ void OctoMap::publishDistances()
           p.z = world_coords[2];
           p.intensity = d;
           cloud->points.push_back(p);
-          //ROS_INFO("%d, %d, %d", i, j, k);
-          //ROS_INFO("%f, %f, %f, %f", world_coords[0], world_coords[1], world_coords[2], d);
-          //ROS_INFO("%f, %f, %f, %f", p.x, p.y, p.z, p.intensity);
           count++;
         }
       }
@@ -383,7 +388,7 @@ void OctoMap::publishDistances()
   cloud->width = count / cloud->height;
   distances_pub_ = nh_.advertise<PointCloud>("distances_cloud", 1, true);
   distances_pub_.publish(cloud);
-  ROS_INFO("publishing cloud of size: %lu", cloud->points.size());
+  ROS_INFO("Publishing cloud of size: %lu", cloud->points.size());
 }
 
 }  // namespace amcl
