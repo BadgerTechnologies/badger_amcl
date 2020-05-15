@@ -213,8 +213,8 @@ void OctoMap::iterateObstacleCells(CellDataQueue& q)
   std::vector<double> world_coords(3);
   std::vector<int> map_coords(3);
 
-  std::priority_queue<EV3> ordering_queue;
-  EV3 source;
+  std::priority_queue<Index3> ordering_queue;
+  Index3 source;
 
   octree_->expand();
   for (octomap::OcTree::leaf_iterator it = octree_->begin_leafs(), end = octree_->end_leafs(); it != end; ++it)

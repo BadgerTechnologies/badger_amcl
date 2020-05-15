@@ -46,9 +46,9 @@ public:
   int cell_radius_;
 };
 
-struct EV3 {
+struct Index3 {
   Eigen::Vector3i v;
-  inline bool operator< (const EV3& e) const
+  inline bool operator< (const Index3& e) const
   {
     return v[0] != e.v[0] ? v[0] < e.v[0] : v[1] != e.v[1] ? v[1] < e.v[1] : v[2] < e.v[2];
   }
