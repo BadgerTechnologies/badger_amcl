@@ -24,7 +24,6 @@
 #include <cmath>
 
 #include <angles/angles.h>
-#include <ros/console.h>
 
 #include "pf/pdf_gaussian.h"
 

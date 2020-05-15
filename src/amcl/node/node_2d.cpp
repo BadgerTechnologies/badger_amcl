@@ -173,8 +173,7 @@ void Node2D::reconfigure(AMCLConfig& config)
   }
   else if (model_type_ == PLANAR_MODEL_LIKELIHOOD_FIELD_GOMPERTZ)
   {
-    ROS_INFO("Initializing likelihood field (gompertz) model; this can take some time on "
-             "large maps...");
+    ROS_INFO("Initializing likelihood field (gompertz) model; this can take some time on large maps...");
     scanner_.setModelLikelihoodFieldGompertz(
         z_hit_, z_rand_, sigma_hit_, sensor_likelihood_max_dist_, gompertz_a_, gompertz_b_,
         gompertz_c_, gompertz_input_shift_, gompertz_input_scale_, gompertz_output_shift_);
@@ -231,8 +230,7 @@ void Node2D::initFromNewMap()
   }
   else if (model_type_ == PLANAR_MODEL_LIKELIHOOD_FIELD_GOMPERTZ)
   {
-    ROS_INFO("Initializing likelihood field (gompertz) model; this can take some time on "
-             "large maps...");
+    ROS_INFO("Initializing likelihood field (gompertz) model; this can take some time on large maps...");
     scanner_.setModelLikelihoodFieldGompertz(
         z_hit_, z_rand_, sigma_hit_, sensor_likelihood_max_dist_, gompertz_a_, gompertz_b_,
         gompertz_c_, gompertz_input_shift_, gompertz_input_scale_, gompertz_output_shift_);
@@ -444,8 +442,7 @@ int Node2D::getFrameToScannerIndex(const std::string& frame_id)
 
 bool Node2D::initFrameToScanner(const std::string& frame_id, tf::Stamped<tf::Pose>* scanner_pose, int* scanner_index)
 {
-  ROS_DEBUG_STREAM("Setting up planar_scanner " << static_cast<int>(frame_to_scanner_.size())
-                   << " (frame_id=" << frame_id << ")");
+  ROS_DEBUG_STREAM("Setting up planar_scanner " << frame_to_scanner_.size() << " (frame_id=" << frame_id << ")");
   scanners_.push_back(std::make_shared<PlanarScanner>(scanner_));
   scanners_update_.push_back(true);
   *scanner_index = frame_to_scanner_.size();
@@ -584,7 +581,7 @@ void Node2D::getMaxWeightPose(double* max_weight_rtn, PFVector* max_pose)
     PFVector pose_mean;
     if (!pf_->getClusterStats(hyp_count, &weight, &pose_mean))
     {
-      ROS_ERROR("Couldn't get stats on cluster %d", hyp_count);
+      ROS_ERROR_STREAM("Couldn't get stats on cluster " << hyp_count);
       break;
     }
 

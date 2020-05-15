@@ -388,7 +388,7 @@ double PlanarScanner::calcLikelihoodFieldModelProb(std::shared_ptr<PlanarData> d
     if (clear_temp)
     {
       clearTempData(set->sample_count, max_beams_);
-      ROS_DEBUG("Clearing temp weights %d - %d", max_samples_, max_obs_);
+      ROS_DEBUG_STREAM("Clearing temp weights " << max_samples_ << " - " << max_obs_);
     }
   }
 

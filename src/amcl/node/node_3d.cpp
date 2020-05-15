@@ -142,13 +142,12 @@ void Node3D::reconfigure(AMCLConfig& config)
   scanner_.init(max_beams_, map_);
   if (model_type_ == POINT_CLOUD_MODEL)
   {
-    ROS_WARN("setting point cloud model type from reconfigure 3d");
+    ROS_WARN("Setting point cloud model type from reconfigure 3d");
     scanner_.setPointCloudModel(z_hit_, z_rand_, sigma_hit_);
   }
   else if (model_type_ == POINT_CLOUD_MODEL_GOMPERTZ)
   {
-    ROS_INFO("Initializing likelihood field (gompertz) model; this can take some time on large "
-             "maps...");
+    ROS_INFO("Initializing likelihood field (gompertz) model; this can take some time on large maps...");
     scanner_.setPointCloudModelGompertz(
         z_hit_, z_rand_, sigma_hit_, gompertz_a_, gompertz_b_, gompertz_c_,
         gompertz_input_shift_, gompertz_input_scale_, gompertz_output_shift_);
@@ -515,7 +514,7 @@ void Node3D::getMaxWeightPose(double* max_weight_rtn, PFVector* max_pose)
     PFVector pose_mean;
     if (!pf_->getClusterStats(hyp_count, &weight, &pose_mean))
     {
-      ROS_ERROR("Couldn't get stats on cluster %d", hyp_count);
+      ROS_ERROR_STREAM("Couldn't get stats on cluster " << hyp_count);
       break;
     }
 
