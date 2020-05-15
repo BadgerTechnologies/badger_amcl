@@ -71,8 +71,6 @@ Node2D::Node2D(Node* node, std::mutex& configuration_mutex)
   private_nh_.param("global_localization_planar_off_map_factor", global_localization_off_map_factor_, 1.0);
   private_nh_.param("global_localization_planar_non_free_space_factor",
                     global_localization_non_free_space_factor_, 1.0);
-  const std::string default_scan_topic = "scan";
-  private_nh_.param("scan_topic", scan_topic_, default_scan_topic);
 
   std::string tmp_model_type;
   private_nh_.param("laser_model_type", tmp_model_type, std::string("likelihood_field"));
@@ -96,6 +94,7 @@ Node2D::Node2D(Node* node, std::mutex& configuration_mutex)
   if (map_scale_up_factor_ > 16)
     map_scale_up_factor_ = 16;
 
+  scan_topic_ = "scan";
   scan_sub_ = std::unique_ptr<message_filters::Subscriber<sensor_msgs::LaserScan>>(
       new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, scan_topic_, 5));
   scan_filter_ = std::unique_ptr<tf::MessageFilter<sensor_msgs::LaserScan>>(
@@ -120,7 +119,6 @@ Node2D::~Node2D()
 
 void Node2D::reconfigure(AMCLConfig& config)
 {
-  scan_topic_ = config.scan_topic;
   sensor_min_range_ = config.laser_min_range;
   sensor_max_range_ = config.laser_max_range;
   z_hit_ = config.laser_z_hit;
@@ -632,8 +630,7 @@ void Node2D::checkScanReceived(const ros::TimerEvent& event)
   if (d > check_scanner_interval_)
   {
     ROS_WARN_STREAM("No planar scan received (and thus no pose updates have been published) for " << d
-                    << " seconds. Verify that data is being published on the " << ros::names::resolve(scan_topic_)
-                    << " topic.");
+                    << " seconds. Verify that data is being published to the topic " << scan_sub_->getTopic() << ".");
   }
 }
 
