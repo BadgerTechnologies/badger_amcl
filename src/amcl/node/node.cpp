@@ -424,11 +424,13 @@ void Node::loadPose()
 {
   if (loadPoseFromServer())
   {
-    ROS_DEBUG("Successfully loaded pose from server.");
+    ROS_INFO("Successfully loaded initial pose from server.");
+    ROS_INFO("Pose loaded: (%.3f, %.3f)", init_pose_[0], init_pose_[1]);
   }
   else if (loadPoseFromFile())
   {
     ROS_INFO("Failed to load pose from server, but successfully loaded pose from file.");
+    ROS_INFO("Pose loaded: (%.3f, %.3f)", init_pose_[0], init_pose_[1]);
   }
   else
   {
@@ -439,6 +441,7 @@ void Node::loadPose()
     init_cov_[0] = 0.5 * 0.5;
     init_cov_[1] = 0.5 * 0.5;
     init_cov_[2] = (M_PI / 12.0) * (M_PI / 12.0);
+    ROS_INFO("Default pose: (%.3f, %.3f)", init_pose_[0], init_pose_[1]);
   }
 }
 
@@ -471,12 +474,6 @@ bool Node::loadPoseFromServer()
   success = success and loadParamFromServer("initial_cov_xx", &init_cov_[0]);
   success = success and loadParamFromServer("initial_cov_yy", &init_cov_[1]);
   success = success and loadParamFromServer("initial_cov_aa", &init_cov_[2]);
-
-  if(success)
-  {
-    ROS_INFO("Successfully loaded initial pose from server.");
-    ROS_INFO("Pose loaded: (%.3f, %.3f)", init_pose_[0], init_pose_[1]);
-  }
   return success;
 }
 
@@ -528,8 +525,6 @@ bool Node::loadPoseFromFile()
   init_cov_[0] = xx;
   init_cov_[1] = yy;
   init_cov_[2] = aa;
-  ROS_INFO("Successfully loaded YAML pose from file.");
-  ROS_INFO("Pose loaded: %.3f, %.3f", init_pose_[0], init_pose_[1]);
   return true;
 }
 
