@@ -325,6 +325,7 @@ void OctoMap::setOccDist(int i, int j, int k, double d)
     pose_indices_[pose_index] = distances_start_index;
     distance_ratios_.resize(distances_start_index + num_z_column_indices_, std::numeric_limits<uint8_t>::max());
   }
+  ROS_ASSERT(d >= 0.0);
   d = std::min(d, max_occ_dist_);
   uint8_t distance_ratio = static_cast<int>(std::floor(d / max_occ_dist_ * std::numeric_limits<uint8_t>::max()));
   distance_ratios_[distances_start_index + k_shifted] = distance_ratio;
