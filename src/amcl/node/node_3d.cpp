@@ -74,8 +74,6 @@ Node3D::Node3D(Node* node, std::mutex& configuration_mutex)
   private_nh_.param("global_localization_scanner_off_map_factor", global_localization_off_map_factor_, 1.0);
   private_nh_.param("global_localization_scanner_non_free_space_factor",
                     global_localization_non_free_space_factor_, 1.0);
-  const std::string default_cloud_topic = "cloud";
-  private_nh_.param("cloud_topic", cloud_topic_, default_cloud_topic);
   std::string tmp_model_type;
   private_nh_.param("laser_model_type", tmp_model_type, std::string("likelihood_field_gompertz"));
   if (tmp_model_type == "likelihood_field")
@@ -94,6 +92,7 @@ Node3D::Node3D(Node* node, std::mutex& configuration_mutex)
   }
   private_nh_.param("map_scale_up_factor", occupancy_map_scale_up_factor_, 1);
 
+  cloud_topic_ = "cloud";
   scan_sub_ = std::unique_ptr<message_filters::Subscriber<sensor_msgs::PointCloud2>>(
       new message_filters::Subscriber<sensor_msgs::PointCloud2>(nh_, cloud_topic_, 5));
   scan_filter_ = std::unique_ptr<tf::MessageFilter<sensor_msgs::PointCloud2>>(
@@ -117,7 +116,6 @@ Node3D::~Node3D()
 
 void Node3D::reconfigure(AMCLConfig& config)
 {
-  cloud_topic_ = config.cloud_topic;
   resample_interval_ = config.resample_interval;
   max_beams_ = config.laser_max_beams;
   z_hit_ = config.laser_z_hit;
@@ -564,8 +562,7 @@ void Node3D::checkScanReceived(const ros::TimerEvent& event)
   if (d > scanner_check_interval_)
   {
     ROS_DEBUG_STREAM("No point cloud scan received (and thus no pose updates have been published) for " << d
-                     << " seconds. Verify that data is being published on the " << ros::names::resolve(cloud_topic_)
-                     << " topic.");
+                     << " seconds. Verify that data is being published on the topic " << scan_sub_->getTopic() << ".");
   }
 }
 

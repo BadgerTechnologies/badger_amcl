@@ -68,6 +68,7 @@ Node::Node()
   private_nh_.param("max_particles", max_particles_, 5000);
   private_nh_.param("kld_err", pf_err_, 0.01);
   private_nh_.param("kld_z", pf_z_, 0.99);
+  private_nh_.param("odom_integrator_enabled", odom_integrator_enabled_, true);
   private_nh_.param("odom_alpha1", alpha1_, 0.2);
   private_nh_.param("odom_alpha2", alpha2_, 0.2);
   private_nh_.param("odom_alpha3", alpha3_, 0.2);
@@ -123,7 +124,6 @@ Node::Node()
   private_nh_.param("global_localization_alpha_fast", global_localization_alpha_fast_, 0.1);
   private_nh_.param("tf_broadcast", tf_broadcast_, true);
   private_nh_.param("tf_reverse", tf_reverse_, false);
-  private_nh_.param("odom_integrator_topic", odom_integrator_topic_, std::string(""));
 
   transform_tolerance_.fromSec(tmp_tol);
 
@@ -142,9 +142,10 @@ Node::Node()
   global_loc_srv_ = nh_.advertiseService("global_localization", &Node::globalLocalizationCallback, this);
   loadPose();
 
-  if (odom_integrator_topic_.size())
+  if(odom_integrator_enabled_);
   {
-    odom_integrator_sub_ = nh_.subscribe(odom_integrator_topic_, 20, &Node::integrateOdom, this);
+    std::string odom_integrator_topic = "odom";
+    odom_integrator_sub_ = nh_.subscribe(odom_integrator_topic, 20, &Node::integrateOdom, this);
     absolute_motion_pub_ = nh_.advertise<geometry_msgs::Pose2D>("amcl_absolute_motion", 20, false);
   }
 
@@ -977,7 +978,7 @@ void Node::setScannersUpdateFlags(const PFVector& delta, std::vector<bool>& scan
 {
     // See if we should update the filter
     bool update;
-    if (odom_integrator_topic_.size())
+    if (odom_integrator_enabled_)
     {
       double abs_trans = std::sqrt(odom_integrator_absolute_motion_.v[0] * odom_integrator_absolute_motion_.v[0]
                                    + odom_integrator_absolute_motion_.v[1] * odom_integrator_absolute_motion_.v[1]);
@@ -1008,7 +1009,7 @@ void Node::updateOdom(const PFVector& pose, const PFVector &delta)
   // updated correctly
   odata->delta = delta;
   odata->absolute_motion = odom_integrator_absolute_motion_;
-  if (odom_integrator_topic_.size())
+  if (odom_integrator_enabled_)
   {
     geometry_msgs::Pose2D p;
     p.x = odata->absolute_motion.v[0];

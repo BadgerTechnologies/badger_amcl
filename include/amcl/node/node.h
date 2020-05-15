@@ -183,7 +183,7 @@ private:
   tf::Stamped<tf::Pose> latest_odom_pose_;
   geometry_msgs::PoseWithCovarianceStamped latest_amcl_pose_;
   ros::Subscriber odom_integrator_sub_;
-  std::string odom_integrator_topic_;
+  bool odom_integrator_enabled_;
   bool odom_integrator_ready_;
   PFVector odom_integrator_last_pose_;
   PFVector odom_integrator_absolute_motion_;
