@@ -27,7 +27,6 @@
 #include <cstdlib>
 
 #include <ros/assert.h>
-#include <ros/console.h>
 
 #include "pf/pdf_gaussian.h"
 #include "sensors/sensor.h"

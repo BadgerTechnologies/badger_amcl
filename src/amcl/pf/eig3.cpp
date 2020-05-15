@@ -6,8 +6,6 @@
 #include <algorithm>
 #include <cmath>
 
-#include <ros/console.h>
-
 namespace badger_amcl
 {
 

@@ -283,7 +283,7 @@ void OctoMap::iterateEmptyCells(CellDataQueue& q)
     q.pop();
     count = std::max(count, q.size());
   }
-  ROS_INFO("Max queue size: %lu", count);
+  ROS_INFO_STREAM("Max queue size: " << count);
 }
 
 // Adds the voxel to the queue if the voxel is close enough to an object
@@ -389,7 +389,7 @@ void OctoMap::publishCSpace()
   cloud->width = count / cloud->height;
   distances_pub_ = nh_.advertise<PointCloud>("distances_cloud", 1, true);
   distances_pub_.publish(cloud);
-  ROS_INFO("Publishing cloud of size: %lu", cloud->points.size());
+  ROS_INFO_STREAM("Publishing cloud of size: " << cloud->points.size());
 }
 
 }  // namespace amcl

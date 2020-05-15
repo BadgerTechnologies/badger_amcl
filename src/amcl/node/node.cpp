@@ -318,7 +318,7 @@ std::shared_ptr<ParticleFilter> Node::getPfPtr()
 void Node::publishParticleCloud()
 {
   std::shared_ptr<PFSampleSet> set = pf_->getCurrentSet();
-  ROS_DEBUG("Num samples: %d\n", set->sample_count);
+  ROS_DEBUG_STREAM("Num samples: " << set->sample_count);
   geometry_msgs::PoseArray cloud_msg;
   cloud_msg.header.stamp = ros::Time::now();
   cloud_msg.header.frame_id = global_frame_id_;
@@ -413,7 +413,7 @@ void Node::attemptSavePose()
     if ((save_pose_to_file_period_.toSec() > 0.0)
         && (now - save_pose_to_file_last_time_) >= save_pose_to_file_period_)
     {
-      ROS_DEBUG("save pose to file period: %f", save_pose_to_file_period_.toSec());
+      ROS_DEBUG_STREAM("save pose to file period: " << save_pose_to_file_period_.toSec());
       savePoseToFile();
       save_pose_to_file_last_time_ = now;
     }
@@ -462,7 +462,7 @@ void Node::publishInitialPoseInternal()
   {
     pose.pose.covariance[i] = cov_vals[i];
   }
-  ROS_INFO("Initial pose: (%0.3f, %0.3f)", pose.pose.pose.position.x, pose.pose.pose.position.y);
+  ROS_INFO("Initial pose: (%.3f, %.3f)", pose.pose.pose.position.x, pose.pose.pose.position.y);
   initialPoseReceivedInternal(pose);
 }
 
@@ -576,8 +576,7 @@ YAML::Node Node::loadYamlFromFile()
   else
   {
     YAML::Node empty;
-    ROS_WARN("Cannot parse the saved pose file in either the new c++ style YAML "
-             "nor the old Python style YAML.");
+    ROS_WARN("Cannot parse the saved pose file in either the new c++ style YAML nor the old Python style YAML.");
     return empty;
   }
 }
