@@ -25,7 +25,6 @@
 #include <iostream>
 
 #include <ros/init.h>
-#include <ros/node_handle.h>
 #include <ros/spinner.h>
 
 #include "node/node.h"
@@ -39,7 +38,6 @@ int main(int argc, char** argv)
 {
   srand48(std::time(nullptr));
   ros::init(argc, argv, "amcl", ros::init_options::NoSigintHandler);
-  ros::NodeHandle nh;
 
   // Override default sigint handler
   signal(SIGINT, sigHandler);
