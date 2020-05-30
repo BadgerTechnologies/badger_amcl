@@ -127,6 +127,11 @@ Node::Node()
 
   transform_tolerance_.fromSec(tmp_tol);
 
+  private_nh_.param("publish_initial_pose_at_startup", publish_initial_pose_at_startup_, true);
+  if(publish_initial_pose_at_startup_)
+  {
+    initial_pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("/initialpose", 1, true);
+  }
   initial_pose_sub_ = nh_.subscribe("initialpose", 2, &Node::initialPoseReceived, this);
 
   pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("amcl_pose", 2, true);
@@ -446,7 +451,7 @@ void Node::loadPose()
   }
 }
 
-void Node::publishInitialPoseInternal()
+void Node::publishInitialPose()
 {
   geometry_msgs::PoseWithCovarianceStamped pose;
   pose.header.stamp = ros::Time::now();
@@ -464,7 +469,10 @@ void Node::publishInitialPoseInternal()
     pose.pose.covariance[i] = cov_vals[i];
   }
   ROS_INFO("Initial pose: (%.3f, %.3f)", pose.pose.pose.position.x, pose.pose.pose.position.y);
-  initialPoseReceivedInternal(pose);
+  if(publish_initial_pose_at_startup_)
+  {
+    initial_pose_pub_.publish(pose);
+  }
 }
 
 bool Node::loadPoseFromServer()
@@ -697,7 +705,7 @@ void Node::initFromNewMap(std::shared_ptr<Map> new_map)
   odom_.setModel(odom_model_type_, alpha1_, alpha2_, alpha3_, alpha4_, alpha5_);
 
   // Publish initial pose loaded from the server or file at startup
-  publishInitialPoseInternal();
+  publishInitialPose();
 }
 
 void Node::updateFreeSpaceIndices(std::vector<std::pair<int, int>> fsi)
