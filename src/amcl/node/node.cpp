@@ -432,11 +432,13 @@ void Node::loadPose()
   {
     ROS_INFO("Successfully loaded initial pose from server.");
     ROS_INFO("Pose loaded: (%.3f, %.3f)", init_pose_[0], init_pose_[1]);
+    initial_pose_loaded_ = true;
   }
   else if (loadPoseFromFile())
   {
     ROS_INFO("Failed to load pose from server, but successfully loaded pose from file.");
     ROS_INFO("Pose loaded: (%.3f, %.3f)", init_pose_[0], init_pose_[1]);
+    initial_pose_loaded_ = true;
   }
   else
   {
@@ -448,6 +450,7 @@ void Node::loadPose()
     init_cov_[1] = 0.5 * 0.5;
     init_cov_[2] = (M_PI / 12.0) * (M_PI / 12.0);
     ROS_INFO("Default pose: (%.3f, %.3f)", init_pose_[0], init_pose_[1]);
+    initial_pose_loaded_ = false;
   }
 }
 
@@ -469,10 +472,7 @@ void Node::publishInitialPose()
     pose.pose.covariance[i] = cov_vals[i];
   }
   ROS_INFO("Initial pose: (%.3f, %.3f)", pose.pose.pose.position.x, pose.pose.pose.position.y);
-  if(publish_initial_pose_at_startup_)
-  {
-    initial_pose_pub_.publish(pose);
-  }
+  initial_pose_pub_.publish(pose);
 }
 
 bool Node::loadPoseFromServer()
@@ -704,8 +704,15 @@ void Node::initFromNewMap(std::shared_ptr<Map> new_map)
   // Odometry
   odom_.setModel(odom_model_type_, alpha1_, alpha2_, alpha3_, alpha4_, alpha5_);
 
-  // Publish initial pose loaded from the server or file at startup
-  publishInitialPose();
+  if(publish_initial_pose_at_startup_ and initial_pose_loaded_)
+  {
+    // Publish initial pose loaded from the server or file at startup
+    publishInitialPose();
+  }
+  else
+  {
+    applyInitialPose();
+  }
 }
 
 void Node::updateFreeSpaceIndices(std::vector<std::pair<int, int>> fsi)

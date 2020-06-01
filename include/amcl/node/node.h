@@ -158,6 +158,7 @@ private:
   ros::Publisher alt_particlecloud_pub_;
   ros::Publisher map_odom_transform_pub_;
   bool publish_initial_pose_at_startup_;
+  bool initial_pose_loaded_;
   ros::Publisher initial_pose_pub_;
   ros::Subscriber initial_pose_sub_;
   ros::ServiceServer global_loc_srv_;
