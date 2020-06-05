@@ -103,6 +103,7 @@ Node3D::Node3D(Node* node, std::mutex& configuration_mutex)
   check_scanner_timer_ = nh_.createTimer(scanner_check_interval_, std::bind(&Node3D::checkScanReceived, this,
                                                                             std::placeholders::_1));
   force_update_ = false;
+  first_occupancy_map_received_ = false;
   first_octomap_received_ = false;
   octo_map_sub_ = nh_.subscribe("octomap_binary", 1, &Node3D::octoMapMsgReceived, this);
   occupancy_map_sub_ = nh_.subscribe("map", 1, &Node3D::occupancyMapMsgReceived, this);
@@ -172,9 +173,10 @@ void Node3D::reconfigure(AMCLConfig& config)
 void Node3D::occupancyMapMsgReceived(const nav_msgs::OccupancyGridConstPtr& msg)
 {
   std::lock_guard<std::mutex> cfl(configuration_mutex_);
-  if(not wait_for_occupancy_map_)
+  if(not wait_for_occupancy_map_ or (first_map_only_ && first_occupancy_map_received_))
     return;
 
+  first_occupancy_map_received_ = true;
   std::vector<int> size_vec;
   double resolution = (*msg).info.resolution / occupancy_map_scale_up_factor_;
   size_vec.push_back((*msg).info.width * occupancy_map_scale_up_factor_);
