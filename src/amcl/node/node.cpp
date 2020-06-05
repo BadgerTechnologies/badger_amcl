@@ -679,9 +679,12 @@ void Node::savePoseToFile()
   file_buf.close();
 }
 
-void Node::initFromNewMap(std::shared_ptr<Map> new_map)
+void Node::initFromNewMap(std::shared_ptr<Map> new_map, bool use_initial_pose)
 {
   map_ = new_map;
+  if(not use_initial_pose)
+    return;
+
   // Create the particle filter
   uniform_pose_generator_fn_ = std::bind(&Node::uniformPoseGenerator, this);
   pf_ = std::make_shared<ParticleFilter>(min_particles_, max_particles_, alpha_slow_, alpha_fast_,

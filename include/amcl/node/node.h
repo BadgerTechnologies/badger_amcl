@@ -78,7 +78,7 @@ class Node
 {
 public:
   Node();
-  void initFromNewMap(std::shared_ptr<Map> new_map);
+  void initFromNewMap(std::shared_ptr<Map> new_map, bool use_init_pose);
   void updateFreeSpaceIndices(std::vector<std::pair<int, int>> fsi);
   void initOdomIntegrator();
   bool getOdomPose(const ros::Time& t, PFVector* map_pose);
