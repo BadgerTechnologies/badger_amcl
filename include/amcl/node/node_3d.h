@@ -116,6 +116,7 @@ private:
   int max_beams_;
   int resample_interval_;
   int resample_count_;
+  bool first_occupancy_map_received_;
   bool first_octomap_received_;
   bool occupancy_bounds_received_;
   bool first_map_only_;
