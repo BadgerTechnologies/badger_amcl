@@ -203,7 +203,6 @@ void Node2D::mapMsgReceived(const nav_msgs::OccupancyGridConstPtr& msg)
   std::lock_guard<std::mutex> cfl(configuration_mutex_);
   ROS_INFO("Received a %d X %d occupancy map @ %.3f m/pix\n", msg->info.width, msg->info.height, msg->info.resolution);
   map_ = convertMap(*msg);
-  first_map_received_ = true;
   // Clear queued planar scanner objects because they hold pointers to the existing map
   scanners_.clear();
   scanners_update_.clear();
@@ -211,6 +210,7 @@ void Node2D::mapMsgReceived(const nav_msgs::OccupancyGridConstPtr& msg)
   latest_scan_data_ = NULL;
   initFromNewMap();
   updateFreeSpaceIndices();
+  first_map_received_ = true;
 }
 
 void Node2D::initFromNewMap()
@@ -247,7 +247,7 @@ void Node2D::initFromNewMap()
     ROS_INFO("Done initializing likelihood field model.");
   }
   scanner_.setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
-  node_->initFromNewMap(map_);
+  node_->initFromNewMap(map_, not first_map_received_);
   pf_ = node_->getPfPtr();
 }
 

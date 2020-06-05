@@ -202,7 +202,6 @@ void Node3D::octoMapMsgReceived(const octomap_msgs::OctomapConstPtr& msg)
   std::lock_guard<std::mutex> cfl(configuration_mutex_);
   ROS_INFO("Received a new Octomap");
   map_ = convertMap(*msg);
-  first_octomap_received_ = true;
 
   // Clear queued point cloud objects because they hold pointers to the existing map
   scanners_.clear();
@@ -210,6 +209,7 @@ void Node3D::octoMapMsgReceived(const octomap_msgs::OctomapConstPtr& msg)
   frame_to_scanner_.clear();
   latest_scan_data_ = NULL;
   initFromNewMap();
+  first_octomap_received_ = true;
 }
 
 void Node3D::initFromNewMap()
@@ -234,7 +234,7 @@ void Node3D::initFromNewMap()
     ROS_INFO("Done initializing likelihood (gompertz) field model.");
   }
   scanner_.setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
-  node_->initFromNewMap(map_);
+  node_->initFromNewMap(map_, not first_octomap_received_);
   pf_ = node_->getPfPtr();
   // if we are using both maps as bounds
   // and the occupancy map has already arrived
