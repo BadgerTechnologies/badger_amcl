@@ -34,7 +34,7 @@ OccupancyMap::OccupancyMap(double resolution)
       size_y_(0),
       cdm_(resolution, 0.0)
 {
-  max_occ_dist_ = 0.0;
+  max_distance_to_object_ = 0.0;
   map_vec_.resize(2);
 }
 
@@ -54,9 +54,9 @@ void OccupancyMap::setSize(std::vector<int> size_vec)
   size_y_ = size_vec[1];
 }
 
-double OccupancyMap::getMaxOccDist()
+double OccupancyMap::getMaxDistanceToObject()
 {
-  return max_occ_dist_;
+  return max_distance_to_object_;
 }
 
 void OccupancyMap::initCells(int num)
@@ -64,7 +64,7 @@ void OccupancyMap::initCells(int num)
   cells_.resize(num);
 }
 
-float OccupancyMap::getOccDist(int i, int j)
+float OccupancyMap::getDistanceToObject(int i, int j)
 {
   map_vec_[0] = i;
   map_vec_[1] = j;
@@ -72,7 +72,7 @@ float OccupancyMap::getOccDist(int i, int j)
   {
     return distances_lut_[computeCellIndex(i, j)];
   }
-  return max_occ_dist_;
+  return max_distance_to_object_;
 }
 
 void OccupancyMap::convertMapToWorld(const std::vector<int>& map_coords,
@@ -138,12 +138,12 @@ CachedDistanceOccupancyMap::CachedDistanceOccupancyMap(double resolution, double
 }
 
 // Update the distance values
-void OccupancyMap::updateDistancesLUT(double max_occ_dist)
+void OccupancyMap::updateDistancesLUT(double max_distance_to_object)
 {
-  max_occ_dist_ = max_occ_dist;
-  if(max_occ_dist_ == 0.0)
+  max_distance_to_object_ = max_distance_to_object;
+  if(max_distance_to_object_ == 0.0)
   {
-    ROS_DEBUG("Failed to update distances lut, max occ dist is 0");
+    ROS_DEBUG("Failed to update distances lut, max distance to object is 0");
     return;
   }
 
@@ -152,9 +152,9 @@ void OccupancyMap::updateDistancesLUT(double max_occ_dist)
   unsigned s = unsigned(size_x_) * size_y_;
   std::vector<bool> marked = std::vector<bool>(s, false);
   distances_lut_.resize(unsigned(size_x_) * size_y_);
-  if ((cdm_.resolution_ != resolution_) || (cdm_.max_dist_ != max_occ_dist_))
+  if ((cdm_.resolution_ != resolution_) || (cdm_.max_dist_ != max_distance_to_object_))
   {
-    cdm_ = CachedDistanceOccupancyMap(resolution_, max_occ_dist_);
+    cdm_ = CachedDistanceOccupancyMap(resolution_, max_distance_to_object_);
   }
   iterateObstacleCells(q, marked);
   iterateEmptyCells(q, marked);
@@ -174,14 +174,14 @@ void OccupancyMap::iterateObstacleCells(std::priority_queue<OccupancyMapCellData
     {
       if (getCellState(i, j) == MapCellState::CELL_OCCUPIED)
       {
-        setMapOccDist(i, j, 0.0);
+        setDistanceToObject(i, j, 0.0);
         cell.src_j = cell.j = j;
         marked.at(computeCellIndex(i, j)) = true;
         q.push(cell);
       }
       else
       {
-        setMapOccDist(i, j, max_occ_dist_);
+        setDistanceToObject(i, j, max_distance_to_object_);
       }
     }
   }
@@ -232,7 +232,7 @@ bool OccupancyMap::enqueue(int i, int j, int src_i, int src_j,
   double distance = cdm_.cached_distances_lut_[di][dj];
   if (distance <= cdm_.cell_radius_)
   {
-    setMapOccDist(i, j, distance * resolution_);
+    setDistanceToObject(i, j, distance * resolution_);
     OccupancyMapCellData cell = OccupancyMapCellData(this);
     cell.i = i;
     cell.j = j;
@@ -244,7 +244,7 @@ bool OccupancyMap::enqueue(int i, int j, int src_i, int src_j,
   return false;
 }
 
-void OccupancyMap::setMapOccDist(int i, int j, float d)
+void OccupancyMap::setDistanceToObject(int i, int j, float d)
 {
   map_vec_[0] = i;
   map_vec_[1] = j;

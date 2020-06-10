@@ -63,7 +63,7 @@ Node3D::Node3D(Node* node, std::mutex& configuration_mutex)
   private_nh_.param("laser_off_map_factor", off_map_factor_, 1.0);
   private_nh_.param("laser_non_free_space_factor", non_free_space_factor_, 1.0);
   private_nh_.param("laser_non_free_space_radius", non_free_space_radius_, 0.0);
-  private_nh_.param("laser_likelihood_max_dist", max_occ_dist_, 0.36);
+  private_nh_.param("laser_likelihood_max_dist", max_distance_to_object_, 0.36);
   private_nh_.param("resample_interval", resample_interval_, 2);
   private_nh_.param("laser_gompertz_a", gompertz_a_, 1.0);
   private_nh_.param("laser_gompertz_b", gompertz_b_, 1.0);
@@ -124,7 +124,7 @@ void Node3D::reconfigure(AMCLConfig& config)
   z_max_ = config.laser_z_max;
   z_rand_ = config.laser_z_rand;
   sigma_hit_ = config.laser_sigma_hit;
-  max_occ_dist_ = config.laser_likelihood_max_dist;
+  max_distance_to_object_ = config.laser_likelihood_max_dist;
   off_map_factor_ = config.laser_off_map_factor;
   non_free_space_factor_ = config.laser_non_free_space_factor;
   non_free_space_radius_ = config.laser_non_free_space_radius;
@@ -273,7 +273,7 @@ std::shared_ptr<OctoMap> Node3D::convertMap(const octomap_msgs::Octomap& map_msg
   double resolution = map_msg.resolution;
   std::shared_ptr<OctoMap> octomap = std::make_shared<OctoMap>(resolution);
   ROS_ASSERT(octomap);
-  octomap->initFromOctree(octree_, max_occ_dist_);
+  octomap->initFromOctree(octree_, max_distance_to_object_);
   octree_.reset();
   return octomap;
 }
@@ -302,7 +302,7 @@ void Node3D::updateFreeSpaceIndices()
 {
   // TODO: update free space indices with initialized 2D map
   // Index of free space
-  // Must be calculated after the occ_dist is setup by the laser model
+  // Must be calculated after the distances lut is set
   std::vector<std::pair<int, int>> fsi;
   std::vector<int> min_cells(3), max_cells(3);
   map_->getMinMaxCells(&min_cells, &max_cells);

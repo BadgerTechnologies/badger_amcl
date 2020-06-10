@@ -129,7 +129,7 @@ private:
   double gompertz_input_shift_;
   double gompertz_input_scale_;
   double gompertz_output_shift_;
-  double max_occ_dist_;
+  double max_distance_to_object_;
   double off_map_factor_;
   double non_free_space_factor_;
   double non_free_space_radius_;

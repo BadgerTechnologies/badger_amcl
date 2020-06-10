@@ -74,11 +74,11 @@ public:
   virtual void setMapBounds(const std::vector<double>& map_min, const std::vector<double>& map_max);
   // Update the distance values
   virtual void updateDistancesLUT();
-  virtual void initFromOctree(std::shared_ptr<octomap::OcTree> octree, double max_occ_dist);
-  virtual double getMaxOccDist();
+  virtual void initFromOctree(std::shared_ptr<octomap::OcTree> octree, double max_distance_to_object);
+  virtual double getMaxDistanceToObject();
   // This function is called very frequently.
   // Do not make it virtual as this would hinder performance.
-  double getOccDist(int i, int j, int k);
+  double getDistanceToObject(int i, int j, int k);
 
 protected:
   const std::vector<std::vector<int>> SHIFTS = {{-1, 0, 0}, {0, -1, 0}, {0, 0, -1}, {1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
@@ -91,7 +91,7 @@ protected:
   virtual void iterateEmptyCells(CellDataQueue& q);
   virtual void enqueue(const int shift_index, const OctoMapCellData& current_cell, CellDataQueue& q);
   virtual inline uint32_t makePoseIndex(int i, int j);
-  virtual inline void setOccDist(int i, int j, int k, double d);
+  virtual inline void setDistanceToObject(int i, int j, int k, double d);
 
   std::shared_ptr<octomap::OcTree> octree_;
   std::vector<uint32_t> pose_indices_;
@@ -103,7 +103,7 @@ protected:
   int map_cells_width_;
   uint32_t num_poses_;
   int num_z_column_indices_;
-  double max_occ_dist_ratio_;
+  double max_distance_ratio_;
 
   struct OctoMapCellData
   {

@@ -64,17 +64,17 @@ void PlanarScanner::setModelBeam(double z_hit, double z_short, double z_max, dou
 }
 
 void PlanarScanner::setModelLikelihoodField(double z_hit, double z_rand, double sigma_hit,
-                                            double max_occ_dist)
+                                            double max_distance_to_object)
 {
   model_type_ = PLANAR_MODEL_LIKELIHOOD_FIELD;
   z_hit_ = z_hit;
   z_rand_ = z_rand;
   sigma_hit_ = sigma_hit;
-  map_->updateDistancesLUT(max_occ_dist);
+  map_->updateDistancesLUT(max_distance_to_object);
 }
 
 void PlanarScanner::setModelLikelihoodFieldProb(double z_hit, double z_rand, double sigma_hit,
-                                                double max_occ_dist, bool do_beamskip,
+                                                double max_distance_to_object, bool do_beamskip,
                                                 double beam_skip_distance,
                                                 double beam_skip_threshold,
                                                 double beam_skip_error_threshold)
@@ -87,11 +87,11 @@ void PlanarScanner::setModelLikelihoodFieldProb(double z_hit, double z_rand, dou
   beam_skip_distance_ = beam_skip_distance;
   beam_skip_threshold_ = beam_skip_threshold;
   beam_skip_error_threshold_ = beam_skip_error_threshold;
-  map_->updateDistancesLUT(max_occ_dist);
+  map_->updateDistancesLUT(max_distance_to_object);
 }
 
 void PlanarScanner::setModelLikelihoodFieldGompertz(double z_hit, double z_rand, double sigma_hit,
-                                                    double max_occ_dist, double gompertz_a,
+                                                    double max_distance_to_object, double gompertz_a,
                                                     double gompertz_b, double gompertz_c,
                                                     double input_shift, double input_scale,
                                                     double output_shift)
@@ -108,7 +108,7 @@ void PlanarScanner::setModelLikelihoodFieldGompertz(double z_hit, double z_rand,
   input_shift_ = input_shift;
   input_scale_ = input_scale;
   output_shift_ = output_shift;
-  map_->updateDistancesLUT(max_occ_dist);
+  map_->updateDistancesLUT(max_distance_to_object);
 }
 
 void PlanarScanner::setMapFactors(double off_map_factor, double non_free_space_factor,
@@ -294,9 +294,9 @@ double PlanarScanner::calcLikelihoodFieldModel(std::shared_ptr<PlanarData> data,
       // Part 1: Get distance from the hit to closest obstacle.
       // Off-map penalized as max distance
       if (!map_->isValid(map_vec_))
-        z = map_->getMaxOccDist();
+        z = map_->getMaxDistanceToObject();
       else
-        z = map_->getOccDist(map_vec_[0], map_vec_[1]);
+        z = map_->getDistanceToObject(map_vec_[0], map_vec_[1]);
       // Gaussian model
       // NOTE: this should have a normalization of 1/(sqrt(2pi)*sigma)
       pz += z_hit_ * std::exp(-(z * z) / z_hit_denom);
@@ -345,7 +345,8 @@ double PlanarScanner::calcLikelihoodFieldModelProb(std::shared_ptr<PlanarData> d
   double z_hit_denom = 2 * sigma_hit_ * sigma_hit_;
   double z_rand_mult = 1.0 / data->range_max_;
 
-  double max_dist_prob = std::exp(-(map_->getMaxOccDist() * map_->getMaxOccDist()) / z_hit_denom);
+  double max_distance_to_object = map_->getMaxDistanceToObject();
+  double max_dist_prob = std::exp(-(max_distance_to_object * max_distance_to_object) / z_hit_denom);
 
   // Beam skipping - ignores beams for which a majoirty of particles do not agree with the map
   // prevents correct particles from getting down weighted because of unexpected obstacles
@@ -442,7 +443,7 @@ double PlanarScanner::calcLikelihoodFieldModelProb(std::shared_ptr<PlanarData> d
       }
       else
       {
-        z = map_->getOccDist(map_vec_[0], map_vec_[1]);
+        z = map_->getDistanceToObject(map_vec_[0], map_vec_[1]);
         if (z < beam_skip_distance)
         {
           obs_count[beam_ind] += 1;
@@ -608,9 +609,9 @@ double PlanarScanner::calcLikelihoodFieldModelGompertz(std::shared_ptr<PlanarDat
       // Part 1: Get distance from the hit to closest obstacle.
       // Off-map penalized as max distance
       if (!map_->isValid(map_vec_))
-        z = map_->getMaxOccDist();
+        z = map_->getMaxDistanceToObject();
       else
-        z = map_->getOccDist(map_vec_[0], map_vec_[1]);
+        z = map_->getDistanceToObject(map_vec_[0], map_vec_[1]);
       // Gaussian model
       pz += z_hit_ * std::exp(-(z * z) / z_hit_denom);
       // Part 2: random measurements
@@ -665,10 +666,10 @@ double PlanarScanner::recalcWeight(std::shared_ptr<PFSampleSet> set)
     // Interpolate non free space factor based on radius
     else
     {
-      double distance = map_->getOccDist(map_vec_[0], map_vec_[1]);
+      double distance = map_->getDistanceToObject(map_vec_[0], map_vec_[1]);
       if (distance < non_free_space_radius_)
       {
-        double delta_d = map_->getOccDist(map_vec_[0], map_vec_[1]) / non_free_space_radius_;
+        double delta_d = map_->getDistanceToObject(map_vec_[0], map_vec_[1]) / non_free_space_radius_;
         double f = non_free_space_factor_;
         f += delta_d * (1.0 - non_free_space_factor_);
         sample->weight *= f;

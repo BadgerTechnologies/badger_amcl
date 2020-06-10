@@ -135,9 +135,8 @@ double PointCloudScanner::calcPointCloudModel(std::shared_ptr<PointCloudData> da
   PFSample* sample;
   PFVector pose;
 
-  const double MAX_OCC_DIST = map_->getMaxOccDist();
   double z_hit_denom = 2 * sigma_hit_ * sigma_hit_;
-  double z_rand_mult = 1.0 / MAX_OCC_DIST;
+  double z_rand_mult = 1.0 / map_->getMaxDistanceToObject();
 
   for (int sample_index = 0; sample_index < set->sample_count; sample_index++)
   {
@@ -153,7 +152,7 @@ double PointCloudScanner::calcPointCloudModel(std::shared_ptr<PointCloudData> da
       world_vec_[1] = it->y;
       world_vec_[2] = it->z;
       map_->convertWorldToMap(world_vec_, &map_vec_);
-      z = map_->getOccDist(map_vec_[0], map_vec_[1], map_vec_[2]);
+      z = map_->getDistanceToObject(map_vec_[0], map_vec_[1], map_vec_[2]);
       pz = z_hit_ * std::exp(-(z * z) / z_hit_denom);
       pz += z_rand_ * z_rand_mult;
       ROS_ASSERT(pz <= 1.0);
@@ -172,7 +171,6 @@ double PointCloudScanner::calcPointCloudModelGompertz(std::shared_ptr<PointCloud
   double total_weight = 0.0, p, z, pz, sum_pz;
   PFSample* sample;
   PFVector pose;
-  const double MAX_OCC_DIST = map_->getMaxOccDist();
   double z_hit_denom = 2 * sigma_hit_ * sigma_hit_;
   for (int sample_index = 0; sample_index < set->sample_count; sample_index++)
   {
@@ -189,7 +187,7 @@ double PointCloudScanner::calcPointCloudModelGompertz(std::shared_ptr<PointCloud
       world_vec_[1] = it->y;
       world_vec_[2] = it->z;
       map_->convertWorldToMap(world_vec_, &map_vec_);
-      z = map_->getOccDist(map_vec_[0], map_vec_[1], map_vec_[2]);
+      z = map_->getDistanceToObject(map_vec_[0], map_vec_[1], map_vec_[2]);
       pz = z_hit_ * std::exp(-(z * z) / z_hit_denom);
       pz += z_rand_;
       sum_pz += pz;

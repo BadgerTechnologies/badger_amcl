@@ -50,11 +50,11 @@ OctoMap::OctoMap(double resolution, bool publish_distances_lut)
 }
 
 // initialize octomap from octree
-void OctoMap::initFromOctree(std::shared_ptr<octomap::OcTree> octree, double max_occ_dist)
+void OctoMap::initFromOctree(std::shared_ptr<octomap::OcTree> octree, double max_distance_to_object)
 {
   octree_ = octree;
-  max_occ_dist_ = max_occ_dist;
-  max_occ_dist_ratio_ = max_occ_dist_ / std::numeric_limits<uint8_t>::max();
+  max_distance_to_object_ = max_distance_to_object;
+  max_distance_ratio_ = max_distance_to_object_ / std::numeric_limits<uint8_t>::max();
   double min_x, min_y, min_z, max_x, max_y, max_z;
   octree_->getMetricMin(min_x, min_y, min_z);
   octree_->getMetricMax(max_x, max_y, max_z);
@@ -120,9 +120,9 @@ bool OctoMap::isVoxelValid(const int i, const int j, const int k)
   return isPoseValid(i, j) and k <= cropped_max_cells_[2] and k >= cropped_min_cells_[2];
 }
 
-double OctoMap::getMaxOccDist()
+double OctoMap::getMaxDistanceToObject()
 {
-  return max_occ_dist_;
+  return max_distance_to_object_;
 }
 
 void OctoMap::setMapBounds(const std::vector<double>& map_min, const std::vector<double>& map_max)
@@ -133,8 +133,8 @@ void OctoMap::setMapBounds(const std::vector<double>& map_min, const std::vector
   // of objects at extreme map values
   for (int i = 0; i < map_min_local.size(); i++)
   {
-    map_min_local[i] -= max_occ_dist_;
-    map_max_local[i] += max_occ_dist_;
+    map_min_local[i] -= max_distance_to_object_;
+    map_max_local[i] += max_distance_to_object_;
   }
   convertWorldToMap(map_min_local, &cells_min);
   convertWorldToMap(map_max_local, &cells_max);
@@ -173,9 +173,9 @@ CachedDistanceOctoMap::CachedDistanceOctoMap(double resolution, double max_dist)
 // each voxel to the nearest object in the static map
 void OctoMap::updateDistancesLUT()
 {
-  if (max_occ_dist_ == 0.0)
+  if (max_distance_to_object_ == 0.0)
   {
-    ROS_DEBUG("Failed to update distances lut, max occ dist is 0");
+    ROS_DEBUG("Failed to update distances lut, max distance to object is 0");
     return;
   }
 
@@ -188,9 +188,9 @@ void OctoMap::updateDistancesLUT()
   distance_ratios_.resize(num_z_column_indices_, std::numeric_limits<uint8_t>::max());
   distance_ratios_.reserve(num_z_column_indices_ * (num_poses_ / 16));
 
-  if ((cdm_.resolution_ != resolution_) || (std::fabs(cdm_.max_dist_ - max_occ_dist_) > EPSILON))
+  if ((cdm_.resolution_ != resolution_) || (std::fabs(cdm_.max_dist_ - max_distance_to_object_) > EPSILON))
   {
-    cdm_ = CachedDistanceOctoMap(resolution_, max_occ_dist_);
+    cdm_ = CachedDistanceOctoMap(resolution_, max_distance_to_object_);
   }
   ROS_INFO("Iterating obstacle cells");
   iterateObstacleCells(q);
@@ -231,7 +231,7 @@ void OctoMap::iterateObstacleCells(CellDataQueue& q)
       k = map_coords[2];
       if(!isVoxelValid(i, j, k))
         continue;
-      setOccDist(i, j, k, 0.0);
+      setDistanceToObject(i, j, k, 0.0);
       source.v[0] = i;
       source.v[1] = j;
       source.v[2] = k;
@@ -296,10 +296,10 @@ void OctoMap::enqueue(const int shift_index, const OctoMapCellData& current_cell
   int dj = std::abs(j - current_cell.src_j);
   int dk = std::abs(k - current_cell.src_k);
   double new_distance = cdm_.cached_distances_lut_[di][dj][dk];
-  double old_distance = getOccDist(i, j, k);
-  if (old_distance - new_distance > max_occ_dist_ratio_)
+  double old_distance = getDistanceToObject(i, j, k);
+  if (old_distance - new_distance > max_distance_ratio_)
   {
-    setOccDist(i, j, k, new_distance);
+    setDistanceToObject(i, j, k, new_distance);
     OctoMapCellData cell = OctoMapCellData();
     cell.i = i;
     cell.j = j;
@@ -312,7 +312,7 @@ void OctoMap::enqueue(const int shift_index, const OctoMapCellData& current_cell
 }
 
 // Sets the distance from the voxel to the nearest object in the static map
-void OctoMap::setOccDist(int i, int j, int k, double d)
+void OctoMap::setDistanceToObject(int i, int j, int k, double d)
 {
   int i_shifted = i - cropped_min_cells_[0];
   int j_shifted = j - cropped_min_cells_[1];
@@ -326,25 +326,26 @@ void OctoMap::setOccDist(int i, int j, int k, double d)
     distance_ratios_.resize(distances_lut_start_index + num_z_column_indices_, std::numeric_limits<uint8_t>::max());
   }
   ROS_ASSERT(d >= 0.0);
-  d = std::min(d, max_occ_dist_);
-  uint8_t distance_ratio = static_cast<int>(std::floor(d / max_occ_dist_ * std::numeric_limits<uint8_t>::max()));
+  d = std::min(d, max_distance_to_object_);
+  d = d / max_distance_to_object_ * std::numeric_limits<uint8_t>::max();
+  uint8_t distance_ratio = static_cast<int>(std::floor(d));
   distance_ratios_[distances_lut_start_index + k_shifted] = distance_ratio;
 }
 
 // returns the distance from the 3d voxel to the nearest object in the static map
-double OctoMap::getOccDist(int i, int j, int k)
+double OctoMap::getDistanceToObject(int i, int j, int k)
 {
-  // Checking if distances  lut is created first will prevent checking validity while creating distances lut.
+  // Checking if distances lut is created first will prevent checking validity while creating distances lut.
   // The distances lut container is assumed to not send invalid coordinates and checking every time is inefficient.
   if(distances_lut_created_ and !isVoxelValid(i, j, k))
-    return max_occ_dist_;
+    return max_distance_to_object_;
   int i_shifted = i - cropped_min_cells_[0];
   int j_shifted = j - cropped_min_cells_[1];
   int k_shifted = k - cropped_min_cells_[2];
   uint32_t pose_index = makePoseIndex(i_shifted, j_shifted);
   uint32_t distances_lut_start_index = pose_indices_[pose_index];
   uint8_t distance_ratio = distance_ratios_[distances_lut_start_index + k_shifted];
-  double distance = distance_ratio * max_occ_dist_ratio_;
+  double distance = distance_ratio * max_distance_ratio_;
   return distance;
 }
 
@@ -370,8 +371,8 @@ void OctoMap::publishDistancesLUT()
     {
       for(int k = cropped_min_cells_[2]; k <= cropped_max_cells_[2]; k++)
       {
-        double d = getOccDist(i, j, k);
-        if(count < max_count and d < max_occ_dist_)
+        double d = getDistanceToObject(i, j, k);
+        if(count < max_count and d < max_distance_to_object_)
         {
           map_coords[0] = i;
           map_coords[1] = j;

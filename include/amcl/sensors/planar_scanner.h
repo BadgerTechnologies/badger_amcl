@@ -62,14 +62,14 @@ public:
 
   void setModelBeam(double z_hit, double z_short, double z_max, double z_rand, double sigma_hit, double labda_short);
 
-  void setModelLikelihoodField(double z_hit, double z_rand, double sigma_hit, double max_occ_dist);
+  void setModelLikelihoodField(double z_hit, double z_rand, double sigma_hit, double max_distance_to_object);
 
   // a more probabilistically correct model - also with the option to do beam skipping
-  void setModelLikelihoodFieldProb(double z_hit, double z_rand, double sigma_hit, double max_occ_dist, bool do_beamskip,
-                                   double beam_skip_distance, double beam_skip_threshold,
+  void setModelLikelihoodFieldProb(double z_hit, double z_rand, double sigma_hit, double max_distance_to_object,
+                                   bool do_beamskip, double beam_skip_distance, double beam_skip_threshold,
                                    double beam_skip_error_threshold);
 
-  void setModelLikelihoodFieldGompertz(double z_hit, double z_rand, double sigma_hit, double max_occ_dist,
+  void setModelLikelihoodFieldGompertz(double z_hit, double z_rand, double sigma_hit, double max_distance_to_object,
                                        double gompertz_a, double gompertz_b, double gompertz_c, double input_shift,
                                        double input_scale, double output_shift);
 

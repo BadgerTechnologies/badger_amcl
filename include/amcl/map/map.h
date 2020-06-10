@@ -49,7 +49,7 @@ protected:
   double resolution_;
   // Max distance at which we care about obstacles, for constructing
   // likelihood field
-  double max_occ_dist_;
+  double max_distance_to_object_;
   std::atomic<bool> distances_lut_created_;
 };
 }  // namespace amcl

@@ -68,18 +68,18 @@ public:
   virtual std::vector<int> getSize();
   virtual void setSize(std::vector<int> size_vec);
   // Update the distance values
-  virtual void updateDistancesLUT(double max_occ_dist);
+  virtual void updateDistancesLUT(double max_distance_to_object);
   // Extract a single range reading from the map
   virtual double calcRange(double ox, double oy, double oa, double max_range);
   // Compute the cell index for the given map coords.
   virtual unsigned int computeCellIndex(int i, int j);
-  virtual double getMaxOccDist();
+  virtual double getMaxDistanceToObject();
   virtual void initCells(int num);
   virtual MapCellState getCellState(int i, int j);
   virtual void setCellState(int index, MapCellState state);
   // This function is called very frequently.
   // Do not make it virtual as this would hinder performance.
-  float getOccDist(int i, int j);
+  float getDistanceToObject(int i, int j);
 
 protected:
   struct OccupancyMapCellData;
@@ -111,12 +111,12 @@ protected:
     int src_i, src_j;
     inline bool operator<(const OccupancyMapCellData& b) const
     {
-      return occ_map->getOccDist(i, j) > b.occ_map->getOccDist(b.i, b.j);
+      return occ_map->getDistanceToObject(i, j) > b.occ_map->getDistanceToObject(b.i, b.j);
     }
   };
 
 private:
-  inline void setMapOccDist(int i, int j, float d);
+  inline void setDistanceToObject(int i, int j, float d);
   inline void updateNode(int i, int j, const OccupancyMapCellData& current_cell,
                          std::priority_queue<OccupancyMapCellData>& q, std::vector<bool>& marked);
   std::vector<int> map_vec_;
