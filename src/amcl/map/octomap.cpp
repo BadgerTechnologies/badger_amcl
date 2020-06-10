@@ -37,9 +37,9 @@ namespace badger_amcl
 OctoMap::OctoMap(double resolution)
     : OctoMap(resolution, false) {}
 
-OctoMap::OctoMap(double resolution, bool publish_cspace)
+OctoMap::OctoMap(double resolution, bool publish_distances_lut)
     : Map(resolution),
-      publish_cspace_(publish_cspace),
+      publish_distances_lut_(publish_distances_lut),
       cdm_(resolution, 0.0)
 {
   cropped_min_cells_ = std::vector<int>(3);
@@ -146,24 +146,24 @@ void OctoMap::setMapBounds(const std::vector<double>& map_min, const std::vector
   map_cells_width_ = cropped_max_cells_[0] - cropped_min_cells_[0] + 1;
   num_poses_ = map_cells_width_ * (cropped_max_cells_[1] - cropped_min_cells_[1] + 1);
   num_z_column_indices_ = cropped_max_cells_[2] - cropped_min_cells_[2] + 1;
-  updateCSpace();
+  updateDistancesLUT();
 }
 
 CachedDistanceOctoMap::CachedDistanceOctoMap(double resolution, double max_dist)
     : resolution_(resolution), max_dist_(max_dist)
 {
   cell_radius_ = static_cast<int>(std::floor(max_dist / resolution));
-  cached_distances_.resize(cell_radius_ + 2);
+  cached_distances_lut_.resize(cell_radius_ + 2);
   for (int i = 0; i <= cell_radius_ + 1; i++)
   {
-    cached_distances_[i].resize(cell_radius_ + 2);
+    cached_distances_lut_[i].resize(cell_radius_ + 2);
     for (int j = 0; j <= cell_radius_ + 1; j++)
     {
-      cached_distances_[i][j].resize(cell_radius_ + 2);
+      cached_distances_lut_[i][j].resize(cell_radius_ + 2);
       for (int k = 0; k <= cell_radius_ + 1; k++)
       {
         double distance = std::sqrt(i * i + j * j + k * k) * resolution;
-        cached_distances_[i][j][k] = distance;
+        cached_distances_lut_[i][j][k] = distance;
       }
     }
   }
@@ -171,15 +171,15 @@ CachedDistanceOctoMap::CachedDistanceOctoMap(double resolution, double max_dist)
 
 // Creates the distances lookup object populated with the distance from
 // each voxel to the nearest object in the static map
-void OctoMap::updateCSpace()
+void OctoMap::updateDistancesLUT()
 {
   if (max_occ_dist_ == 0.0)
   {
-    ROS_DEBUG("Failed to update cspace, max occ dist is 0");
+    ROS_DEBUG("Failed to update distances lut, max occ dist is 0");
     return;
   }
 
-  ROS_INFO("Updating OctoMap CSpace");
+  ROS_INFO("Updating OctoMap Distances LUT");
   CellDataQueue q = CellDataQueue();
   pose_indices_.clear();
   pose_indices_.resize(num_poses_, 0);
@@ -197,13 +197,13 @@ void OctoMap::updateCSpace()
   octree_.reset();
   ROS_INFO("Iterating empty cells");
   iterateEmptyCells(q);
-  ROS_INFO("Done updating OctoMap CSpace");
-  if (publish_cspace_)
+  ROS_INFO("Done updating OctoMap Distances Lookup Table");
+  if (publish_distances_lut_)
   {
-    publishCSpace();
+    publishDistancesLUT();
     ROS_INFO("Octree published");
   }
-  cspace_created_ = true;
+  distances_lut_created_ = true;
 }
 
 void OctoMap::iterateObstacleCells(CellDataQueue& q)
@@ -295,7 +295,7 @@ void OctoMap::enqueue(const int shift_index, const OctoMapCellData& current_cell
   int di = std::abs(i - current_cell.src_i);
   int dj = std::abs(j - current_cell.src_j);
   int dk = std::abs(k - current_cell.src_k);
-  double new_distance = cdm_.cached_distances_[di][dj][dk];
+  double new_distance = cdm_.cached_distances_lut_[di][dj][dk];
   double old_distance = getOccDist(i, j, k);
   if (old_distance - new_distance > max_occ_dist_ratio_)
   {
@@ -318,32 +318,32 @@ void OctoMap::setOccDist(int i, int j, int k, double d)
   int j_shifted = j - cropped_min_cells_[1];
   int k_shifted = k - cropped_min_cells_[2];
   uint32_t pose_index = makePoseIndex(i_shifted, j_shifted);
-  uint32_t distances_start_index = pose_indices_[pose_index];
-  if(distances_start_index == 0)
+  uint32_t distances_lut_start_index = pose_indices_[pose_index];
+  if(distances_lut_start_index == 0)
   {
-    distances_start_index = distance_ratios_.size();
-    pose_indices_[pose_index] = distances_start_index;
-    distance_ratios_.resize(distances_start_index + num_z_column_indices_, std::numeric_limits<uint8_t>::max());
+    distances_lut_start_index = distance_ratios_.size();
+    pose_indices_[pose_index] = distances_lut_start_index;
+    distance_ratios_.resize(distances_lut_start_index + num_z_column_indices_, std::numeric_limits<uint8_t>::max());
   }
   ROS_ASSERT(d >= 0.0);
   d = std::min(d, max_occ_dist_);
   uint8_t distance_ratio = static_cast<int>(std::floor(d / max_occ_dist_ * std::numeric_limits<uint8_t>::max()));
-  distance_ratios_[distances_start_index + k_shifted] = distance_ratio;
+  distance_ratios_[distances_lut_start_index + k_shifted] = distance_ratio;
 }
 
 // returns the distance from the 3d voxel to the nearest object in the static map
 double OctoMap::getOccDist(int i, int j, int k)
 {
-  // Checking if cspace is created first will prevent checking validity while creating the cspace.
-  // The cspace is assumed to not send invalid coordinates and checking every time is inefficient.
-  if(cspace_created_ and !isVoxelValid(i, j, k))
+  // Checking if distances  lut is created first will prevent checking validity while creating distances lut.
+  // The distances lut container is assumed to not send invalid coordinates and checking every time is inefficient.
+  if(distances_lut_created_ and !isVoxelValid(i, j, k))
     return max_occ_dist_;
   int i_shifted = i - cropped_min_cells_[0];
   int j_shifted = j - cropped_min_cells_[1];
   int k_shifted = k - cropped_min_cells_[2];
   uint32_t pose_index = makePoseIndex(i_shifted, j_shifted);
-  uint32_t distances_start_index = pose_indices_[pose_index];
-  uint8_t distance_ratio = distance_ratios_[distances_start_index + k_shifted];
+  uint32_t distances_lut_start_index = pose_indices_[pose_index];
+  uint8_t distance_ratio = distance_ratios_[distances_lut_start_index + k_shifted];
   double distance = distance_ratio * max_occ_dist_ratio_;
   return distance;
 }
@@ -353,7 +353,7 @@ uint32_t OctoMap::makePoseIndex(int i, int j)
   return j * map_cells_width_ + i;
 }
 
-void OctoMap::publishCSpace()
+void OctoMap::publishDistancesLUT()
 {
   using PointCloud = pcl::PointCloud<pcl::PointXYZI>;
   PointCloud::Ptr cloud(new PointCloud);
@@ -388,8 +388,8 @@ void OctoMap::publishCSpace()
     }
   }
   cloud->width = count / cloud->height;
-  distances_pub_ = nh_.advertise<PointCloud>("distances_cloud", 1, true);
-  distances_pub_.publish(cloud);
+  distances_lut_pub_ = nh_.advertise<PointCloud>("distances_lut_cloud", 1, true);
+  distances_lut_pub_.publish(cloud);
   ROS_INFO_STREAM("Publishing cloud of size: " << cloud->points.size());
 }
 

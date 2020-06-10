@@ -40,7 +40,7 @@ public:
   // Convert from world coords to map coords
   virtual void convertWorldToMap(const std::vector<double>& world_coords, std::vector<int>* map_coords) = 0;
 
-  virtual bool isCSpaceCreated();
+  virtual bool isDistancesLUTCreated();
   virtual pcl::PointXYZ getOrigin();
 
 protected:
@@ -50,7 +50,7 @@ protected:
   // Max distance at which we care about obstacles, for constructing
   // likelihood field
   double max_occ_dist_;
-  std::atomic<bool> cspace_created_;
+  std::atomic<bool> distances_lut_created_;
 };
 }  // namespace amcl
 

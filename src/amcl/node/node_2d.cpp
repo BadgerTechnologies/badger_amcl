@@ -395,9 +395,9 @@ bool Node2D::isMapInitialized()
   {
     return false;
   }
-  if (not map_->isCSpaceCreated())
+  if (not map_->isDistancesLUTCreated())
   {
-    ROS_DEBUG("CSpace not yet created");
+    ROS_DEBUG("Distances not yet created");
     return false;
   }
   return true;

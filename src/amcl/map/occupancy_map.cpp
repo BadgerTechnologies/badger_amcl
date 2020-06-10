@@ -70,7 +70,7 @@ float OccupancyMap::getOccDist(int i, int j)
   map_vec_[1] = j;
   if (isValid(map_vec_))
   {
-    return distances_[computeCellIndex(i, j)];
+    return distances_lut_[computeCellIndex(i, j)];
   }
   return max_occ_dist_;
 }
@@ -126,40 +126,40 @@ CachedDistanceOccupancyMap::CachedDistanceOccupancyMap(double resolution, double
     : resolution_(resolution), max_dist_(max_dist)
 {
   cell_radius_ = static_cast<int>(std::floor(max_dist / resolution));
-  cached_distances_.resize(cell_radius_ + 2);
+  cached_distances_lut_.resize(cell_radius_ + 2);
   for (int i = 0; i <= cell_radius_ + 1; i++)
   {
-    cached_distances_[i].resize(cell_radius_ + 2);
+    cached_distances_lut_[i].resize(cell_radius_ + 2);
     for (int j = 0; j <= cell_radius_ + 1; j++)
     {
-      cached_distances_[i][j] = std::sqrt(i * i + j * j);
+      cached_distances_lut_[i][j] = std::sqrt(i * i + j * j);
     }
   }
 }
 
-// Update the cspace distance values
-void OccupancyMap::updateCSpace(double max_occ_dist)
+// Update the distance values
+void OccupancyMap::updateDistancesLUT(double max_occ_dist)
 {
   max_occ_dist_ = max_occ_dist;
   if(max_occ_dist_ == 0.0)
   {
-    ROS_DEBUG("Failed to update cspace, max occ dist is 0");
+    ROS_DEBUG("Failed to update distances lut, max occ dist is 0");
     return;
   }
 
-  ROS_INFO("Updating Occupancy Map CSpace");
+  ROS_INFO("Updating Occupancy Map Distances LUT");
   std::priority_queue<OccupancyMapCellData> q = std::priority_queue<OccupancyMapCellData>();
   unsigned s = unsigned(size_x_) * size_y_;
   std::vector<bool> marked = std::vector<bool>(s, false);
-  distances_.resize(unsigned(size_x_) * size_y_);
+  distances_lut_.resize(unsigned(size_x_) * size_y_);
   if ((cdm_.resolution_ != resolution_) || (cdm_.max_dist_ != max_occ_dist_))
   {
     cdm_ = CachedDistanceOccupancyMap(resolution_, max_occ_dist_);
   }
   iterateObstacleCells(q, marked);
   iterateEmptyCells(q, marked);
-  cspace_created_ = true;
-  ROS_INFO("Done updating Occupancy Map CSpace");
+  distances_lut_created_ = true;
+  ROS_INFO("Done updating Occupancy Map Distances Lookup Table");
 }
 
 void OccupancyMap::iterateObstacleCells(std::priority_queue<OccupancyMapCellData>& q,
@@ -229,7 +229,7 @@ bool OccupancyMap::enqueue(int i, int j, int src_i, int src_j,
 {
   int di = std::abs(i - src_i);
   int dj = std::abs(j - src_j);
-  double distance = cdm_.cached_distances_[di][dj];
+  double distance = cdm_.cached_distances_lut_[di][dj];
   if (distance <= cdm_.cell_radius_)
   {
     setMapOccDist(i, j, distance * resolution_);
@@ -250,7 +250,7 @@ void OccupancyMap::setMapOccDist(int i, int j, float d)
   map_vec_[1] = j;
   if (isValid(map_vec_))
   {
-    distances_[computeCellIndex(i, j)] = d;
+    distances_lut_[computeCellIndex(i, j)] = d;
   }
 }
 

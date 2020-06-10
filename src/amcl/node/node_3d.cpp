@@ -245,7 +245,7 @@ void Node3D::initFromNewMap()
   }
   else if(!wait_for_occupancy_map_)
   {
-    map_->updateCSpace();
+    map_->updateDistancesLUT();
     updateFreeSpaceIndices();
   }
 }
@@ -372,9 +372,9 @@ bool Node3D::isMapInitialized()
     ROS_DEBUG("Map is null");
     return false;
   }
-  if (not map_->isCSpaceCreated())
+  if (not map_->isDistancesLUTCreated())
   {
-    ROS_DEBUG("CSpace not yet created");
+    ROS_DEBUG("Distances not yet created");
     return false;
   }
   return true;

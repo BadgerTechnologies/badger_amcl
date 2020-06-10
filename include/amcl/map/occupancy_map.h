@@ -45,7 +45,7 @@ class CachedDistanceOccupancyMap
 public:
   CachedDistanceOccupancyMap(double resolution, double max_dist);
 
-  std::vector<std::vector<double>> cached_distances_;
+  std::vector<std::vector<double>> cached_distances_lut_;
   double resolution_;
   double max_dist_;
   int cell_radius_;
@@ -67,8 +67,8 @@ public:
   virtual void setOrigin(const pcl::PointXYZ& origin);
   virtual std::vector<int> getSize();
   virtual void setSize(std::vector<int> size_vec);
-  // Update the cspace distance values
-  virtual void updateCSpace(double max_occ_dist);
+  // Update the distance values
+  virtual void updateDistancesLUT(double max_occ_dist);
   // Extract a single range reading from the map
   virtual double calcRange(double ox, double oy, double oa, double max_range);
   // Compute the cell index for the given map coords.
@@ -98,7 +98,7 @@ protected:
   std::vector<MapCellState> cells_;
 
   // The map distance data, stored as a grid
-  std::vector<float> distances_;
+  std::vector<float> distances_lut_;
 
   CachedDistanceOccupancyMap cdm_;
 

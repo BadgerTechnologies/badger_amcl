@@ -70,7 +70,7 @@ void PlanarScanner::setModelLikelihoodField(double z_hit, double z_rand, double 
   z_hit_ = z_hit;
   z_rand_ = z_rand;
   sigma_hit_ = sigma_hit;
-  map_->updateCSpace(max_occ_dist);
+  map_->updateDistancesLUT(max_occ_dist);
 }
 
 void PlanarScanner::setModelLikelihoodFieldProb(double z_hit, double z_rand, double sigma_hit,
@@ -87,7 +87,7 @@ void PlanarScanner::setModelLikelihoodFieldProb(double z_hit, double z_rand, dou
   beam_skip_distance_ = beam_skip_distance;
   beam_skip_threshold_ = beam_skip_threshold;
   beam_skip_error_threshold_ = beam_skip_error_threshold;
-  map_->updateCSpace(max_occ_dist);
+  map_->updateDistancesLUT(max_occ_dist);
 }
 
 void PlanarScanner::setModelLikelihoodFieldGompertz(double z_hit, double z_rand, double sigma_hit,
@@ -108,7 +108,7 @@ void PlanarScanner::setModelLikelihoodFieldGompertz(double z_hit, double z_rand,
   input_shift_ = input_shift;
   input_scale_ = input_scale;
   output_shift_ = output_shift;
-  map_->updateCSpace(max_occ_dist);
+  map_->updateDistancesLUT(max_occ_dist);
 }
 
 void PlanarScanner::setMapFactors(double off_map_factor, double non_free_space_factor,

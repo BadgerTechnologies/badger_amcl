@@ -27,7 +27,7 @@ namespace badger_amcl
 Map::Map(double resolution) : resolution_(resolution)
 {
   origin_ = pcl::PointXYZ();
-  cspace_created_ = false;
+  distances_lut_created_ = false;
 }
 
 pcl::PointXYZ Map::getOrigin()
@@ -35,9 +35,9 @@ pcl::PointXYZ Map::getOrigin()
   return origin_;
 }
 
-bool Map::isCSpaceCreated()
+bool Map::isDistancesLUTCreated()
 {
-  return cspace_created_;
+  return distances_lut_created_;
 }
 
 }  // namespace amcl
