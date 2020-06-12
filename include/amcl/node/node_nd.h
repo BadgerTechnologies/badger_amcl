@@ -20,8 +20,9 @@
 #ifndef AMCL_NODE_NODE_ND_H
 #define AMCL_NODE_NODE_ND_H
 
+#include <Eigen/Dense>
+
 #include "badger_amcl/AMCLConfig.h"
-#include "pf/pf_vector.h"
 
 namespace badger_amcl
 {
@@ -32,7 +33,7 @@ public:
   virtual ~NodeND() = default;
   virtual void reconfigure(AMCLConfig& config) = 0;
   virtual void globalLocalizationCallback() = 0;
-  virtual double scorePose(const PFVector& p) = 0;
+  virtual double scorePose(const Eigen::Vector3d& p) = 0;
 };
 
 }  // namespace amcl

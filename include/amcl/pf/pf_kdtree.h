@@ -24,7 +24,7 @@
 #include <memory>
 #include <deque>
 
-#include "pf/pf_vector.h"
+#include <Eigen/Dense>
 
 namespace badger_amcl
 {
@@ -64,13 +64,13 @@ public:
   void clearKDTree();
 
   // Insert a pose into the tree
-  void insertPose(PFVector pose, double value);
+  void insertPose(const Eigen::Vector3d& pose, double value);
 
   // Cluster the leaves in the tree
   void cluster();
 
   // Determine the cluster label for the given pose
-  int getCluster(PFVector pose);
+  int getCluster(const Eigen::Vector3d& pose);
 
   int getLeafCount();
 

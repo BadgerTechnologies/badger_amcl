@@ -24,44 +24,44 @@
 
 #include <cmath>
 
+#include <Eigen/Eigenvalues>
+
 namespace badger_amcl
 {
 
-PDFGaussian::PDFGaussian(PFVector x, PFMatrix cx)
+PDFGaussian::PDFGaussian(const Eigen::Vector3d& x, const Eigen::Matrix3d& cx)
 {
-  PFMatrix m;
+  Eigen::Matrix3d m;
 
   x_ = x;
   cx_ = cx;
 
   // Decompose the convariance matrix into a rotation
   // matrix and a diagonal matrix.
-  cx_.decompose(&cr_, &m);
-  cd_.v[0] = std::sqrt(m.m[0][0]);
-  cd_.v[1] = std::sqrt(m.m[1][1]);
-  cd_.v[2] = std::sqrt(m.m[2][2]);
+  decompose(cx_, &cr_, &m);
+  cd_[0] = std::sqrt(m(0, 0));
+  cd_[1] = std::sqrt(m(1, 1));
+  cd_[2] = std::sqrt(m(2, 2));
 }
 
 // Generate a sample from the the pdf.
-PFVector PDFGaussian::sample()
+void PDFGaussian::sample(Eigen::Vector3d* v)
 {
   int i, j;
-  PFVector r;
-  PFVector v;
+  Eigen::Vector3d r;
 
   // Generate a random vector
   for (i = 0; i < 3; i++)
   {
-    r.v[i] = PDFGaussian::draw(cd_.v[i]);
+    r[i] = PDFGaussian::draw(cd_[i]);
   }
 
   for (i = 0; i < 3; i++)
   {
-    v.v[i] = x_.v[i];
+    (*v)(i) = x_[i];
     for (j = 0; j < 3; j++)
-      v.v[i] += cr_.m[i][j] * r.v[j];
+      (*v)(i) += cr_(i, j) * r[j];
   }
-  return v;
 }
 
 // Draw randomly from a zero-mean Gaussian distribution, with standard
@@ -88,6 +88,36 @@ double PDFGaussian::draw(double sigma)
   } while (w > 1.0 || w == 0.0);
 
   return (sigma * x2 * std::sqrt(-2.0 * std::log(w) / w));
+}
+
+void PDFGaussian::decompose(const Eigen::Matrix3d& m, Eigen::Matrix3d* r, Eigen::Matrix3d* d)
+{
+  int i, j;
+
+  Eigen::Matrix3d aa;
+  Eigen::Vector3cd eval;
+  Eigen::Matrix3cd evec;
+
+  for (i = 0; i < 3; i++)
+  {
+    for (j = 0; j < 3; j++)
+    {
+      aa(i, j) = m(i, j);
+    }
+  }
+
+  Eigen::EigenSolver<Eigen::MatrixXd> solver(aa, true);
+  eval = solver.eigenvalues();
+  evec = solver.eigenvectors();
+
+  for (i = 0; i < 3; i++)
+  {
+    (*d)(i, i) = eval[i].real();
+    for (j = 0; j < 3; j++)
+    {
+      (*r)(i, j) = evec(i, j).real();
+    }
+  }
 }
 
 }  // namespace amcl

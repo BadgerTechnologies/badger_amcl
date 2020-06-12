@@ -256,14 +256,14 @@ void Node::reconfigureCB(AMCLConfig& config, uint32_t level)
   pf_->setResampleModel(resample_model_type_);
 
   // Initialize the filter
-  PFVector pf_init_pose_mean;
-  pf_init_pose_mean.v[0] = last_published_pose_->pose.pose.position.x;
-  pf_init_pose_mean.v[1] = last_published_pose_->pose.pose.position.y;
-  pf_init_pose_mean.v[2] = tf::getYaw(last_published_pose_->pose.pose.orientation);
-  PFMatrix pf_init_pose_cov;
-  pf_init_pose_cov.m[0][0] = last_published_pose_->pose.covariance[COVARIANCE_XX];
-  pf_init_pose_cov.m[1][1] = last_published_pose_->pose.covariance[COVARIANCE_YY];
-  pf_init_pose_cov.m[2][2] = last_published_pose_->pose.covariance[COVARIANCE_AA];
+  Eigen::Vector3d pf_init_pose_mean;
+  pf_init_pose_mean[0] = last_published_pose_->pose.pose.position.x;
+  pf_init_pose_mean[1] = last_published_pose_->pose.pose.position.y;
+  pf_init_pose_mean[2] = tf::getYaw(last_published_pose_->pose.pose.orientation);
+  Eigen::Matrix3d pf_init_pose_cov;
+  pf_init_pose_cov(0, 0) = last_published_pose_->pose.covariance[COVARIANCE_XX];
+  pf_init_pose_cov(1, 1) = last_published_pose_->pose.covariance[COVARIANCE_YY];
+  pf_init_pose_cov(2, 2) = last_published_pose_->pose.covariance[COVARIANCE_AA];
   pf_->init(pf_init_pose_mean, pf_init_pose_cov);
   odom_init_ = false;
 
@@ -290,10 +290,10 @@ bool Node::updatePf(const ros::Time& t, std::vector<bool>& scanners_update, int 
                     int* resample_count, bool* force_publication, bool* force_update)
 {
   // Where the robot was when this scan was taken
-  PFVector pose;
+  Eigen::Vector3d pose;
   if (getOdomPose(t, &pose))
   {
-    PFVector delta;
+    Eigen::Vector3d delta;
     if(odom_init_)
     {
       computeDelta(pose, &delta);
@@ -331,8 +331,8 @@ void Node::publishParticleCloud()
   cloud_msg.poses.resize(set->sample_count);
   for (int i = 0; i < set->sample_count; i++)
   {
-    tf::poseTFToMsg(tf::Pose(tf::createQuaternionFromYaw(set->samples[i].pose.v[2]),
-                             tf::Vector3(set->samples[i].pose.v[0], set->samples[i].pose.v[1], 0)),
+    tf::poseTFToMsg(tf::Pose(tf::createQuaternionFromYaw(set->samples[i].pose[2]),
+                             tf::Vector3(set->samples[i].pose[0], set->samples[i].pose[1], 0)),
                     cloud_msg.poses[i]);
   }
   particlecloud_pub_.publish(cloud_msg);
@@ -344,7 +344,7 @@ void Node::publishParticleCloud()
   }
 }
 
-void Node::updatePose(const PFVector& max_hyp_mean, const ros::Time& stamp)
+void Node::updatePose(const Eigen::Vector3d& max_hyp_mean, const ros::Time& stamp)
 {
   std::shared_ptr<geometry_msgs::PoseWithCovarianceStamped> p = (
           std::make_shared<geometry_msgs::PoseWithCovarianceStamped>());
@@ -352,9 +352,9 @@ void Node::updatePose(const PFVector& max_hyp_mean, const ros::Time& stamp)
   p->header.frame_id = global_frame_id_;
   p->header.stamp = stamp;
   // Copy in the pose
-  p->pose.pose.position.x = max_hyp_mean.v[0];
-  p->pose.pose.position.y = max_hyp_mean.v[1];
-  tf::quaternionTFToMsg(tf::createQuaternionFromYaw(max_hyp_mean.v[2]), p->pose.pose.orientation);
+  p->pose.pose.position.x = max_hyp_mean[0];
+  p->pose.pose.position.y = max_hyp_mean[1];
+  tf::quaternionTFToMsg(tf::createQuaternionFromYaw(max_hyp_mean[2]), p->pose.pose.orientation);
   // Copy in the covariance, converting from 3-D to 6-D
   std::shared_ptr<PFSampleSet> set = pf_->getCurrentSet();
   for (int i = 0; i < 2; i++)
@@ -363,12 +363,12 @@ void Node::updatePose(const PFVector& max_hyp_mean, const ros::Time& stamp)
     {
       // Report the overall filter covariance, rather than the
       // covariance for the highest-weight cluster
-      p->pose.covariance[6 * i + j] = set->cov.m[i][j];
+      p->pose.covariance[6 * i + j] = set->cov(i, j);
     }
   }
   // Report the overall filter covariance, rather than the
   // covariance for the highest-weight cluster
-  p->pose.covariance[COVARIANCE_AA] = set->cov.m[2][2];
+  p->pose.covariance[COVARIANCE_AA] = set->cov(2, 2);
   publishPose(*p);
   last_published_pose_ = p;
 }
@@ -692,14 +692,21 @@ void Node::initFromNewMap(std::shared_ptr<Map> new_map, bool use_initial_pose)
   pf_->setPopulationSizeParameters(pf_err_, pf_z_);
   pf_->setResampleModel(resample_model_type_);
 
-  PFVector pf_init_pose_mean;
-  pf_init_pose_mean.v[0] = init_pose_[0];
-  pf_init_pose_mean.v[1] = init_pose_[1];
-  pf_init_pose_mean.v[2] = init_pose_[2];
-  PFMatrix pf_init_pose_cov;
-  pf_init_pose_cov.m[0][0] = init_cov_[0];
-  pf_init_pose_cov.m[1][1] = init_cov_[1];
-  pf_init_pose_cov.m[2][2] = init_cov_[2];
+  Eigen::Vector3d pf_init_pose_mean;
+  pf_init_pose_mean[0] = init_pose_[0];
+  pf_init_pose_mean[1] = init_pose_[1];
+  pf_init_pose_mean[2] = init_pose_[2];
+  Eigen::Matrix3d pf_init_pose_cov;
+  for(int i = 0; i < 3; i++)
+  {
+    for(int j = 0; j < 3; j++)
+    {
+      pf_init_pose_cov(i, j) = 0.0;
+    }
+  }
+  pf_init_pose_cov(0, 0) = init_cov_[0];
+  pf_init_pose_cov(1, 1) = init_cov_[1];
+  pf_init_pose_cov(2, 2) = init_cov_[2];
   pf_->init(pf_init_pose_mean, pf_init_pose_cov);
   odom_init_ = false;
 
@@ -730,7 +737,7 @@ void Node::initOdomIntegrator()
 
 void Node::resetOdomIntegrator()
 {
-  odom_integrator_absolute_motion_ = PFVector();
+  odom_integrator_absolute_motion_ = Eigen::Vector3d();
 }
 
 void Node::integrateOdom(const nav_msgs::OdometryConstPtr& msg)
@@ -738,7 +745,7 @@ void Node::integrateOdom(const nav_msgs::OdometryConstPtr& msg)
   // Integrate absolute motion relative to the base,
   // by finding the delta from one odometry message to another.
   // NOTE: assume this odom topic is from our odom frame to our base frame.
-  PFVector pose;
+  Eigen::Vector3d pose;
   calcTfPose(msg, &pose);
 
   if (!odom_integrator_ready_)
@@ -753,29 +760,29 @@ void Node::integrateOdom(const nav_msgs::OdometryConstPtr& msg)
   odom_integrator_last_pose_ = pose;
 }
 
-void Node::calcTfPose(const nav_msgs::OdometryConstPtr& msg, PFVector* pose)
+void Node::calcTfPose(const nav_msgs::OdometryConstPtr& msg, Eigen::Vector3d* pose)
 {
   tf::Pose tf_pose;
   poseMsgToTF(msg->pose.pose, tf_pose);
-  pose->v[0] = tf_pose.getOrigin().x();
-  pose->v[1] = tf_pose.getOrigin().y();
+  (*pose)(0) = tf_pose.getOrigin().x();
+  (*pose)(1) = tf_pose.getOrigin().y();
   double yaw, pitch, roll;
   tf_pose.getBasis().getEulerYPR(yaw, pitch, roll);
-  pose->v[2] = yaw;
+  (*pose)(2) = yaw;
 }
 
-void Node::calcOdomDelta(const PFVector& pose)
+void Node::calcOdomDelta(const Eigen::Vector3d& pose)
 {
-  PFVector delta;
+  Eigen::Vector3d delta;
 
-  delta.v[0] = pose.v[0] - odom_integrator_last_pose_.v[0];
-  delta.v[1] = pose.v[1] - odom_integrator_last_pose_.v[1];
-  delta.v[2] = angles::shortest_angular_distance(odom_integrator_last_pose_.v[2], pose.v[2]);
+  delta[0] = pose[0] - odom_integrator_last_pose_[0];
+  delta[1] = pose[1] - odom_integrator_last_pose_[1];
+  delta[2] = angles::shortest_angular_distance(odom_integrator_last_pose_[2], pose[2]);
 
   // project bearing change onto average orientation, x is forward translation, y is strafe
   double delta_trans, delta_rot, delta_bearing;
-  delta_trans = std::sqrt(delta.v[0] * delta.v[0] + delta.v[1] * delta.v[1]);
-  delta_rot = delta.v[2];
+  delta_trans = std::sqrt(delta[0] * delta[0] + delta[1] * delta[1]);
+  delta_rot = delta[2];
   if (delta_trans < 1e-6)
   {
     // For such a small translation, we either didn't move or rotated in place.
@@ -784,17 +791,17 @@ void Node::calcOdomDelta(const PFVector& pose)
   }
   else
   {
-    double angle_a = std::atan2(delta.v[1], delta.v[0]);
-    double angle_b = odom_integrator_last_pose_.v[2] + delta_rot / 2;
+    double angle_a = std::atan2(delta[1], delta[0]);
+    double angle_b = odom_integrator_last_pose_[2] + delta_rot / 2;
     delta_bearing = angles::shortest_angular_distance(angle_b, angle_a);
   }
   double cs_bearing = std::cos(delta_bearing);
   double sn_bearing = std::sin(delta_bearing);
 
   // Accumulate absolute motion
-  odom_integrator_absolute_motion_.v[0] += std::fabs(delta_trans * cs_bearing);
-  odom_integrator_absolute_motion_.v[1] += std::fabs(delta_trans * sn_bearing);
-  odom_integrator_absolute_motion_.v[2] += std::fabs(delta_rot);
+  odom_integrator_absolute_motion_[0] += std::fabs(delta_trans * cs_bearing);
+  odom_integrator_absolute_motion_[1] += std::fabs(delta_trans * sn_bearing);
+  odom_integrator_absolute_motion_[2] += std::fabs(delta_rot);
 
   // We could also track velocity and acceleration here, for motion models that adjust for
   // velocity/acceleration. We could also track the covariance of the odometry message and
@@ -802,7 +809,7 @@ void Node::calcOdomDelta(const PFVector& pose)
   // reported covariance directly.
 }
 
-bool Node::getOdomPose(const ros::Time& t, PFVector* map_pose)
+bool Node::getOdomPose(const ros::Time& t, Eigen::Vector3d* map_pose)
 {
   // Get the robot's pose
   tf::Stamped<tf::Pose> ident(tf::Transform(tf::createIdentityQuaternion(), tf::Vector3(0, 0, 0)), t, base_frame_id_);
@@ -816,18 +823,18 @@ bool Node::getOdomPose(const ros::Time& t, PFVector* map_pose)
     ROS_INFO_STREAM("Failed to compute odom pose, skipping scan (" << e.what() << ")");
     return false;
   }
-  map_pose->v[0] = latest_odom_pose_.getOrigin().x();
-  map_pose->v[1] = latest_odom_pose_.getOrigin().y();
+  (*map_pose)(0) = latest_odom_pose_.getOrigin().x();
+  (*map_pose)(1) = latest_odom_pose_.getOrigin().y();
   double pitch, roll, yaw;
   latest_odom_pose_.getBasis().getEulerYPR(yaw, pitch, roll);
-  map_pose->v[2] = yaw;
+  (*map_pose)(2) = yaw;
   return true;
 }
 
 // Helper function to generate a random free-space pose
-PFVector Node::randomFreeSpacePose()
+Eigen::Vector3d Node::randomFreeSpacePose()
 {
-  PFVector p;
+  Eigen::Vector3d p;
   if (free_space_indices_.size() == 0)
   {
     ROS_WARN("Free space indices have not been initialized");
@@ -837,23 +844,23 @@ PFVector Node::randomFreeSpacePose()
   std::pair<int, int> free_point = free_space_indices_.at(rand_index);
   std::vector<double> p_vec(2);
   map_->convertMapToWorld({ free_point.first, free_point.second }, &p_vec);
-  p.v[0] = p_vec[0];
-  p.v[1] = p_vec[1];
-  p.v[2] = drand48() * 2 * M_PI - M_PI;
+  p[0] = p_vec[0];
+  p[1] = p_vec[1];
+  p[2] = drand48() * 2 * M_PI - M_PI;
   return p;
 }
 
 // Helper function to score a pose for uniform pose generation
-double Node::scorePose(const PFVector& p)
+double Node::scorePose(const Eigen::Vector3d& p)
 {
   return node_->scorePose(p);
 }
 
-PFVector Node::uniformPoseGenerator()
+Eigen::Vector3d Node::uniformPoseGenerator()
 {
   double good_weight = uniform_pose_starting_weight_threshold_;
   const double deweight_multiplier = uniform_pose_deweight_multiplier_;
-  PFVector p;
+  Eigen::Vector3d p;
   p = randomFreeSpacePose();
 
   // Check and see how "good" this pose is.
@@ -984,30 +991,30 @@ void Node::newInitialPoseSubscriber(const ros::SingleSubscriberPublisher& single
   }
 }
 
-void Node::computeDelta(const PFVector& pose, PFVector* delta)
+void Node::computeDelta(const Eigen::Vector3d& pose, Eigen::Vector3d* delta)
 {
   // Compute change in pose
-  delta->v[0] = pose.v[0] - pf_odom_pose_.v[0];
-  delta->v[1] = pose.v[1] - pf_odom_pose_.v[1];
-  delta->v[2] = angles::shortest_angular_distance(pf_odom_pose_.v[2], pose.v[2]);
+  (*delta)(0) = pose[0] - pf_odom_pose_[0];
+  (*delta)(1) = pose[1] - pf_odom_pose_[1];
+  (*delta)(2) = angles::shortest_angular_distance(pf_odom_pose_[2], pose[2]);
 }
 
-void Node::setScannersUpdateFlags(const PFVector& delta, std::vector<bool>& scanners_update, bool* force_update)
+void Node::setScannersUpdateFlags(const Eigen::Vector3d& delta, std::vector<bool>& scanners_update, bool* force_update)
 {
     // See if we should update the filter
     bool update;
     if (odom_integrator_enabled_)
     {
-      double abs_trans = std::sqrt(odom_integrator_absolute_motion_.v[0] * odom_integrator_absolute_motion_.v[0]
-                                   + odom_integrator_absolute_motion_.v[1] * odom_integrator_absolute_motion_.v[1]);
-      double abs_rot = odom_integrator_absolute_motion_.v[2];
+      double abs_trans = std::sqrt(odom_integrator_absolute_motion_[0] * odom_integrator_absolute_motion_[0]
+                                   + odom_integrator_absolute_motion_[1] * odom_integrator_absolute_motion_[1]);
+      double abs_rot = odom_integrator_absolute_motion_[2];
       update = abs_trans >= d_thresh_ || abs_rot >= a_thresh_;
     }
     else
     {
-      update = std::fabs(delta.v[0]) > d_thresh_
-                         || std::fabs(delta.v[1]) > d_thresh_
-                         || std::fabs(delta.v[2]) > a_thresh_;
+      update = std::fabs(delta[0]) > d_thresh_
+                         || std::fabs(delta[1]) > d_thresh_
+                         || std::fabs(delta[2]) > a_thresh_;
     }
     update = update || *force_update;
     *force_update = false;
@@ -1018,7 +1025,7 @@ void Node::setScannersUpdateFlags(const PFVector& delta, std::vector<bool>& scan
         scanners_update.at(i) = true;
 }
 
-void Node::updateOdom(const PFVector& pose, const PFVector &delta)
+void Node::updateOdom(const Eigen::Vector3d& pose, const Eigen::Vector3d& delta)
 {
   std::shared_ptr<OdomData> odata = std::make_shared<OdomData>();
   odata->pose = pose;
@@ -1030,9 +1037,9 @@ void Node::updateOdom(const PFVector& pose, const PFVector &delta)
   if (odom_integrator_enabled_)
   {
     geometry_msgs::Pose2D p;
-    p.x = odata->absolute_motion.v[0];
-    p.y = odata->absolute_motion.v[1];
-    p.theta = odata->absolute_motion.v[2];
+    p.x = odata->absolute_motion[0];
+    p.y = odata->absolute_motion[1];
+    p.theta = odata->absolute_motion[2];
     absolute_motion_pub_.publish(p);
   }
 
@@ -1042,7 +1049,7 @@ void Node::updateOdom(const PFVector& pose, const PFVector &delta)
   pf_odom_pose_ = pose;
 }
 
-void Node::initOdom(const PFVector& pose, std::vector<bool>& scanners_update,
+void Node::initOdom(const Eigen::Vector3d& pose, std::vector<bool>& scanners_update,
                     int* resample_count, bool* force_publication)
 {
   // Pose at last filter update
@@ -1150,20 +1157,22 @@ void Node::transformPoseToGlobalFrame(const geometry_msgs::PoseWithCovarianceSta
             pose.getOrigin().x(), pose.getOrigin().y(), getYaw(pose));
   ROS_INFO("Initial pose received by AMCL: (%.3f, %.3f)", pose.getOrigin().x(), pose.getOrigin().y());
   // Re-initialize the filter
-  PFVector pf_init_pose_mean;
-  pf_init_pose_mean.v[0] = pose.getOrigin().x();
-  pf_init_pose_mean.v[1] = pose.getOrigin().y();
-  pf_init_pose_mean.v[2] = getYaw(pose);
-  PFMatrix pf_init_pose_cov;
+  Eigen::Vector3d pf_init_pose_mean;
+  pf_init_pose_mean[0] = pose.getOrigin().x();
+  pf_init_pose_mean[1] = pose.getOrigin().y();
+  pf_init_pose_mean[2] = getYaw(pose);
+  Eigen::Matrix3d pf_init_pose_cov;
   // Copy in the covariance, converting from 6-D to 3-D
   for (int i = 0; i < 2; i++)
   {
     for (int j = 0; j < 2; j++)
     {
-      pf_init_pose_cov.m[i][j] = msg.pose.covariance[6 * i + j];
+      pf_init_pose_cov(i, j) = msg.pose.covariance[6 * i + j];
     }
+    pf_init_pose_cov(i, 2) = msg.pose.covariance[6 * i + 5];
+    pf_init_pose_cov(2, i) = msg.pose.covariance[6 * 5 + i];
   }
-  pf_init_pose_cov.m[2][2] = msg.pose.covariance[6 * 5 + 5];
+  pf_init_pose_cov(2, 2) = msg.pose.covariance[6 * 5 + 5];
   initial_pose_hyp_ = std::make_shared<PoseHypothesis>();
   initial_pose_hyp_->mean = pf_init_pose_mean;
   initial_pose_hyp_->covariance = pf_init_pose_cov;

@@ -289,16 +289,16 @@ std::shared_ptr<OccupancyMap> Node2D::convertMap(const nav_msgs::OccupancyGrid& 
 }
 
 // Helper function to score a pose for uniform pose generation
-double Node2D::scorePose(const PFVector& p)
+double Node2D::scorePose(const Eigen::Vector3d& p)
 {
   // There is no data to match, so return a perfect match
   double score = 1.0;
   if (latest_scan_data_ != NULL)
   {
     // Create a fake "sample set" of just this pose to score it.
-    fake_sample_.pose.v[0] = p.v[0];
-    fake_sample_.pose.v[1] = p.v[1];
-    fake_sample_.pose.v[2] = p.v[2];
+    fake_sample_.pose[0] = p[0];
+    fake_sample_.pose[1] = p[1];
+    fake_sample_.pose[2] = p[2];
     fake_sample_.weight = 1.0;
     fake_sample_set_->sample_count = 1;
     fake_sample_set_->samples = { fake_sample_ };
@@ -462,14 +462,14 @@ bool Node2D::initFrameToScanner(const std::string& frame_id, tf::Stamped<tf::Pos
 
 void Node2D::updateScannerPose(const tf::Stamped<tf::Pose>& scanner_pose, int scanner_index)
 {
-  PFVector scanner_pose_v;
-  scanner_pose_v.v[0] = scanner_pose.getOrigin().x();
-  scanner_pose_v.v[1] = scanner_pose.getOrigin().y();
+  Eigen::Vector3d scanner_pose_v;
+  scanner_pose_v[0] = scanner_pose.getOrigin().x();
+  scanner_pose_v[1] = scanner_pose.getOrigin().y();
   // planar scanner mounting angle gets computed later -> set to 0 here!
-  scanner_pose_v.v[2] = 0;
+  scanner_pose_v[2] = 0;
   scanners_[scanner_index]->setPlanarScannerPose(scanner_pose_v);
   ROS_DEBUG("Received planar scanner's pose wrt robot: %.3f %.3f %.3f",
-            scanner_pose_v.v[0], scanner_pose_v.v[1], scanner_pose_v.v[2]);
+            scanner_pose_v[0], scanner_pose_v[1], scanner_pose_v[2]);
 }
 
 bool Node2D::initLatestScanData(const sensor_msgs::LaserScanConstPtr& planar_scan,
@@ -552,7 +552,7 @@ void Node2D::resampleParticles()
 bool Node2D::resamplePose(const ros::Time& stamp)
 {
   double max_weight = 0.0;
-  PFVector max_pose;
+  Eigen::Vector3d max_pose;
   getMaxWeightPose(&max_weight, &max_pose);
   bool success = true;
   if(max_weight > 0.0)
@@ -565,7 +565,7 @@ bool Node2D::resamplePose(const ros::Time& stamp)
   return success;
 }
 
-void Node2D::getMaxWeightPose(double* max_weight_rtn, PFVector* max_pose)
+void Node2D::getMaxWeightPose(double* max_weight_rtn, Eigen::Vector3d* max_pose)
 {
   // Read out the current hypotheses
   double max_weight = 0.0;
@@ -576,7 +576,7 @@ void Node2D::getMaxWeightPose(double* max_weight_rtn, PFVector* max_pose)
   for (int hyp_count = 0; hyp_count < cluster_count; hyp_count++)
   {
     double weight;
-    PFVector pose_mean;
+    Eigen::Vector3d pose_mean;
     if (!pf_->getClusterStats(hyp_count, &weight, &pose_mean))
     {
       ROS_ERROR_STREAM("Couldn't get stats on cluster " << hyp_count);
@@ -596,9 +596,9 @@ void Node2D::getMaxWeightPose(double* max_weight_rtn, PFVector* max_pose)
   *max_pose = hyps[max_weight_hyp].mean;
 }
 
-bool Node2D::updatePose(const PFVector& max_pose, const ros::Time& stamp)
+bool Node2D::updatePose(const Eigen::Vector3d& max_pose, const ros::Time& stamp)
 {
-  ROS_DEBUG("Max weight pose: %.3f %.3f %.3f", max_pose.v[0], max_pose.v[1], max_pose.v[2]);
+  ROS_DEBUG("Max weight pose: %.3f %.3f %.3f", max_pose[0], max_pose[1], max_pose[2]);
   node_->updatePose(max_pose, stamp);
   bool success = true;
   // subtracting base to odom from map to base and send map to odom instead
@@ -607,8 +607,8 @@ bool Node2D::updatePose(const PFVector& max_pose, const ros::Time& stamp)
   {
     std::string odom_frame_id = node_->getOdomFrameId();
     std::string base_frame_id = node_->getBaseFrameId();
-    tf::Transform tmp_tf(tf::createQuaternionFromYaw(max_pose.v[2]),
-                         tf::Vector3(max_pose.v[0], max_pose.v[1], 0.0));
+    tf::Transform tmp_tf(tf::createQuaternionFromYaw(max_pose[2]),
+                         tf::Vector3(max_pose[0], max_pose[1], 0.0));
     tf::Stamped<tf::Pose> tmp_tf_stamped(tmp_tf.inverse(), stamp, base_frame_id);
     tf_.waitForTransform(base_frame_id, odom_frame_id, stamp, ros::Duration(1.0));
     tf_.transformPose(odom_frame_id, tmp_tf_stamped, odom_to_map);

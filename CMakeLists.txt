@@ -17,6 +17,7 @@ find_package(catkin REQUIRED
 
 find_package(Boost REQUIRED)
 find_package(OCTOMAP REQUIRED)
+find_package(Eigen3 REQUIRED)
 
 # dynamic reconfigure
 generate_dynamic_reconfigure_options(
@@ -44,14 +45,13 @@ include_directories(
     ${OCTOMAP_INCLUDE_DIRS}
     ${Boost_INCLUDE_DIRS}
     ${catkin_INCLUDE_DIRS}
+    ${EIGEN3_INCLUDE_DIRS}
 )
 
 add_library(badger_amcl_core
     src/amcl/pf/particle_filter.cpp
     src/amcl/pf/pf_kdtree.cpp
     src/amcl/pf/pdf_gaussian.cpp
-    src/amcl/pf/pf_vector.cpp
-    src/amcl/pf/eig3.cpp
     src/amcl/map/map.cpp
     src/amcl/map/occupancy_map.cpp
     src/amcl/map/octomap.cpp

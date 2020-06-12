@@ -24,6 +24,7 @@
 #include <cstdlib>
 #include <functional>
 
+#include <angles/angles.h>
 #include <ros/assert.h>
 #include <ros/console.h>
 
@@ -174,7 +175,7 @@ double PlanarScanner::calcBeamModel(std::shared_ptr<PlanarData> data,
   double obs_range, obs_bearing;
   double total_weight;
   PFSample* sample;
-  PFVector pose;
+  Eigen::Vector3d pose;
 
   total_weight = 0.0;
 
@@ -185,7 +186,7 @@ double PlanarScanner::calcBeamModel(std::shared_ptr<PlanarData> data,
     pose = sample->pose;
 
     // Take account of the planar scanner pose relative to the robot
-    pose = PFVector::pfVectorCoordAdd(planar_scanner_pose_, pose);
+    pose = coordAdd(planar_scanner_pose_, pose);
 
     p = 1.0;
 
@@ -196,7 +197,7 @@ double PlanarScanner::calcBeamModel(std::shared_ptr<PlanarData> data,
       obs_bearing = data->angles_[i];
 
       // Compute the range according to the map
-      map_range = map_->calcRange(pose.v[0], pose.v[1], pose.v[2] + obs_bearing, data->range_max_);
+      map_range = map_->calcRange(pose[0], pose[1], pose[2] + obs_bearing, data->range_max_);
       pz = 0.0;
 
       // Part 1: good, but noisy, hit
@@ -241,8 +242,8 @@ double PlanarScanner::calcLikelihoodFieldModel(std::shared_ptr<PlanarData> data,
   double obs_range, obs_bearing;
   double total_weight;
   PFSample* sample;
-  PFVector pose;
-  PFVector hit;
+  Eigen::Vector3d pose;
+  Eigen::Vector3d hit;
 
   total_weight = 0.0;
 
@@ -253,7 +254,7 @@ double PlanarScanner::calcLikelihoodFieldModel(std::shared_ptr<PlanarData> data,
     pose = sample->pose;
 
     // Take account of the planar scanner pose relative to the robot
-    pose = PFVector::pfVectorCoordAdd(planar_scanner_pose_, pose);
+    pose = coordAdd(planar_scanner_pose_, pose);
 
     p = 1.0;
 
@@ -283,12 +284,12 @@ double PlanarScanner::calcLikelihoodFieldModel(std::shared_ptr<PlanarData> data,
       pz = 0.0;
 
       // Compute the endpoint of the beam
-      hit.v[0] = pose.v[0] + obs_range * std::cos(pose.v[2] + obs_bearing);
-      hit.v[1] = pose.v[1] + obs_range * std::sin(pose.v[2] + obs_bearing);
+      hit[0] = pose[0] + obs_range * std::cos(pose[2] + obs_bearing);
+      hit[1] = pose[1] + obs_range * std::sin(pose[2] + obs_bearing);
 
       // Convert to map_ grid coords.
-      world_vec_[0] = hit.v[0];
-      world_vec_[1] = hit.v[1];
+      world_vec_[0] = hit[0];
+      world_vec_[1] = hit[1];
       map_->convertWorldToMap(world_vec_, &map_vec_);
 
       // Part 1: Get distance from the hit to closest obstacle.
@@ -330,8 +331,8 @@ double PlanarScanner::calcLikelihoodFieldModelProb(std::shared_ptr<PlanarData> d
   double obs_range, obs_bearing;
   double total_weight;
   PFSample* sample;
-  PFVector pose;
-  PFVector hit;
+  Eigen::Vector3d pose;
+  Eigen::Vector3d hit;
 
   total_weight = 0.0;
 
@@ -400,7 +401,7 @@ double PlanarScanner::calcLikelihoodFieldModelProb(std::shared_ptr<PlanarData> d
     pose = sample->pose;
 
     // Take account of the planar scanner pose relative to the robot
-    pose = PFVector::pfVectorCoordAdd(planar_scanner_pose_, pose);
+    pose = coordAdd(planar_scanner_pose_, pose);
 
     log_p = 0;
 
@@ -426,12 +427,12 @@ double PlanarScanner::calcLikelihoodFieldModelProb(std::shared_ptr<PlanarData> d
       pz = 0.0;
 
       // Compute the endpoint of the beam
-      hit.v[0] = pose.v[0] + obs_range * std::cos(pose.v[2] + obs_bearing);
-      hit.v[1] = pose.v[1] + obs_range * std::sin(pose.v[2] + obs_bearing);
+      hit[0] = pose[0] + obs_range * std::cos(pose[2] + obs_bearing);
+      hit[1] = pose[1] + obs_range * std::sin(pose[2] + obs_bearing);
 
       // Convert to map grid coords.
-      world_vec_[0] = hit.v[0];
-      world_vec_[1] = hit.v[1];
+      world_vec_[0] = hit[0];
+      world_vec_[1] = hit[1];
       map_->convertWorldToMap(world_vec_, &map_vec_);
 
       // Part 1: Get distance from the hit to closest obstacle.
@@ -531,7 +532,7 @@ double PlanarScanner::calcLikelihoodFieldModelProb(std::shared_ptr<PlanarData> d
   return total_weight;
 }
 
-void PlanarScanner::setPlanarScannerPose(PFVector& scanner_pose)
+void PlanarScanner::setPlanarScannerPose(const Eigen::Vector3d& scanner_pose)
 {
   planar_scanner_pose_ = scanner_pose;
 }
@@ -557,8 +558,8 @@ double PlanarScanner::calcLikelihoodFieldModelGompertz(std::shared_ptr<PlanarDat
   double obs_range, obs_bearing;
   double total_weight;
   PFSample* sample;
-  PFVector pose;
-  PFVector hit;
+  Eigen::Vector3d pose;
+  Eigen::Vector3d hit;
 
   total_weight = 0.0;
 
@@ -569,7 +570,7 @@ double PlanarScanner::calcLikelihoodFieldModelGompertz(std::shared_ptr<PlanarDat
     pose = sample->pose;
 
     // Take account of the planar scanner pose relative to the robot
-    pose = PFVector::pfVectorCoordAdd(planar_scanner_pose_, pose);
+    pose = coordAdd(planar_scanner_pose_, pose);
 
     // Pre-compute a couple of things
     double z_hit_denom = 2 * sigma_hit_ * sigma_hit_;
@@ -599,12 +600,12 @@ double PlanarScanner::calcLikelihoodFieldModelGompertz(std::shared_ptr<PlanarDat
       pz = 0.0;
 
       // Compute the endpoint of the beam
-      hit.v[0] = pose.v[0] + obs_range * std::cos(pose.v[2] + obs_bearing);
-      hit.v[1] = pose.v[1] + obs_range * std::sin(pose.v[2] + obs_bearing);
+      hit[0] = pose[0] + obs_range * std::cos(pose[2] + obs_bearing);
+      hit[1] = pose[1] + obs_range * std::sin(pose[2] + obs_bearing);
 
       // Convert to map grid coords.
-      world_vec_[0] = hit.v[0];
-      world_vec_[1] = hit.v[1];
+      world_vec_[0] = hit[0];
+      world_vec_[1] = hit[1];
       map_->convertWorldToMap(world_vec_, &map_vec_);
       // Part 1: Get distance from the hit to closest obstacle.
       // Off-map penalized as max distance
@@ -642,15 +643,15 @@ double PlanarScanner::recalcWeight(std::shared_ptr<PFSampleSet> set)
 {
   double rv = 0.0;
   PFSample* sample;
-  PFVector pose;
+  Eigen::Vector3d pose;
   for (int j = 0; j < set->sample_count; j++)
   {
     sample = &(set->samples[j]);
     pose = sample->pose;
 
     // Convert to map grid coords.
-    world_vec_[0] = pose.v[0];
-    world_vec_[1] = pose.v[1];
+    world_vec_[0] = pose[0];
+    world_vec_[1] = pose[1];
     map_->convertWorldToMap(world_vec_, &map_vec_);
 
     // Apply off map factor
@@ -686,6 +687,17 @@ void PlanarScanner::clearTempData(int new_max_samples, int new_max_obs)
   max_samples_ = fmax(max_samples_, new_max_samples);
   temp_obs_.clear();
   temp_obs_.resize(max_samples_, std::vector<double>(max_obs_, 0.0));
+}
+
+// Transform from local to global coords (a + b)
+Eigen::Vector3d PlanarScanner::coordAdd(const Eigen::Vector3d& a, const Eigen::Vector3d& b)
+{
+  Eigen::Vector3d c;
+  c[0] = b[0] + a[0] * std::cos(b[2]) - a[1] * std::sin(b[2]);
+  c[1] = b[1] + a[0] * std::sin(b[2]) + a[1] * std::cos(b[2]);
+  c[2] = b[2] + a[2];
+  c[2] = angles::normalize_angle(c[2]);
+  return c;
 }
 
 }  // namespace amcl

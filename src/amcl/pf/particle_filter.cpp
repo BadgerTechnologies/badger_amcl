@@ -36,7 +36,7 @@ namespace badger_amcl
 
 // Create a new filter
 ParticleFilter::ParticleFilter(int min_samples, int max_samples, double alpha_slow,
-                               double alpha_fast, std::function<PFVector()> random_pose_fn)
+                               double alpha_fast, std::function<Eigen::Vector3d()> random_pose_fn)
 {
   int i, j;
   std::shared_ptr<PFSampleSet> set;
@@ -70,9 +70,9 @@ ParticleFilter::ParticleFilter(int min_samples, int max_samples, double alpha_sl
     for (i = 0; i < set->sample_count; i++)
     {
       sample = &(set->samples[i]);
-      sample->pose.v[0] = 0.0;
-      sample->pose.v[1] = 0.0;
-      sample->pose.v[2] = 0.0;
+      sample->pose[0] = 0.0;
+      sample->pose[1] = 0.0;
+      sample->pose[2] = 0.0;
       sample->weight = 1.0 / max_samples_;
     }
 
@@ -82,8 +82,8 @@ ParticleFilter::ParticleFilter(int min_samples, int max_samples, double alpha_sl
     set->cluster_max_count = max_samples_;
     set->clusters = std::vector<PFCluster>(set->cluster_max_count);
 
-    set->mean = PFVector();
-    set->cov = PFMatrix();
+    set->mean = Eigen::Vector3d();
+    set->cov = Eigen::Matrix3d();
   }
 
   w_slow_ = 0.0;
@@ -102,7 +102,7 @@ void ParticleFilter::setResampleModel(PFResampleModelType resample_model)
 }
 
 // Initialize the filter using a guassian
-void ParticleFilter::init(PFVector mean, PFMatrix cov)
+void ParticleFilter::init(const Eigen::Vector3d& mean, const Eigen::Matrix3d& cov)
 {
   int i;
   std::shared_ptr<PFSampleSet> set;
@@ -117,7 +117,7 @@ void ParticleFilter::init(PFVector mean, PFMatrix cov)
   {
     sample = &(set->samples[i]);
     sample->weight = 1.0 / max_samples_;
-    sample->pose = pdf.sample();
+    pdf.sample(&(sample->pose));
 
     // Add sample to histogram
     set->kdtree->insertPose(sample->pose, sample->weight);
@@ -133,7 +133,7 @@ void ParticleFilter::init(PFVector mean, PFMatrix cov)
 }
 
 // Initialize the filter using some model
-void ParticleFilter::initModel(std::function<PFVector()> init_fn)
+void ParticleFilter::initModel(std::function<Eigen::Vector3d()> init_fn)
 {
   int i;
   std::shared_ptr<PFSampleSet> set;
@@ -164,9 +164,7 @@ void ParticleFilter::initModel(std::function<PFVector()> init_fn)
 
 void ParticleFilter::initConverged()
 {
-  std::shared_ptr<PFSampleSet> set;
-  set = sets_[current_set_];
-  set->converged = 0;
+  sets_[current_set_]->converged = 0;
   converged_ = false;
 }
 
@@ -184,8 +182,8 @@ bool ParticleFilter::updateConverged()
   {
     sample = &(set->samples[i]);
 
-    mean_x += sample->pose.v[0];
-    mean_y += sample->pose.v[1];
+    mean_x += sample->pose[0];
+    mean_y += sample->pose[1];
   }
   mean_x /= set->sample_count;
   mean_y /= set->sample_count;
@@ -193,8 +191,8 @@ bool ParticleFilter::updateConverged()
   for (i = 0; i < set->sample_count; i++)
   {
     sample = &(set->samples[i]);
-    if (std::fabs(sample->pose.v[0] - mean_x) > dist_threshold_
-        || std::fabs(sample->pose.v[1] - mean_y) > dist_threshold_)
+    if (std::fabs(sample->pose[0] - mean_x) > dist_threshold_
+        || std::fabs(sample->pose[1] - mean_y) > dist_threshold_)
     {
       set->converged = 0;
       converged_ = false;
@@ -511,8 +509,8 @@ void ParticleFilter::clusterStats(std::shared_ptr<PFSampleSet> set)
     cluster = &(set->clusters[i]);
     cluster->count = 0;
     cluster->weight = 0;
-    cluster->mean = PFVector();
-    cluster->cov = PFMatrix();
+    cluster->mean = Eigen::Vector3d();
+    cluster->cov = Eigen::Matrix3d();
 
     for (j = 0; j < 4; j++)
       cluster->m[j] = 0.0;
@@ -524,8 +522,8 @@ void ParticleFilter::clusterStats(std::shared_ptr<PFSampleSet> set)
   // Initialize overall filter stats
   count = 0;
   weight = 0.0;
-  set->mean = PFVector();
-  set->cov = PFMatrix();
+  set->mean = Eigen::Vector3d();
+  set->cov = Eigen::Matrix3d();
   for (j = 0; j < 4; j++)
     m[j] = 0.0;
   for (j = 0; j < 2; j++)
@@ -554,23 +552,23 @@ void ParticleFilter::clusterStats(std::shared_ptr<PFSampleSet> set)
     weight += sample->weight;
 
     // Compute mean
-    cluster->m[0] += sample->weight * sample->pose.v[0];
-    cluster->m[1] += sample->weight * sample->pose.v[1];
-    cluster->m[2] += sample->weight * std::cos(sample->pose.v[2]);
-    cluster->m[3] += sample->weight * std::sin(sample->pose.v[2]);
+    cluster->m[0] += sample->weight * sample->pose[0];
+    cluster->m[1] += sample->weight * sample->pose[1];
+    cluster->m[2] += sample->weight * std::cos(sample->pose[2]);
+    cluster->m[3] += sample->weight * std::sin(sample->pose[2]);
 
-    m[0] += sample->weight * sample->pose.v[0];
-    m[1] += sample->weight * sample->pose.v[1];
-    m[2] += sample->weight * std::cos(sample->pose.v[2]);
-    m[3] += sample->weight * std::sin(sample->pose.v[2]);
+    m[0] += sample->weight * sample->pose[0];
+    m[1] += sample->weight * sample->pose[1];
+    m[2] += sample->weight * std::cos(sample->pose[2]);
+    m[3] += sample->weight * std::sin(sample->pose[2]);
 
     // Compute covariance in linear components
     for (j = 0; j < 2; j++)
     {
       for (k = 0; k < 2; k++)
       {
-        cluster->c[j][k] += sample->weight * sample->pose.v[j] * sample->pose.v[k];
-        c[j][k] += sample->weight * sample->pose.v[j] * sample->pose.v[k];
+        cluster->c[j][k] += sample->weight * sample->pose[j] * sample->pose[k];
+        c[j][k] += sample->weight * sample->pose[j] * sample->pose[k];
       }
     }
   }
@@ -580,41 +578,40 @@ void ParticleFilter::clusterStats(std::shared_ptr<PFSampleSet> set)
   {
     cluster = &(set->clusters[i]);
 
-    cluster->mean.v[0] = cluster->m[0] / cluster->weight;
-    cluster->mean.v[1] = cluster->m[1] / cluster->weight;
-    cluster->mean.v[2] = std::atan2(cluster->m[3], cluster->m[2]);
+    cluster->mean[0] = cluster->m[0] / cluster->weight;
+    cluster->mean[1] = cluster->m[1] / cluster->weight;
+    cluster->mean[2] = std::atan2(cluster->m[3], cluster->m[2]);
 
-    cluster->cov = PFMatrix();
+    cluster->cov = Eigen::Matrix3d();
 
     // Covariance in linear components
     for (j = 0; j < 2; j++)
       for (k = 0; k < 2; k++)
-        cluster->cov.m[j][k] = (cluster->c[j][k] / cluster->weight
-                                - cluster->mean.v[j] * cluster->mean.v[k]);
+        cluster->cov(j, k) = (cluster->c[j][k] / cluster->weight
+                                - cluster->mean[j] * cluster->mean[k]);
 
     // Covariance in angular components; I think this is the correct
     // formula for circular statistics.
-    cluster->cov.m[2][2] = -2 * std::log(std::sqrt(cluster->m[2] * cluster->m[2]
-                                                   + cluster->m[3] * cluster->m[3]));
+    cluster->cov(2, 2) = -2 * std::log(std::sqrt(cluster->m[2] * cluster->m[2] + cluster->m[3] * cluster->m[3]));
   }
 
   // Compute overall filter stats
-  set->mean.v[0] = m[0] / weight;
-  set->mean.v[1] = m[1] / weight;
-  set->mean.v[2] = std::atan2(m[3], m[2]);
+  set->mean[0] = m[0] / weight;
+  set->mean[1] = m[1] / weight;
+  set->mean[2] = std::atan2(m[3], m[2]);
 
   // Covariance in linear components
   for (j = 0; j < 2; j++)
     for (k = 0; k < 2; k++)
-      set->cov.m[j][k] = c[j][k] / weight - set->mean.v[j] * set->mean.v[k];
+      set->cov(j, k) = c[j][k] / weight - set->mean[j] * set->mean[k];
 
   // Covariance in angular components; I think this is the correct
   // formula for circular statistics.
-  set->cov.m[2][2] = -2 * std::log(std::sqrt(m[2] * m[2] + m[3] * m[3]));
+  set->cov(2, 2) = -2 * std::log(std::sqrt(m[2] * m[2] + m[3] * m[3]));
 }
 
 // Get the statistics for a particular cluster.
-bool ParticleFilter::getClusterStats(int clabel, double* weight, PFVector* mean)
+bool ParticleFilter::getClusterStats(int clabel, double* weight, Eigen::Vector3d* mean)
 {
   std::shared_ptr<PFSampleSet> set;
   PFCluster* cluster;

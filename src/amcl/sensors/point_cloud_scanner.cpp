@@ -133,7 +133,7 @@ double PointCloudScanner::calcPointCloudModel(std::shared_ptr<PointCloudData> da
 {
   double total_weight = 0.0, p, z, pz;
   PFSample* sample;
-  PFVector pose;
+  Eigen::Vector3d pose;
 
   double z_hit_denom = 2 * sigma_hit_ * sigma_hit_;
   double z_rand_mult = 1.0 / map_->getMaxDistanceToObject();
@@ -170,7 +170,7 @@ double PointCloudScanner::calcPointCloudModelGompertz(std::shared_ptr<PointCloud
 {
   double total_weight = 0.0, p, z, pz, sum_pz;
   PFSample* sample;
-  PFVector pose;
+  Eigen::Vector3d pose;
   double z_hit_denom = 2 * sigma_hit_ * sigma_hit_;
   for (int sample_index = 0; sample_index < set->sample_count; sample_index++)
   {
@@ -204,7 +204,7 @@ double PointCloudScanner::calcPointCloudModelGompertz(std::shared_ptr<PointCloud
 double PointCloudScanner::recalcWeight(std::shared_ptr<PFSampleSet> set)
 {
   PFSample* sample;
-  PFVector pose;
+  Eigen::Vector3d pose;
   double rv = 0.0;
   int j;
   for (j = 0; j < set->sample_count; j++)
@@ -213,8 +213,8 @@ double PointCloudScanner::recalcWeight(std::shared_ptr<PFSampleSet> set)
     pose = sample->pose;
 
     // Convert to map grid coords.
-    world_vec_[0] = pose.v[0];
-    world_vec_[1] = pose.v[1];
+    world_vec_[0] = pose[0];
+    world_vec_[1] = pose[1];
     map_->convertWorldToMap(world_vec_, &map_vec_);
 
     // Apply off map factor
@@ -227,11 +227,11 @@ double PointCloudScanner::recalcWeight(std::shared_ptr<PFSampleSet> set)
   return rv;
 }
 
-void PointCloudScanner::getMapCloud(std::shared_ptr<PointCloudData> data, PFVector pose,
+void PointCloudScanner::getMapCloud(std::shared_ptr<PointCloudData> data, const Eigen::Vector3d& pose,
                                     pcl::PointCloud<pcl::PointXYZ>& map_cloud)
 {
-  tf::Vector3 footprint_to_map_origin(pose.v[0], pose.v[1], 0.0);
-  tf::Quaternion footprint_to_map_q(tf::Vector3(0.0, 0.0, 1.0), pose.v[2]);
+  tf::Vector3 footprint_to_map_origin(pose[0], pose[1], 0.0);
+  tf::Quaternion footprint_to_map_q(tf::Vector3(0.0, 0.0, 1.0), pose[2]);
   tf::Transform footprint_to_map_tf(footprint_to_map_q, footprint_to_map_origin);
   tf::Transform point_cloud_scanner_to_map_tf = footprint_to_map_tf * point_cloud_scanner_to_footprint_tf_;
   pcl_ros::transformPointCloud(data->points_, map_cloud, point_cloud_scanner_to_map_tf);

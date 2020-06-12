@@ -38,7 +38,6 @@
 #include "badger_amcl/AMCLConfig.h"
 #include "map/occupancy_map.h"
 #include "node/node_nd.h"
-#include "pf/pf_vector.h"
 #include "sensors/planar_scanner.h"
 
 namespace badger_amcl
@@ -57,7 +56,7 @@ public:
   ~Node2D();
   void reconfigure(AMCLConfig& config) override;
   void globalLocalizationCallback() override;
-  double scorePose(const PFVector& p) override;
+  double scorePose(const Eigen::Vector3d& p) override;
 private:
   void scanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan);
   bool updateNodePf(const ros::Time& stamp, int scanner_index, bool* force_publication);
@@ -65,8 +64,8 @@ private:
   void updateFreeSpaceIndices();
   void resampleParticles();
   bool resamplePose(const ros::Time& stamp);
-  void getMaxWeightPose(double* max_weight_rtn, PFVector* max_pose);
-  bool updatePose(const PFVector& max_pose, const ros::Time& stamp);
+  void getMaxWeightPose(double* max_weight_rtn, Eigen::Vector3d* max_pose);
+  bool updatePose(const Eigen::Vector3d& max_pose, const ros::Time& stamp);
   bool isMapInitialized();
   void deactivateGlobalLocalizationParams();
   int getFrameToScannerIndex(const std::string& frame_id);

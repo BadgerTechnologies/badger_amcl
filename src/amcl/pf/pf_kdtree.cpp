@@ -48,26 +48,26 @@ void PFKDTree::clearKDTree()
   nodes_.clear();
 }
 
-void PFKDTree::insertPose(PFVector pose, double value)
+void PFKDTree::insertPose(const Eigen::Vector3d& pose, double value)
 {
   int key[3];
 
-  key[0] = std::floor(pose.v[0] / cell_size_[0]);
-  key[1] = std::floor(pose.v[1] / cell_size_[1]);
-  key[2] = std::floor(pose.v[2] / cell_size_[2]);
+  key[0] = std::floor(pose[0] / cell_size_[0]);
+  key[1] = std::floor(pose[1] / cell_size_[1]);
+  key[2] = std::floor(pose[2] / cell_size_[2]);
 
   root_ = insertNode(NULL, root_, key, value);
 }
 
 // Determine the cluster label for the given pose
-int PFKDTree::getCluster(PFVector pose)
+int PFKDTree::getCluster(const Eigen::Vector3d& pose)
 {
   int key[3];
   PFKDTreeNode* node;
 
-  key[0] = std::floor(pose.v[0] / cell_size_[0]);
-  key[1] = std::floor(pose.v[1] / cell_size_[1]);
-  key[2] = std::floor(pose.v[2] / cell_size_[2]);
+  key[0] = std::floor(pose[0] / cell_size_[0]);
+  key[1] = std::floor(pose[1] / cell_size_[1]);
+  key[2] = std::floor(pose[2] / cell_size_[2]);
 
   node = findNode(root_, key);
   if (node == NULL)

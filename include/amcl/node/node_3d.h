@@ -40,7 +40,6 @@
 #include "badger_amcl/AMCLConfig.h"
 #include "map/octomap.h"
 #include "node/node_nd.h"
-#include "pf/pf_vector.h"
 #include "sensors/point_cloud_scanner.h"
 
 namespace badger_amcl
@@ -59,7 +58,7 @@ public:
   ~Node3D();
   void reconfigure(AMCLConfig& config) override;
   void globalLocalizationCallback() override;
-  double scorePose(const PFVector& p) override;
+  double scorePose(const Eigen::Vector3d& p) override;
 private:
   void scanReceived(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan);
   bool updateNodePf(const ros::Time& stamp, int scanner_index, bool* force_publication);
@@ -77,8 +76,8 @@ private:
   void updateScanner(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan, int scanner_index, bool* resampled);
   void resampleParticles();
   bool resamplePose(const ros::Time& stamp);
-  void getMaxWeightPose(double* max_weight, PFVector* max_pose);
-  bool updatePose(const PFVector& max_hyp_mean, const ros::Time& stamp);
+  void getMaxWeightPose(double* max_weight, Eigen::Vector3d* max_pose);
+  bool updatePose(const Eigen::Vector3d& max_hyp_mean, const ros::Time& stamp);
   bool isMapInitialized();
   void deactivateGlobalLocalizationParams();
   int getFrameToScannerIndex(const std::string& frame_id);

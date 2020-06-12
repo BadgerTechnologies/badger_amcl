@@ -22,8 +22,9 @@
 
 #include <memory>
 
+#include <Eigen/Dense>
+
 #include "pf/particle_filter.h"
-#include "pf/pf_vector.h"
 #include "sensors/sensor.h"
 
 namespace badger_amcl
@@ -43,11 +44,11 @@ class OdomData : public SensorData
 {
 public:
   // Odometric pose
-  PFVector pose;
+  Eigen::Vector3d pose;
   // Change in odometric pose
-  PFVector delta;
+  Eigen::Vector3d delta;
   // Total absolute motion (relative to base)
-  PFVector absolute_motion;
+  Eigen::Vector3d absolute_motion;
 };
 
 // Odometric sensor model

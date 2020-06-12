@@ -30,6 +30,7 @@
 #include <utility>
 #include <vector>
 
+#include <Eigen/Dense>
 #include <dynamic_reconfigure/server.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <message_filters/subscriber.h>
@@ -54,7 +55,6 @@
 #include "map/map.h"
 #include "node/node_nd.h"
 #include "pf/particle_filter.h"
-#include "pf/pf_vector.h"
 #include "sensors/odom.h"
 
 namespace badger_amcl
@@ -70,8 +70,8 @@ struct PoseHypothesis
 {
   // Total weight (weights sum to 1)
   double weight;
-  PFVector mean;
-  PFMatrix covariance;
+  Eigen::Vector3d mean;
+  Eigen::Matrix3d covariance;
 };
 
 class Node
@@ -81,12 +81,12 @@ public:
   void initFromNewMap(std::shared_ptr<Map> new_map, bool use_init_pose);
   void updateFreeSpaceIndices(std::vector<std::pair<int, int>> fsi);
   void initOdomIntegrator();
-  bool getOdomPose(const ros::Time& t, PFVector* map_pose);
+  bool getOdomPose(const ros::Time& t, Eigen::Vector3d* map_pose);
   std::string getOdomFrameId();
   std::string getBaseFrameId();
   std::shared_ptr<ParticleFilter> getPfPtr();
   void publishParticleCloud();
-  void updatePose(const PFVector& max_hyp_mean, const ros::Time& stamp);
+  void updatePose(const Eigen::Vector3d& max_hyp_mean, const ros::Time& stamp);
   bool updateOdomToMapTransform(const tf::Stamped<tf::Pose>& odom_to_map);
   bool updatePf(const ros::Time& t, std::vector<bool>& scanners_update, int scanner_index,
                 int* resample_count, bool* force_publication, bool* force_update);
@@ -108,10 +108,10 @@ private:
   void reconfigureCB(AMCLConfig& config, uint32_t level);
   bool globalLocalizationCallback(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
   // Generate a random pose in a free space on the map
-  PFVector randomFreeSpacePose();
-  PFVector uniformPoseGenerator();
+  Eigen::Vector3d randomFreeSpacePose();
+  Eigen::Vector3d uniformPoseGenerator();
   // Score a single pose with the sensor model using the last sensor data
-  double scorePose(const PFVector& p);
+  double scorePose(const Eigen::Vector3d& p);
 
   // Initial pose related functions
   void initialPoseReceived(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg);
@@ -136,18 +136,18 @@ private:
 
   // Odometry integrator
   void integrateOdom(const nav_msgs::OdometryConstPtr& msg);
-  void calcTfPose(const nav_msgs::OdometryConstPtr& msg, PFVector* pose);
-  void calcOdomDelta(const PFVector& pose);
+  void calcTfPose(const nav_msgs::OdometryConstPtr& msg, Eigen::Vector3d* pose);
+  void calcOdomDelta(const Eigen::Vector3d& pose);
   void resetOdomIntegrator();
   void publishTransform(const ros::TimerEvent& event);
 
   // Update PF helper functions
-  void computeDelta(const PFVector& pose, PFVector* delta);
-  void setScannersUpdateFlags(const PFVector& delta, std::vector<bool>& scanners_update, bool* force_update);
-  void updateOdom(const PFVector& pose, const PFVector &delta);
-  void initOdom(const PFVector& pose, std::vector<bool>& scanners_update, int* resample_count, bool* force_publication);
+  void computeDelta(const Eigen::Vector3d& pose, Eigen::Vector3d* delta);
+  void setScannersUpdateFlags(const Eigen::Vector3d& delta, std::vector<bool>& scanners_update, bool* force_update);
+  void updateOdom(const Eigen::Vector3d& pose, const Eigen::Vector3d& delta);
+  void initOdom(const Eigen::Vector3d& pose, std::vector<bool>& scanners_update, int* resample_count, bool* force_publication);
 
-  std::function<PFVector()> uniform_pose_generator_fn_;
+  std::function<Eigen::Vector3d()> uniform_pose_generator_fn_;
 
   ros::NodeHandle nh_;
   ros::NodeHandle private_nh_;
@@ -188,8 +188,8 @@ private:
   ros::Subscriber odom_integrator_sub_;
   bool odom_integrator_enabled_;
   bool odom_integrator_ready_;
-  PFVector odom_integrator_last_pose_;
-  PFVector odom_integrator_absolute_motion_;
+  Eigen::Vector3d odom_integrator_last_pose_;
+  Eigen::Vector3d odom_integrator_absolute_motion_;
   OdomModelType odom_model_type_;
 
   // parameter for what base to use
@@ -209,7 +209,7 @@ private:
   std::shared_ptr<ParticleFilter> pf_;
   double pf_err_, pf_z_;
   bool odom_init_;
-  PFVector pf_odom_pose_;
+  Eigen::Vector3d pf_odom_pose_;
   double d_thresh_, a_thresh_;
   PFResampleModelType resample_model_type_;
   int min_particles_, max_particles_;

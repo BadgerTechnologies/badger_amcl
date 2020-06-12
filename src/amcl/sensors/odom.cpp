@@ -78,7 +78,10 @@ bool Odom::updateAction(std::shared_ptr<ParticleFilter> pf, std::shared_ptr<Sens
 
   // Compute the new sample poses
   std::shared_ptr<PFSampleSet> set = pf->getCurrentSet();
-  PFVector old_pose = PFVector::pfVectorSub(ndata->pose, ndata->delta);
+  Eigen::Vector3d old_pose;
+  old_pose[0] = ndata->pose[0] - ndata->delta[0];
+  old_pose[1] = ndata->pose[1] - ndata->delta[1];
+  old_pose[2] = ndata->pose[2] - ndata->delta[2];
 
   switch (model_type_)
   {
@@ -87,9 +90,9 @@ bool Odom::updateAction(std::shared_ptr<ParticleFilter> pf, std::shared_ptr<Sens
       double delta_trans, delta_rot, delta_bearing;
       double delta_trans_hat, delta_rot_hat, delta_strafe_hat;
 
-      delta_trans = std::sqrt(ndata->delta.v[0] * ndata->delta.v[0]
-                         + ndata->delta.v[1] * ndata->delta.v[1]);
-      delta_rot = ndata->delta.v[2];
+      delta_trans = std::sqrt(ndata->delta[0] * ndata->delta[0]
+                         + ndata->delta[1] * ndata->delta[1]);
+      delta_rot = ndata->delta[2];
 
       // Precompute a couple of things
       double trans_hat_stddev = (alpha3_ * (delta_trans * delta_trans)
@@ -103,8 +106,8 @@ bool Odom::updateAction(std::shared_ptr<ParticleFilter> pf, std::shared_ptr<Sens
       {
         PFSample* sample = &(set->samples[i]);
 
-        double turn_angle = std::atan2(ndata->delta.v[1], ndata->delta.v[0]);
-        delta_bearing = angleDiff(turn_angle, old_pose.v[2]) + sample->pose.v[2];
+        double turn_angle = std::atan2(ndata->delta[1], ndata->delta[0]);
+        delta_bearing = angleDiff(turn_angle, old_pose[2]) + sample->pose[2];
         double cs_bearing = std::cos(delta_bearing);
         double sn_bearing = std::sin(delta_bearing);
 
@@ -113,9 +116,9 @@ bool Odom::updateAction(std::shared_ptr<ParticleFilter> pf, std::shared_ptr<Sens
         delta_rot_hat = delta_rot + PDFGaussian::draw(rot_hat_stddev);
         delta_strafe_hat = 0 + PDFGaussian::draw(strafe_hat_stddev);
         // Apply sampled update to particle pose
-        sample->pose.v[0] += (delta_trans_hat * cs_bearing + delta_strafe_hat * sn_bearing);
-        sample->pose.v[1] += (delta_trans_hat * sn_bearing - delta_strafe_hat * cs_bearing);
-        sample->pose.v[2] += delta_rot_hat;
+        sample->pose[0] += (delta_trans_hat * cs_bearing + delta_strafe_hat * sn_bearing);
+        sample->pose[1] += (delta_trans_hat * sn_bearing - delta_strafe_hat * cs_bearing);
+        sample->pose[2] += delta_rot_hat;
       }
     }
     break;
@@ -128,14 +131,14 @@ bool Odom::updateAction(std::shared_ptr<ParticleFilter> pf, std::shared_ptr<Sens
 
       // Avoid computing a bearing from two poses that are extremely near each
       // other (happens on in-place rotation).
-      if (std::sqrt(ndata->delta.v[1] * ndata->delta.v[1]
-                    + ndata->delta.v[0] * ndata->delta.v[0]) < 0.01)
+      if (std::sqrt(ndata->delta[1] * ndata->delta[1]
+                    + ndata->delta[0] * ndata->delta[0]) < 0.01)
         delta_rot1 = 0.0;
       else
-        delta_rot1 = angleDiff(std::atan2(ndata->delta.v[1], ndata->delta.v[0]), old_pose.v[2]);
-      delta_trans = std::sqrt(ndata->delta.v[0] * ndata->delta.v[0]
-                              + ndata->delta.v[1] * ndata->delta.v[1]);
-      delta_rot2 = angleDiff(ndata->delta.v[2], delta_rot1);
+        delta_rot1 = angleDiff(std::atan2(ndata->delta[1], ndata->delta[0]), old_pose[2]);
+      delta_trans = std::sqrt(ndata->delta[0] * ndata->delta[0]
+                              + ndata->delta[1] * ndata->delta[1]);
+      delta_rot2 = angleDiff(ndata->delta[2], delta_rot1);
 
       // We want to treat backward and forward motion symmetrically for the
       // noise model to be applied below.  The standard model seems to assume
@@ -159,9 +162,9 @@ bool Odom::updateAction(std::shared_ptr<ParticleFilter> pf, std::shared_ptr<Sens
                                                                  + alpha2_ * delta_trans * delta_trans));
 
         // Apply sampled update to particle pose
-        sample->pose.v[0] += delta_trans_hat * std::cos(sample->pose.v[2] + delta_rot1_hat);
-        sample->pose.v[1] += delta_trans_hat * std::sin(sample->pose.v[2] + delta_rot1_hat);
-        sample->pose.v[2] += delta_rot1_hat + delta_rot2_hat;
+        sample->pose[0] += delta_trans_hat * std::cos(sample->pose[2] + delta_rot1_hat);
+        sample->pose[1] += delta_trans_hat * std::sin(sample->pose[2] + delta_rot1_hat);
+        sample->pose[2] += delta_rot1_hat + delta_rot2_hat;
       }
     }
     break;
@@ -170,9 +173,9 @@ bool Odom::updateAction(std::shared_ptr<ParticleFilter> pf, std::shared_ptr<Sens
       double delta_trans, delta_rot, delta_bearing;
       double delta_trans_hat, delta_rot_hat, delta_strafe_hat;
 
-      delta_trans = std::sqrt(ndata->delta.v[0] * ndata->delta.v[0]
-                              + ndata->delta.v[1] * ndata->delta.v[1]);
-      delta_rot = ndata->delta.v[2];
+      delta_trans = std::sqrt(ndata->delta[0] * ndata->delta[0]
+                              + ndata->delta[1] * ndata->delta[1]);
+      delta_rot = ndata->delta[2];
 
       // Precompute a couple of things
       double trans_hat_stddev = std::sqrt(alpha3_ * (delta_trans * delta_trans)
@@ -186,8 +189,8 @@ bool Odom::updateAction(std::shared_ptr<ParticleFilter> pf, std::shared_ptr<Sens
       {
         PFSample* sample = &(set->samples[i]);
 
-        double turn_angle = std::atan2(ndata->delta.v[1], ndata->delta.v[0]);
-        delta_bearing = angleDiff(turn_angle,  old_pose.v[2]) + sample->pose.v[2];
+        double turn_angle = std::atan2(ndata->delta[1], ndata->delta[0]);
+        delta_bearing = angleDiff(turn_angle,  old_pose[2]) + sample->pose[2];
         double cs_bearing = std::cos(delta_bearing);
         double sn_bearing = std::sin(delta_bearing);
 
@@ -196,9 +199,9 @@ bool Odom::updateAction(std::shared_ptr<ParticleFilter> pf, std::shared_ptr<Sens
         delta_rot_hat = delta_rot + PDFGaussian::draw(rot_hat_stddev);
         delta_strafe_hat = 0 + PDFGaussian::draw(strafe_hat_stddev);
         // Apply sampled update to particle pose
-        sample->pose.v[0] += (delta_trans_hat * cs_bearing + delta_strafe_hat * sn_bearing);
-        sample->pose.v[1] += (delta_trans_hat * sn_bearing - delta_strafe_hat * cs_bearing);
-        sample->pose.v[2] += delta_rot_hat;
+        sample->pose[0] += (delta_trans_hat * cs_bearing + delta_strafe_hat * sn_bearing);
+        sample->pose[1] += (delta_trans_hat * sn_bearing - delta_strafe_hat * cs_bearing);
+        sample->pose[2] += delta_rot_hat;
       }
     }
     break;
@@ -211,13 +214,13 @@ bool Odom::updateAction(std::shared_ptr<ParticleFilter> pf, std::shared_ptr<Sens
 
       // Avoid computing a bearing from two poses that are extremely near each
       // other (happens on in-place rotation).
-      delta_trans = std::sqrt(ndata->delta.v[0] * ndata->delta.v[0]
-                              + ndata->delta.v[1] * ndata->delta.v[1]);
+      delta_trans = std::sqrt(ndata->delta[0] * ndata->delta[0]
+                              + ndata->delta[1] * ndata->delta[1]);
       if (delta_trans < 0.01)
         delta_rot1 = 0.0;
       else
-        delta_rot1 = angleDiff(std::atan2(ndata->delta.v[1], ndata->delta.v[0]), old_pose.v[2]);
-      delta_rot2 = angleDiff(ndata->delta.v[2], delta_rot1);
+        delta_rot1 = angleDiff(std::atan2(ndata->delta[1], ndata->delta[0]), old_pose[2]);
+      delta_rot2 = angleDiff(ndata->delta[2], delta_rot1);
 
       // We want to treat backward and forward motion symmetrically for the
       // noise model to be applied below.  The standard model seems to assume
@@ -245,9 +248,9 @@ bool Odom::updateAction(std::shared_ptr<ParticleFilter> pf, std::shared_ptr<Sens
         delta_rot2_hat = angleDiff(delta_rot2, draw);
 
         // Apply sampled update to particle pose
-        sample->pose.v[0] += delta_trans_hat * std::cos(sample->pose.v[2] + delta_rot1_hat);
-        sample->pose.v[1] += delta_trans_hat * std::sin(sample->pose.v[2] + delta_rot1_hat);
-        sample->pose.v[2] += delta_rot1_hat + delta_rot2_hat;
+        sample->pose[0] += delta_trans_hat * std::cos(sample->pose[2] + delta_rot1_hat);
+        sample->pose[1] += delta_trans_hat * std::sin(sample->pose[2] + delta_rot1_hat);
+        sample->pose[2] += delta_rot1_hat + delta_rot2_hat;
       }
     }
     break;
@@ -258,13 +261,13 @@ bool Odom::updateAction(std::shared_ptr<ParticleFilter> pf, std::shared_ptr<Sens
       double abs_delta_trans2, abs_delta_strafe2, abs_delta_rot2;
       double delta_trans_hat, delta_rot_hat, delta_strafe_hat;
 
-      delta_trans = std::sqrt(ndata->delta.v[0] * ndata->delta.v[0]
-                              + ndata->delta.v[1] * ndata->delta.v[1]);
-      delta_rot = ndata->delta.v[2];
+      delta_trans = std::sqrt(ndata->delta[0] * ndata->delta[0]
+                              + ndata->delta[1] * ndata->delta[1]);
+      delta_rot = ndata->delta[2];
 
-      abs_delta_trans = ndata->absolute_motion.v[0];
-      abs_delta_strafe = ndata->absolute_motion.v[1];
-      abs_delta_rot = ndata->absolute_motion.v[2];
+      abs_delta_trans = ndata->absolute_motion[0];
+      abs_delta_strafe = ndata->absolute_motion[1];
+      abs_delta_rot = ndata->absolute_motion[2];
 
       abs_delta_trans2 = abs_delta_trans * abs_delta_trans;
       abs_delta_strafe2 = abs_delta_strafe * abs_delta_strafe;
@@ -279,13 +282,13 @@ bool Odom::updateAction(std::shared_ptr<ParticleFilter> pf, std::shared_ptr<Sens
         PFSample* sample = &(set->samples[i]);
 
         // estimated direction pointed during motion
-        double heading = sample->pose.v[2] + ndata->delta.v[2] / 2;
+        double heading = sample->pose[2] + ndata->delta[2] / 2;
         double cs_heading = std::cos(heading);
         double sn_heading = std::sin(heading);
 
         // relative direction we moved
-        double ndata_angle = std::atan2(ndata->delta.v[1], ndata->delta.v[0]);
-        double delta_bearing = angleDiff(ndata_angle, old_pose.v[2]) + sample->pose.v[2];
+        double ndata_angle = std::atan2(ndata->delta[1], ndata->delta[0]);
+        double delta_bearing = angleDiff(ndata_angle, old_pose[2]) + sample->pose[2];
         double cs_bearing = std::cos(delta_bearing);
         double sn_bearing = std::sin(delta_bearing);
 
@@ -294,12 +297,12 @@ bool Odom::updateAction(std::shared_ptr<ParticleFilter> pf, std::shared_ptr<Sens
         delta_strafe_hat = PDFGaussian::draw(strafe_hat_stddev);
         delta_rot_hat = PDFGaussian::draw(rot_hat_stddev);
         // Apply sampled update to particle pose
-        sample->pose.v[0] += (delta_trans * cs_bearing);
-        sample->pose.v[1] += (delta_trans * sn_bearing);
-        sample->pose.v[2] += delta_rot;
-        sample->pose.v[0] += (delta_trans_hat * cs_heading + delta_strafe_hat * sn_heading);
-        sample->pose.v[1] += (delta_trans_hat * sn_heading - delta_strafe_hat * cs_heading);
-        sample->pose.v[2] += delta_rot_hat;
+        sample->pose[0] += (delta_trans * cs_bearing);
+        sample->pose[1] += (delta_trans * sn_bearing);
+        sample->pose[2] += delta_rot;
+        sample->pose[0] += (delta_trans_hat * cs_heading + delta_strafe_hat * sn_heading);
+        sample->pose[1] += (delta_trans_hat * sn_heading - delta_strafe_hat * cs_heading);
+        sample->pose[2] += delta_rot_hat;
       }
     }
     break;

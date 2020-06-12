@@ -24,8 +24,9 @@
 #include <memory>
 #include <vector>
 
-#include "pf/pf_kdtree.h"
-#include "pf/pf_vector.h"
+#include <Eigen/Dense>
+
+#include <pf/pf_kdtree.h>
 
 namespace badger_amcl
 {
@@ -40,7 +41,7 @@ enum PFResampleModelType
 struct PFSample
 {
   // Pose represented by this sample
-  PFVector pose;
+  Eigen::Vector3d pose;
 
   // Weight for this pose
   double weight;
@@ -57,8 +58,8 @@ struct PFCluster
   double weight;
 
   // Cluster statistics
-  PFVector mean;
-  PFMatrix cov;
+  Eigen::Vector3d mean;
+  Eigen::Matrix3d cov;
 
   // Workspace
   double m[4], c[2][2];
@@ -80,8 +81,8 @@ struct PFSampleSet
   std::vector<PFCluster> clusters;
 
   // Filter statistics
-  PFVector mean;
-  PFMatrix cov;
+  Eigen::Vector3d mean;
+  Eigen::Matrix3d cov;
   int converged;
 };
 
@@ -93,7 +94,7 @@ class ParticleFilter
 public:
   // Create a new filter
   ParticleFilter(int min_samples, int max_samples, double alpha_slow, double alpha_fast,
-                 std::function<PFVector()> random_pose_fn);
+                 std::function<Eigen::Vector3d()> random_pose_fn);
 
   // Set the resample model
   void setResampleModel(PFResampleModelType resample_model);
@@ -103,10 +104,10 @@ public:
   double resampleMultinomial(double w_diff);
 
   // Initialize the filter using a guassian
-  void init(PFVector mean, PFMatrix cov);
+  void init(const Eigen::Vector3d& mean, const Eigen::Matrix3d& cov);
 
   // Initialize the filter using some model
-  void initModel(std::function<PFVector()> init_fn);
+  void initModel(std::function<Eigen::Vector3d()> init_fn);
 
   // Update the filter with some new sensor observation
   void updateSensor(std::function<double(std::shared_ptr<SensorData>,
@@ -118,7 +119,7 @@ public:
 
   // Compute the statistics for a particular cluster.  Returns false if
   // there is no such cluster.
-  bool getClusterStats(int cluster, double* weight, PFVector* mean);
+  bool getClusterStats(int cluster, double* weight, Eigen::Vector3d* mean);
 
   // calculate if the particle filter has converged -
   // and sets the converged flag in the current set and the pf
@@ -157,7 +158,7 @@ private:
   double w_slow_, w_fast_;
 
   // Function used to draw random pose samples
-  std::function<PFVector()> random_pose_fn_;
+  std::function<Eigen::Vector3d()> random_pose_fn_;
 
   double dist_threshold_;  // distance threshold in each axis over which the pf is considered to not be converged
 

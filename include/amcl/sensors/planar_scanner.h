@@ -20,13 +20,14 @@
 #ifndef AMCL_SENSORS_PLANAR_SCANNER_H
 #define AMCL_SENSORS_PLANAR_SCANNER_H
 
-#include <memory>
 #include <cstddef>
+#include <memory>
 #include <vector>
+
+#include <Eigen/Dense>
 
 #include "map/occupancy_map.h"
 #include "pf/particle_filter.h"
-#include "pf/pf_vector.h"
 #include "sensors/sensor.h"
 
 namespace badger_amcl
@@ -89,7 +90,7 @@ public:
   double applyModelToSampleSet(std::shared_ptr<SensorData> data, std::shared_ptr<PFSampleSet> set);
 
   // Set the scanner's pose after construction
-  void setPlanarScannerPose(PFVector& scanner_pose);
+  void setPlanarScannerPose(const Eigen::Vector3d& scanner_pose);
 
   // Apply gompertz transform function to given input
   double applyGompertz(double p);
@@ -110,13 +111,15 @@ private:
   double recalcWeight(std::shared_ptr<PFSampleSet> set);
   void clearTempData(int max_samples, int max_obs);
 
+  Eigen::Vector3d coordAdd(const Eigen::Vector3d& a, const Eigen::Vector3d& b);
+
   PlanarModelType model_type_;
 
   // The occupancy map
   std::shared_ptr<OccupancyMap> map_;
 
   // Planar scanner offset relative to robot
-  PFVector planar_scanner_pose_;
+  Eigen::Vector3d planar_scanner_pose_;
 
   // Max beams to consider
   int max_beams_;

@@ -278,16 +278,16 @@ std::shared_ptr<OctoMap> Node3D::convertMap(const octomap_msgs::Octomap& map_msg
   return octomap;
 }
 
-double Node3D::scorePose(const PFVector& p)
+double Node3D::scorePose(const Eigen::Vector3d& p)
 {
   // If there is no data to match, return a perfect match
   double score = 1.0;
   if (latest_scan_data_ != NULL)
   {
     // Create a fake "sample set" of just this pose to score it.
-    fake_sample_.pose.v[0] = p.v[0];
-    fake_sample_.pose.v[1] = p.v[1];
-    fake_sample_.pose.v[2] = p.v[2];
+    fake_sample_.pose[0] = p[0];
+    fake_sample_.pose[1] = p[1];
+    fake_sample_.pose[2] = p[2];
     fake_sample_.weight = 1.0;
     fake_sample_set_->sample_count = 1;
     fake_sample_set_->samples = { fake_sample_ };
@@ -487,7 +487,7 @@ void Node3D::resampleParticles()
 bool Node3D::resamplePose(const ros::Time& stamp)
 {
   double max_weight = 0.0;
-  PFVector max_pose;
+  Eigen::Vector3d max_pose;
   getMaxWeightPose(&max_weight, &max_pose);
   bool success = true;
   if(max_weight > 0.0)
@@ -500,7 +500,7 @@ bool Node3D::resamplePose(const ros::Time& stamp)
   return success;
 }
 
-void Node3D::getMaxWeightPose(double* max_weight_rtn, PFVector* max_pose)
+void Node3D::getMaxWeightPose(double* max_weight_rtn, Eigen::Vector3d* max_pose)
 {
   // Read out the current hypotheses
   double max_weight = 0.0;
@@ -511,7 +511,7 @@ void Node3D::getMaxWeightPose(double* max_weight_rtn, PFVector* max_pose)
   for (int hyp_count = 0; hyp_count < cluster_count; hyp_count++)
   {
     double weight;
-    PFVector pose_mean;
+    Eigen::Vector3d pose_mean;
     if (!pf_->getClusterStats(hyp_count, &weight, &pose_mean))
     {
       ROS_ERROR_STREAM("Couldn't get stats on cluster " << hyp_count);
@@ -531,16 +531,16 @@ void Node3D::getMaxWeightPose(double* max_weight_rtn, PFVector* max_pose)
   *max_pose = hyps[max_weight_hyp].mean;
 }
 
-bool Node3D::updatePose(const PFVector& max_pose, const ros::Time& stamp)
+bool Node3D::updatePose(const Eigen::Vector3d& max_pose, const ros::Time& stamp)
 {
-  ROS_DEBUG("Max weight pose: %.3f %.3f %.3f", max_pose.v[0], max_pose.v[1], max_pose.v[2]);
+  ROS_DEBUG("Max weight pose: %.3f %.3f %.3f", max_pose[0], max_pose[1], max_pose[2]);
   node_->updatePose(max_pose, stamp);
   bool success = true;
   // subtracting base to odom from map to base and send map to odom instead
   tf::Stamped<tf::Pose> odom_to_map;
   try
   {
-    tf::Transform tmp_tf(tf::createQuaternionFromYaw(max_pose.v[2]), tf::Vector3(max_pose.v[0], max_pose.v[1], 0.0));
+    tf::Transform tmp_tf(tf::createQuaternionFromYaw(max_pose[2]), tf::Vector3(max_pose[0], max_pose[1], 0.0));
     std::string odom_frame_id = node_->getOdomFrameId();
     std::string base_frame_id = node_->getBaseFrameId();
     tf::Stamped<tf::Pose> tmp_tf_stamped(tmp_tf.inverse(), stamp, base_frame_id);
