@@ -613,39 +613,6 @@ void ParticleFilter::clusterStats(std::shared_ptr<PFSampleSet> set)
   set->cov.m[2][2] = -2 * std::log(std::sqrt(m[2] * m[2] + m[3] * m[3]));
 }
 
-// Compute the CEP statistics (mean and variance).
-void ParticleFilter::getCepStats(PFVector* mean, double* var)
-{
-  int i;
-  double mn, mx, my, mrr;
-  std::shared_ptr<PFSampleSet> set;
-  PFSample* sample;
-
-  set = sets_[current_set_];
-
-  mn = 0.0;
-  mx = 0.0;
-  my = 0.0;
-  mrr = 0.0;
-
-  for (i = 0; i < set->sample_count; i++)
-  {
-    sample = &(set->samples[i]);
-
-    mn += sample->weight;
-    mx += sample->weight * sample->pose.v[0];
-    my += sample->weight * sample->pose.v[1];
-    mrr += sample->weight * sample->pose.v[0] * sample->pose.v[0];
-    mrr += sample->weight * sample->pose.v[1] * sample->pose.v[1];
-  }
-
-  mean->v[0] = mx / mn;
-  mean->v[1] = my / mn;
-  mean->v[2] = 0.0;
-
-  *var = mrr / mn - (mx * mx / (mn * mn) + my * my / (mn * mn));
-}
-
 // Get the statistics for a particular cluster.
 bool ParticleFilter::getClusterStats(int clabel, double* weight, PFVector* mean)
 {

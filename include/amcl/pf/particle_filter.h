@@ -116,9 +116,6 @@ public:
   // Resample the distribution
   void updateResample();
 
-  // Compute the CEP statistics (mean and variance).
-  void getCepStats(PFVector* mean, double* var);
-
   // Compute the statistics for a particular cluster.  Returns false if
   // there is no such cluster.
   bool getClusterStats(int cluster, double* weight, PFVector* mean);
