@@ -56,13 +56,13 @@ Node::Node()
 
   private_nh_.param("map_type", map_type_, 0);
 
-  double tmp;
-  private_nh_.param("transform_publish_rate", tmp, 50.0);
-  transform_publish_period_ = ros::Duration(1.0 / tmp);
-  private_nh_.param("save_pose_to_server_rate", tmp, 0.5);
-  save_pose_to_server_period_ = ros::Duration(1.0 / tmp);
-  private_nh_.param("save_pose_to_file_rate", tmp, 0.1);
-  save_pose_to_file_period_ = ros::Duration(1.0 / tmp);
+  double param_val;
+  private_nh_.param("transform_publish_rate", param_val, 50.0);
+  transform_publish_period_ = ros::Duration(1.0 / param_val);
+  private_nh_.param("save_pose_to_server_rate", param_val, 0.5);
+  save_pose_to_server_period_ = ros::Duration(1.0 / param_val);
+  private_nh_.param("save_pose_to_file_rate", param_val, 0.1);
+  save_pose_to_file_period_ = ros::Duration(1.0 / param_val);
 
   private_nh_.param("min_particles", min_particles_, 100);
   private_nh_.param("max_particles", max_particles_, 5000);
@@ -79,21 +79,21 @@ Node::Node()
   const std::string default_filepath = "badger_amcl_saved_pose.yaml";
   private_nh_.param("saved_pose_filepath", saved_pose_filepath_, default_filepath);
 
-  std::string tmp_model_type;
-  private_nh_.param("odom_model_type", tmp_model_type, std::string("diff"));
-  if (tmp_model_type == "diff")
+  std::string model_type_str;
+  private_nh_.param("odom_model_type", model_type_str, std::string("diff"));
+  if (model_type_str == "diff")
     odom_model_type_ = ODOM_MODEL_DIFF;
-  else if (tmp_model_type == "omni")
+  else if (model_type_str == "omni")
     odom_model_type_ = ODOM_MODEL_OMNI;
-  else if (tmp_model_type == "diff-corrected")
+  else if (model_type_str == "diff-corrected")
     odom_model_type_ = ODOM_MODEL_DIFF_CORRECTED;
-  else if (tmp_model_type == "omni-corrected")
+  else if (model_type_str == "omni-corrected")
     odom_model_type_ = ODOM_MODEL_OMNI_CORRECTED;
-  else if (tmp_model_type == "gaussian")
+  else if (model_type_str == "gaussian")
     odom_model_type_ = ODOM_MODEL_GAUSSIAN;
   else
   {
-    ROS_WARN_STREAM("Unknown odom model type \"" << tmp_model_type << "\"; defaulting to diff model");
+    ROS_WARN_STREAM("Unknown odom model type \"" << model_type_str << "\"; defaulting to diff model");
     odom_model_type_ = ODOM_MODEL_DIFF;
   }
 
@@ -103,19 +103,19 @@ Node::Node()
   private_nh_.param("base_frame_id", base_frame_id_, std::string("base_link"));
   private_nh_.param("global_frame_id", global_frame_id_, std::string("map"));
   private_nh_.param("global_alt_frame_id", global_alt_frame_id_, std::string(""));
-  private_nh_.param("resample_model_type", tmp_model_type, std::string("multinomial"));
-  if (tmp_model_type == "multinomial")
+  private_nh_.param("resample_model_type", model_type_str, std::string("multinomial"));
+  if (model_type_str == "multinomial")
     resample_model_type_ = PF_RESAMPLE_MULTINOMIAL;
-  else if (tmp_model_type == "systematic")
+  else if (model_type_str == "systematic")
     resample_model_type_ = PF_RESAMPLE_SYSTEMATIC;
   else
   {
-    ROS_WARN_STREAM("Unknown resample model type \"" << tmp_model_type << "\"; defaulting to multinomial model");
+    ROS_WARN_STREAM("Unknown resample model type \"" << model_type_str << "\"; defaulting to multinomial model");
     resample_model_type_ = PF_RESAMPLE_MULTINOMIAL;
   }
 
-  double tmp_tol;
-  private_nh_.param("transform_tolerance", tmp_tol, 0.1);
+  double transform_tolerance_val;
+  private_nh_.param("transform_tolerance", transform_tolerance_val, 0.1);
   private_nh_.param("recovery_alpha_slow", alpha_slow_, 0.001);
   private_nh_.param("recovery_alpha_fast", alpha_fast_, 0.1);
   private_nh_.param("uniform_pose_starting_weight_threshold", uniform_pose_starting_weight_threshold_, 0.0);
@@ -125,7 +125,7 @@ Node::Node()
   private_nh_.param("tf_broadcast", tf_broadcast_, true);
   private_nh_.param("tf_reverse", tf_reverse_, false);
 
-  transform_tolerance_.fromSec(tmp_tol);
+  transform_tolerance_.fromSec(transform_tolerance_val);
 
   private_nh_.param("publish_initial_pose_at_startup", publish_initial_pose_at_startup_, true);
   if(publish_initial_pose_at_startup_)

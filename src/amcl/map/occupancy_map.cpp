@@ -264,7 +264,7 @@ double OccupancyMap::calcRange(double ox, double oy, double oa, double max_range
   int x, y;
   int xstep, ystep;
   char steep;
-  int tmp;
+  int placeholder;
   int deltax, deltay, error, deltaerr;
 
   world_vec_[0] = ox;
@@ -285,13 +285,13 @@ double OccupancyMap::calcRange(double ox, double oy, double oa, double max_range
 
   if (steep)
   {
-    tmp = x0;
+    placeholder = x0;
     x0 = y0;
-    y0 = tmp;
+    y0 = placeholder;
 
-    tmp = x1;
+    placeholder = x1;
     x1 = y1;
-    y1 = tmp;
+    y1 = placeholder;
   }
 
   deltax = std::abs(x1 - x0);

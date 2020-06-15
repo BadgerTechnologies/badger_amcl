@@ -74,19 +74,19 @@ Node3D::Node3D(Node* node, std::mutex& configuration_mutex)
   private_nh_.param("global_localization_scanner_off_map_factor", global_localization_off_map_factor_, 1.0);
   private_nh_.param("global_localization_scanner_non_free_space_factor",
                     global_localization_non_free_space_factor_, 1.0);
-  std::string tmp_model_type;
-  private_nh_.param("laser_model_type", tmp_model_type, std::string("likelihood_field_gompertz"));
-  if (tmp_model_type == "likelihood_field")
+  std::string model_type_str;
+  private_nh_.param("laser_model_type", model_type_str, std::string("likelihood_field_gompertz"));
+  if (model_type_str == "likelihood_field")
   {
     model_type_ = POINT_CLOUD_MODEL;
   }
-  else if (tmp_model_type == "likelihood_field_gompertz")
+  else if (model_type_str == "likelihood_field_gompertz")
   {
     model_type_ = POINT_CLOUD_MODEL_GOMPERTZ;
   }
   else
   {
-    ROS_WARN_STREAM("Unknown point cloud scanner model type \"" << tmp_model_type
+    ROS_WARN_STREAM("Unknown point cloud scanner model type \"" << model_type_str
                     << "\"; defaulting to point cloud scanner model");
     model_type_ = POINT_CLOUD_MODEL;
   }

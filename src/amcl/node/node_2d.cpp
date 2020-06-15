@@ -72,19 +72,19 @@ Node2D::Node2D(Node* node, std::mutex& configuration_mutex)
   private_nh_.param("global_localization_planar_non_free_space_factor",
                     global_localization_non_free_space_factor_, 1.0);
 
-  std::string tmp_model_type;
-  private_nh_.param("laser_model_type", tmp_model_type, std::string("likelihood_field"));
-  if (tmp_model_type == "beam")
+  std::string model_type_str;
+  private_nh_.param("laser_model_type", model_type_str, std::string("likelihood_field"));
+  if (model_type_str == "beam")
     model_type_ = PLANAR_MODEL_BEAM;
-  else if (tmp_model_type == "likelihood_field")
+  else if (model_type_str == "likelihood_field")
     model_type_ = PLANAR_MODEL_LIKELIHOOD_FIELD;
-  else if (tmp_model_type == "likelihood_field_prob")
+  else if (model_type_str == "likelihood_field_prob")
     model_type_ = PLANAR_MODEL_LIKELIHOOD_FIELD_PROB;
-  else if (tmp_model_type == "likelihood_field_gompertz")
+  else if (model_type_str == "likelihood_field_gompertz")
     model_type_ = PLANAR_MODEL_LIKELIHOOD_FIELD_GOMPERTZ;
   else
   {
-    ROS_WARN_STREAM("Unknown planar model type \"" << tmp_model_type << "\"; defaulting to likelihood_field model");
+    ROS_WARN_STREAM("Unknown planar model type \"" << model_type_str << "\"; defaulting to likelihood_field model");
     model_type_ = PLANAR_MODEL_LIKELIHOOD_FIELD;
   }
   private_nh_.param("map_scale_up_factor", map_scale_up_factor_, 1);
