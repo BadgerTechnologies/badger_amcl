@@ -35,7 +35,10 @@
 #include <ros/time.h>
 #include <ros/timer.h>
 #include <sensor_msgs/PointCloud2.h>
-#include <tf/message_filter.h>
+#include <tf2/LinearMath/Transform.h>
+#include <tf2/transform_datatypes.h>
+#include <tf2_ros/transform_listener.h>
+#include <tf2_ros/message_filter.h>
 
 #include "badger_amcl/AMCLConfig.h"
 #include "map/octomap.h"
@@ -80,9 +83,9 @@ private:
   bool updatePose(const Eigen::Vector3d& max_hyp_mean, const ros::Time& stamp);
   bool isMapInitialized();
   void deactivateGlobalLocalizationParams();
-  int getFrameToScannerIndex(const std::string& frame_id);
-  bool getFootprintToFrameTransform(const std::string& frame_id, tf::StampedTransform* StampedTransform);
-  int initFrameToScanner(const std::string& frame_id);
+  int getFrameToScannerIndex(const std::string& scanner_frame_id);
+  bool getFootprintToFrameTransform(const std::string& scanner_frame_id, geometry_msgs::Transform* stampedTransform);
+  int initFrameToScanner();
   void initLatestScanData(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan, int scanner_index);
   void checkScanReceived(const ros::TimerEvent& event);
 
@@ -92,7 +95,7 @@ private:
   std::shared_ptr<PFSampleSet> fake_sample_set_;
   std::shared_ptr<ParticleFilter> pf_;
   std::unique_ptr<message_filters::Subscriber<sensor_msgs::PointCloud2>> scan_sub_;
-  std::unique_ptr<tf::MessageFilter<sensor_msgs::PointCloud2>> scan_filter_;
+  std::unique_ptr<tf2_ros::MessageFilter<sensor_msgs::PointCloud2>> scan_filter_;
   std::string cloud_topic_;
   std::map<std::string, int> frame_to_scanner_;
   std::mutex& configuration_mutex_;
@@ -110,7 +113,8 @@ private:
   ros::Duration scanner_check_interval_;
   ros::Timer check_scanner_timer_;
   ros::Time latest_scan_received_ts_;
-  tf::TransformListener tf_;
+  tf2_ros::Buffer tf_buffer_;
+  tf2_ros::TransformListener tf_listener_;
   int occupancy_map_scale_up_factor_;
   int max_beams_;
   int resample_interval_;

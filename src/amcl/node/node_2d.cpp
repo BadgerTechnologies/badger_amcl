@@ -27,8 +27,9 @@
 #include <ros/assert.h>
 #include <ros/console.h>
 #include <ros/names.h>
-#include <tf/exceptions.h>
-#include <tf/transform_datatypes.h>
+#include <tf2/exceptions.h>
+#include <tf2/utils.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
 #include "node/node.h"
 
@@ -39,7 +40,8 @@ Node2D::Node2D(Node* node, std::mutex& configuration_mutex)
     : node_(node),
       configuration_mutex_(configuration_mutex),
       private_nh_("~"),
-      resample_count_(0)
+      resample_count_(0),
+      tf_listener_(tf_buffer_)
 {
   map_ = nullptr;
   latest_scan_data_ = NULL;
@@ -97,8 +99,8 @@ Node2D::Node2D(Node* node, std::mutex& configuration_mutex)
   scan_topic_ = "scan";
   scan_sub_ = std::unique_ptr<message_filters::Subscriber<sensor_msgs::LaserScan>>(
       new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, scan_topic_, 5));
-  scan_filter_ = std::unique_ptr<tf::MessageFilter<sensor_msgs::LaserScan>>(
-      new tf::MessageFilter<sensor_msgs::LaserScan>(*scan_sub_.get(), tf_, node_->getOdomFrameId(), 5));
+  scan_filter_ = std::unique_ptr<tf2_ros::MessageFilter<sensor_msgs::LaserScan>>(
+      new tf2_ros::MessageFilter<sensor_msgs::LaserScan>(*scan_sub_.get(), tf_buffer_, node_->getOdomFrameId(), 5, nh_));
   scan_filter_->registerCallback(std::bind(&Node2D::scanReceived, this, std::placeholders::_1));
 
   // 15s timer to warn on lack of receipt of planar scans, #5209
@@ -186,8 +188,8 @@ void Node2D::reconfigure(AMCLConfig& config)
   scanner_.setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
   scan_sub_ = std::unique_ptr<message_filters::Subscriber<sensor_msgs::LaserScan>>(
       new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, scan_topic_, 5));
-  scan_filter_ = std::unique_ptr<tf::MessageFilter<sensor_msgs::LaserScan>>(
-      new tf::MessageFilter<sensor_msgs::LaserScan>(*scan_sub_.get(), tf_, node_->getOdomFrameId(), 5));
+  scan_filter_ = std::unique_ptr<tf2_ros::MessageFilter<sensor_msgs::LaserScan>>(
+      new tf2_ros::MessageFilter<sensor_msgs::LaserScan>(*scan_sub_.get(), tf_buffer_, node_->getOdomFrameId(), 5, nh_));
   scan_filter_->registerCallback(std::bind(&Node2D::scanReceived, this, std::placeholders::_1));
   pf_ = node_->getPfPtr();
 }
@@ -341,9 +343,8 @@ void Node2D::scanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan)
   if(!global_localization_active_)
     deactivateGlobalLocalizationParams();
 
-  std::string frame_id = planar_scan->header.frame_id;
   ros::Time stamp = planar_scan->header.stamp;
-  int scanner_index = getFrameToScannerIndex(frame_id);
+  int scanner_index = getFrameToScannerIndex(planar_scan->header.frame_id);
   if(scanner_index >= 0)
   {
     bool force_publication = false, resampled = false, success;
@@ -416,51 +417,57 @@ void Node2D::deactivateGlobalLocalizationParams()
   }
 }
 
-int Node2D::getFrameToScannerIndex(const std::string& frame_id)
+int Node2D::getFrameToScannerIndex(const std::string& scanner_frame_id)
 {
   int scanner_index;
   // Do we have the base->base_laser Tx yet?
-  if (frame_to_scanner_.find(frame_id) == frame_to_scanner_.end())
+  if (frame_to_scanner_.find(scanner_frame_id) == frame_to_scanner_.end())
   {
-    tf::Stamped<tf::Pose> scanner_pose;
-    initFrameToScanner(frame_id, &scanner_pose, &scanner_index);
+    tf2::Transform scanner_pose;
+    initFrameToScanner(scanner_frame_id, &scanner_pose, &scanner_index);
     if(scanner_index >= 0)
     {
-      frame_to_scanner_[frame_id] = scanner_index;
+      frame_to_scanner_[scanner_frame_id] = scanner_index;
       updateScannerPose(scanner_pose, scanner_index);
     }
   }
   else
   {
     // we have the planar scanner pose, retrieve planar scanner index
-    scanner_index = frame_to_scanner_[frame_id];
+    scanner_index = frame_to_scanner_[scanner_frame_id];
   }
   return scanner_index;
 }
 
-bool Node2D::initFrameToScanner(const std::string& frame_id, tf::Stamped<tf::Pose>* scanner_pose, int* scanner_index)
+bool Node2D::initFrameToScanner(const std::string& scanner_frame_id, tf2::Transform* scanner_pose, int* scanner_index)
 {
-  ROS_DEBUG_STREAM("Setting up planar_scanner " << frame_to_scanner_.size() << " (frame_id=" << frame_id << ")");
+  ROS_DEBUG_STREAM("Setting up planar_scanner " << frame_to_scanner_.size()
+                   << " (scanner_frame_id=" << scanner_frame_id << ")");
   scanners_.push_back(std::make_shared<PlanarScanner>(scanner_));
   scanners_update_.push_back(true);
   *scanner_index = frame_to_scanner_.size();
 
-  tf::Stamped<tf::Pose> ident(tf::Transform(tf::createIdentityQuaternion(), tf::Vector3(0, 0, 0)),
-                              ros::Time(), frame_id);
+  geometry_msgs::Pose ident, scanner_pose_msg;
+  tf2::Transform ident_tf;
+  ident_tf.setIdentity();
+  ident = tf2::toMsg(ident_tf, ident);
   try
   {
-    tf_.transformPose(node_->getBaseFrameId(), ident, *scanner_pose);
+    geometry_msgs::TransformStamped t = tf_buffer_.lookupTransform(node_->getBaseFrameId(), scanner_frame_id,
+                                                                   ros::Time::now(), ros::Duration(5.0));
+    tf2::doTransform(ident, scanner_pose_msg, t);
+    tf2::fromMsg(scanner_pose_msg, *scanner_pose);
   }
-  catch (tf::TransformException& e)
+  catch (tf2::TransformException& e)
   {
-    ROS_ERROR_STREAM("Couldn't transform from " << frame_id << " to " << node_->getBaseFrameId()
+    ROS_ERROR_STREAM("Couldn't transform from " << scanner_frame_id << " to " << node_->getBaseFrameId()
                      << ", even though the message notifier is in use");
     return false;
   }
   return true;
 }
 
-void Node2D::updateScannerPose(const tf::Stamped<tf::Pose>& scanner_pose, int scanner_index)
+void Node2D::updateScannerPose(const tf2::Transform& scanner_pose, int scanner_index)
 {
   Eigen::Vector3d scanner_pose_v;
   scanner_pose_v[0] = scanner_pose.getOrigin().x();
@@ -485,26 +492,31 @@ bool Node2D::getAngleStats(const sensor_msgs::LaserScanConstPtr& planar_scan, do
   // min, max, and increment angles of the scanner in the base frame.
   //
   // Construct min and max angles of scanner, in the base_link frame.
-  tf::Quaternion q;
-  q.setRPY(0.0, 0.0, planar_scan->angle_min);
-  tf::Stamped<tf::Quaternion> min_q(q, planar_scan->header.stamp, planar_scan->header.frame_id);
-  q.setRPY(0.0, 0.0, planar_scan->angle_min + planar_scan->angle_increment);
-  tf::Stamped<tf::Quaternion> inc_q(q, planar_scan->header.stamp, planar_scan->header.frame_id);
+  tf2::Quaternion min_q;
+  min_q.setRPY(0.0, 0.0, planar_scan->angle_min);
+  tf2::Quaternion inc_q;
+  inc_q.setRPY(0.0, 0.0, planar_scan->angle_min + planar_scan->angle_increment);
+  geometry_msgs::Quaternion min_q_msg = tf2::toMsg(min_q);
+  geometry_msgs::Quaternion inc_q_msg = tf2::toMsg(inc_q);
   bool success = true;
   try
   {
-    tf_.transformQuaternion(node_->getBaseFrameId(), min_q, min_q);
-    tf_.transformQuaternion(node_->getBaseFrameId(), inc_q, inc_q);
+    geometry_msgs::TransformStamped t = tf_buffer_.lookupTransform(node_->getBaseFrameId(), planar_scan->header.frame_id,
+                                                                   planar_scan->header.stamp, ros::Duration(5.0));
+    tf2::doTransform(min_q_msg, min_q_msg, t);
+    tf2::doTransform(inc_q_msg, inc_q_msg, t);
   }
-  catch (tf::TransformException& e)
+  catch (tf2::TransformException& e)
   {
     ROS_WARN_STREAM("Unable to transform min/max planar scanner angles into base frame: " << e.what());
     success = false;
   }
   if(success)
   {
-    *angle_min = tf::getYaw(min_q);
-    *angle_increment = tf::getYaw(inc_q) - *angle_min;
+    tf2::fromMsg(min_q_msg, min_q);
+    tf2::fromMsg(inc_q_msg, inc_q);
+    *angle_min = tf2::getYaw(min_q);
+    *angle_increment = tf2::getYaw(inc_q) - *angle_min;
     // wrapping angle to [-pi .. pi]
     *angle_increment = angles::normalize_angle(*angle_increment);
   }
@@ -602,25 +614,33 @@ bool Node2D::updatePose(const Eigen::Vector3d& max_pose, const ros::Time& stamp)
   node_->updatePose(max_pose, stamp);
   bool success = true;
   // subtracting base to odom from map to base and send map to odom instead
-  tf::Stamped<tf::Pose> odom_to_map;
+  tf2::Quaternion q;
+  q.setRPY(0.0, 0.0, max_pose[2]);
+  tf2::Transform base_to_map_tf(q, tf2::Vector3(max_pose[0], max_pose[1], 0.0));
+  base_to_map_tf = base_to_map_tf.inverse();
+  std::string odom_frame_id = node_->getOdomFrameId();
+  std::string base_frame_id = node_->getBaseFrameId();
+  geometry_msgs::Pose base_to_map_msg, odom_to_map_msg;
+  base_to_map_msg.position = tf2::toMsg(base_to_map_tf.getOrigin(), base_to_map_msg.position);
+  base_to_map_msg.orientation = tf2::toMsg(base_to_map_tf.getRotation());
   try
   {
-    std::string odom_frame_id = node_->getOdomFrameId();
-    std::string base_frame_id = node_->getBaseFrameId();
-    tf::Transform tmp_tf(tf::createQuaternionFromYaw(max_pose[2]),
-                         tf::Vector3(max_pose[0], max_pose[1], 0.0));
-    tf::Stamped<tf::Pose> tmp_tf_stamped(tmp_tf.inverse(), stamp, base_frame_id);
-    tf_.waitForTransform(base_frame_id, odom_frame_id, stamp, ros::Duration(1.0));
-    tf_.transformPose(odom_frame_id, tmp_tf_stamped, odom_to_map);
+    geometry_msgs::TransformStamped t;
+    t = tf_buffer_.lookupTransform(odom_frame_id, base_frame_id, stamp, ros::Duration(1.0));
+    tf2::doTransform(base_to_map_msg, odom_to_map_msg, t);
   }
-  catch (tf::TransformException)
+  catch (tf2::TransformException)
   {
     ROS_DEBUG("Failed to subtract base to odom transform");
     success = false;
   }
 
-  if(!(success and node_->updateOdomToMapTransform(odom_to_map)))
-    success = false;
+  if(success)
+  {
+    tf2::Transform odom_to_map_transform;
+    tf2::fromMsg(odom_to_map_msg, odom_to_map_transform);
+    node_->updateOdomToMapTransform(odom_to_map_transform);
+  }
   return success;
 }
 

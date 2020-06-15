@@ -33,8 +33,10 @@
 #include <geometry_msgs/Vector3.h>
 #include <ros/assert.h>
 #include <ros/console.h>
-#include <tf/exceptions.h>
-#include <tf/transform_datatypes.h>
+#include <tf2/exceptions.h>
+#include <tf2/utils.h>
+#include <tf2/transform_datatypes.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
 #include "node/node_2d.h"
 #include "node/node_3d.h"
@@ -50,7 +52,8 @@ Node::Node()
     initial_pose_hyp_(NULL),
     first_reconfigure_call_(true),
     global_localization_active_(false),
-    dsrv_(ros::NodeHandle("~"))
+    dsrv_(ros::NodeHandle("~")),
+    tf_listener_(tf_buffer_)
 {
   std::lock_guard<std::mutex> cfl(configuration_mutex_);
 
@@ -259,7 +262,7 @@ void Node::reconfigureCB(AMCLConfig& config, uint32_t level)
   Eigen::Vector3d pf_init_pose_mean;
   pf_init_pose_mean[0] = last_published_pose_->pose.pose.position.x;
   pf_init_pose_mean[1] = last_published_pose_->pose.pose.position.y;
-  pf_init_pose_mean[2] = tf::getYaw(last_published_pose_->pose.pose.orientation);
+  pf_init_pose_mean[2] = tf2::getYaw(last_published_pose_->pose.pose.orientation);
   Eigen::Matrix3d pf_init_pose_cov;
   pf_init_pose_cov(0, 0) = last_published_pose_->pose.covariance[COVARIANCE_XX];
   pf_init_pose_cov(1, 1) = last_published_pose_->pose.covariance[COVARIANCE_YY];
@@ -329,11 +332,12 @@ void Node::publishParticleCloud()
   cloud_msg.header.stamp = ros::Time::now();
   cloud_msg.header.frame_id = global_frame_id_;
   cloud_msg.poses.resize(set->sample_count);
+  tf2::Quaternion q;
   for (int i = 0; i < set->sample_count; i++)
   {
-    tf::poseTFToMsg(tf::Pose(tf::createQuaternionFromYaw(set->samples[i].pose[2]),
-                             tf::Vector3(set->samples[i].pose[0], set->samples[i].pose[1], 0)),
-                    cloud_msg.poses[i]);
+    q.setRPY(0.0, 0.0, set->samples[i].pose[2]);
+    tf2::toMsg(tf2::Transform(q, tf2::Vector3(set->samples[i].pose[0], set->samples[i].pose[1], 0)),
+               cloud_msg.poses[i]);
   }
   particlecloud_pub_.publish(cloud_msg);
   if (global_alt_frame_id_.size() > 0)
@@ -354,7 +358,9 @@ void Node::updatePose(const Eigen::Vector3d& max_hyp_mean, const ros::Time& stam
   // Copy in the pose
   p->pose.pose.position.x = max_hyp_mean[0];
   p->pose.pose.position.y = max_hyp_mean[1];
-  tf::quaternionTFToMsg(tf::createQuaternionFromYaw(max_hyp_mean[2]), p->pose.pose.orientation);
+  tf2::Quaternion q;
+  q.setRPY(0.0, 0.0, max_hyp_mean[2]);
+  p->pose.pose.orientation = tf2::toMsg(q);
   // Copy in the covariance, converting from 3-D to 6-D
   std::shared_ptr<PFSampleSet> set = pf_->getCurrentSet();
   for (int i = 0; i < 2; i++)
@@ -384,23 +390,11 @@ void Node::publishPose(const geometry_msgs::PoseWithCovarianceStamped& p)
   }
 }
 
-bool Node::updateOdomToMapTransform(const tf::Stamped<tf::Pose>& odom_to_map)
+void Node::updateOdomToMapTransform(const tf2::Transform& odom_to_map)
 {
   std::lock_guard<std::mutex> tfl(tf_mutex_);
-  latest_tf_ = tf::Transform(tf::Quaternion(odom_to_map.getRotation()),
-                             tf::Point(odom_to_map.getOrigin()));
-  latest_tf_valid_ = false;
-
-  try
-  {
-    latest_tf_ = tf::Transform(tf::Quaternion(odom_to_map.getRotation()), tf::Point(odom_to_map.getOrigin()));
-    latest_tf_valid_ = true;
-  }
-  catch (tf::TransformException)
-  {
-    ROS_WARN("Failed to transform odom to map pose");
-    return false;
-  }
+  latest_tf_ = odom_to_map;
+  latest_tf_valid_ = true;
 }
 
 void Node::attemptSavePose()
@@ -458,11 +452,13 @@ void Node::publishInitialPose()
 {
   geometry_msgs::PoseWithCovarianceStamped pose;
   pose.header.stamp = ros::Time::now();
-  pose.header.frame_id = "/map";
+  pose.header.frame_id = "map";
   pose.pose.pose.position.x = init_pose_[0];
   pose.pose.pose.position.y = init_pose_[1];
   pose.pose.pose.position.z = 0.0;
-  pose.pose.pose.orientation = tf::createQuaternionMsgFromYaw(init_pose_[2]);
+  tf2::Quaternion q;
+  q.setRPY(0.0, 0.0, init_pose_[2]);
+  tf2::convert(q, pose.pose.pose.orientation);
   std::vector<double> cov_vals(36, 0.0);
   cov_vals[COVARIANCE_XX] = init_cov_[0];
   cov_vals[COVARIANCE_YY] = init_cov_[1];
@@ -511,8 +507,8 @@ bool Node::loadPoseFromFile()
     y = config["pose"]["pose"]["position"]["y"].as<double>();
     z = config["pose"]["pose"]["orientation"]["z"].as<double>();
     w = config["pose"]["pose"]["orientation"]["w"].as<double>();
-    tf::Quaternion q(0.0, 0.0, z, w);
-    tf::Matrix3x3 m(q);
+    tf2::Quaternion q(0.0, 0.0, z, w);
+    tf2::Matrix3x3 m(q);
     m.getRPY(roll, pitch, yaw);
     xx = config["pose"]["covariance"][COVARIANCE_XX].as<double>();
     yy = config["pose"]["covariance"][COVARIANCE_YY].as<double>();
@@ -602,7 +598,7 @@ void Node::savePoseToServer()
   // We need to apply the last transform to the latest odom pose to get
   // the latest map pose to store.  We'll take the covariance from
   // last_published_pose_.
-  tf::Pose map_pose = latest_tf_.inverse() * latest_odom_pose_;
+  tf2::Transform map_pose = latest_tf_.inverse() * latest_odom_pose_;
   double yaw, pitch, roll;
   map_pose.getBasis().getEulerYPR(yaw, pitch, roll);
 
@@ -613,7 +609,7 @@ void Node::savePoseToServer()
   private_nh_.setParam("initial_cov_yy", last_published_pose_->pose.covariance[COVARIANCE_YY]);
   private_nh_.setParam("initial_cov_aa", last_published_pose_->pose.covariance[COVARIANCE_AA]);
   geometry_msgs::Pose pose;
-  tf::poseTFToMsg(map_pose, pose);
+  pose = tf2::toMsg(map_pose, pose);
   std::lock_guard<std::mutex> lpl(latest_amcl_pose_mutex_);
   latest_amcl_pose_.pose.pose = pose;
   latest_amcl_pose_.pose.covariance[COVARIANCE_XX] = last_published_pose_->pose.covariance[COVARIANCE_XX];
@@ -762,8 +758,8 @@ void Node::integrateOdom(const nav_msgs::OdometryConstPtr& msg)
 
 void Node::calcTfPose(const nav_msgs::OdometryConstPtr& msg, Eigen::Vector3d* pose)
 {
-  tf::Pose tf_pose;
-  poseMsgToTF(msg->pose.pose, tf_pose);
+  tf2::Transform tf_pose;
+  fromMsg(msg->pose.pose, tf_pose);
   (*pose)(0) = tf_pose.getOrigin().x();
   (*pose)(1) = tf_pose.getOrigin().y();
   double yaw, pitch, roll;
@@ -812,13 +808,18 @@ void Node::calcOdomDelta(const Eigen::Vector3d& pose)
 bool Node::getOdomPose(const ros::Time& t, Eigen::Vector3d* map_pose)
 {
   // Get the robot's pose
-  tf::Stamped<tf::Pose> ident(tf::Transform(tf::createIdentityQuaternion(), tf::Vector3(0, 0, 0)), t, base_frame_id_);
+  tf2::Stamped<tf2::Transform> ident;
+  ident.setIdentity();
+  geometry_msgs::TransformStamped ident_msg, latest_odom_pose_msg;
+  ident_msg = tf2::toMsg(ident);
   try
   {
-    tf_.waitForTransform(base_frame_id_, odom_frame_id_, t, ros::Duration(0.5));
-    tf_.transformPose(odom_frame_id_, ident, latest_odom_pose_);
+    geometry_msgs::TransformStamped stamped_tf = tf_buffer_.lookupTransform(odom_frame_id_, base_frame_id_,
+                                                                            t, ros::Duration(0.5));
+    tf2::doTransform(ident_msg, latest_odom_pose_msg, stamped_tf);
+    tf2::fromMsg(latest_odom_pose_msg, latest_odom_pose_);
   }
-  catch (tf::TransformException e)
+  catch (tf2::TransformException e)
   {
     ROS_INFO_STREAM("Failed to compute odom pose, skipping scan (" << e.what() << ")");
     return false;
@@ -902,23 +903,24 @@ void Node::publishTransform(const ros::TimerEvent& event)
     // We want to send a transform that is good up until a
     // tolerance time so that odom can be used
     ros::Time transform_expiration = (ros::Time::now() + transform_tolerance_);
-    tf::StampedTransform tmp_tf_stamped;
-    tf::Transform tf_transform;
+    geometry_msgs::TransformStamped odom_to_map_msg_stamped;
+    tf2::Transform tf_transform;
     if (tf_reverse_)
     {
-      tmp_tf_stamped = tf::StampedTransform(latest_tf_, transform_expiration, odom_frame_id_, global_frame_id_);
+      odom_to_map_msg_stamped.header.frame_id = odom_frame_id_;
+      odom_to_map_msg_stamped.child_frame_id = global_frame_id_;
       tf_transform = latest_tf_;
     }
     else
     {
-      tmp_tf_stamped = tf::StampedTransform(latest_tf_.inverse(), transform_expiration,
-                                            global_frame_id_, odom_frame_id_);
+      odom_to_map_msg_stamped.header.frame_id = global_frame_id_;
+      odom_to_map_msg_stamped.child_frame_id = odom_frame_id_;
       tf_transform = latest_tf_.inverse();
     }
-    geometry_msgs::Quaternion quaternion;
-    tf::quaternionTFToMsg(tf_transform.getRotation(), quaternion);
-    geometry_msgs::Vector3 origin;
-    tf::vector3TFToMsg(tf_transform.getOrigin(), origin);
+    odom_to_map_msg_stamped.header.stamp = transform_expiration;
+    odom_to_map_msg_stamped.transform = tf2::toMsg(tf_transform);
+    geometry_msgs::Quaternion quaternion = tf2::toMsg(tf_transform.getRotation());
+    geometry_msgs::Vector3 origin = toMsg(tf_transform.getOrigin());
     nav_msgs::Odometry odom;
     odom.header.stamp = ros::Time::now();
     odom.header.frame_id = global_frame_id_;
@@ -928,7 +930,7 @@ void Node::publishTransform(const ros::TimerEvent& event)
     odom.pose.pose.position.z = origin.z;
     odom.pose.pose.orientation = quaternion;
     map_odom_transform_pub_.publish(odom);
-    tfb_.sendTransform(tmp_tf_stamped);
+    tfb_.sendTransform(odom_to_map_msg_stamped);
     sent_first_transform_ = true;
   }
 }
@@ -952,7 +954,7 @@ void Node::initialPoseReceivedInternal(geometry_msgs::PoseWithCovarianceStamped&
 void Node::handleInitialPose(geometry_msgs::PoseWithCovarianceStamped& msg)
 {
   setMsgCovarianceVals(&msg);
-  tf::Pose pose;
+  tf2::Transform pose;
   transformMsgToTfPose(msg, &pose);
   transformPoseToGlobalFrame(msg, pose);
   applyInitialPose();
@@ -1069,7 +1071,7 @@ void Node::resolveFrameId(geometry_msgs::PoseWithCovarianceStamped& msg)
   // Rewrite to our global frame if received in the alt frame.
   // This allows us to run with multiple localizers using tf_reverse and pose them all at once.
   // And it is much cheaper to rewrite here than to run a separate topic tool transformer.
-  if (tf_.resolve(msg.header.frame_id) == tf_.resolve(global_alt_frame_id_))
+  if (msg.header.frame_id == global_alt_frame_id_)
   {
     msg.header.frame_id = global_frame_id_;
   }
@@ -1084,14 +1086,15 @@ bool Node::checkInitialPose(const geometry_msgs::PoseWithCovarianceStamped& msg)
     return false;
   }
   // We only accept initial pose estimates in the global frame, #5148.
-  else if (tf_.resolve(msg.header.frame_id) != tf_.resolve(global_frame_id_))
+  else if (msg.header.frame_id != global_frame_id_)
   {
     ROS_WARN_STREAM("Ignoring initial pose in frame \"" << msg.header.frame_id
                     << "\"; initial poses must be in the global frame, \"" << global_frame_id_ << "\"");
     return false;
   }
 
-  if (std::isnan(msg.pose.pose.position.x) or std::isnan(msg.pose.pose.position.y) or std::isnan(msg.pose.pose.position.z))
+  geometry_msgs::Point position = msg.pose.pose.position;
+  if (std::isnan(position.x) or std::isnan(position.y) or std::isnan(position.z))
   {
     ROS_WARN("Received initial pose with position value 'NAN'. Ignoring pose.");
     return false;
@@ -1121,20 +1124,21 @@ void Node::setMsgCovarianceVals(geometry_msgs::PoseWithCovarianceStamped* msg)
   }
 }
 
-void Node::transformMsgToTfPose(const geometry_msgs::PoseWithCovarianceStamped& msg,
-                                tf::Pose* pose)
+void Node::transformMsgToTfPose(const geometry_msgs::PoseWithCovarianceStamped& msg, tf2::Transform* pose)
 {
   // In case the client sent us a pose estimate in the past, integrate the
   // intervening odometric change.
-  tf::StampedTransform tx_odom;
+  tf2::Transform tx_odom;
   try
   {
     ros::Time now = ros::Time::now();
     // wait a little for the latest tf to become available
-    tf_.waitForTransform(base_frame_id_, msg.header.stamp, base_frame_id_, now, odom_frame_id_, ros::Duration(0.5));
-    tf_.lookupTransform(base_frame_id_, msg.header.stamp, base_frame_id_, now, odom_frame_id_, tx_odom);
+    geometry_msgs::TransformStamped tx_odom_msg = tf_buffer_.lookupTransform(base_frame_id_, msg.header.stamp,
+                                                                             base_frame_id_, now, odom_frame_id_,
+                                                                             ros::Duration(0.5));
+    tf2::fromMsg(tx_odom_msg.transform, tx_odom);
   }
-  catch (tf::TransformException e)
+  catch (tf2::TransformException e)
   {
     // If we've never sent a transform, then this is normal, because the
     // global_frame_id_ frame doesn't exist.  We only care about in-time
@@ -1146,21 +1150,23 @@ void Node::transformMsgToTfPose(const geometry_msgs::PoseWithCovarianceStamped& 
     tx_odom.setIdentity();
   }
 
-  tf::Pose pose_old;
-  tf::poseMsgToTF(msg.pose.pose, pose_old);
+  tf2::Transform pose_old;
+  tf2::fromMsg(msg.pose.pose, pose_old);
   *pose = pose_old * tx_odom;
 }
 
-void Node::transformPoseToGlobalFrame(const geometry_msgs::PoseWithCovarianceStamped& msg, const tf::Pose& pose)
+void Node::transformPoseToGlobalFrame(const geometry_msgs::PoseWithCovarianceStamped& msg, const tf2::Transform& pose)
 {
+  double roll, pitch, yaw;
+  pose.getBasis().getRPY(roll, pitch, yaw);
   ROS_DEBUG("Setting pose (%.6f): %.3f %.3f %.3f", ros::Time::now().toSec(),
-            pose.getOrigin().x(), pose.getOrigin().y(), getYaw(pose));
+            pose.getOrigin().x(), pose.getOrigin().y(), yaw);
   ROS_INFO("Initial pose received by AMCL: (%.3f, %.3f)", pose.getOrigin().x(), pose.getOrigin().y());
   // Re-initialize the filter
   Eigen::Vector3d pf_init_pose_mean;
   pf_init_pose_mean[0] = pose.getOrigin().x();
   pf_init_pose_mean[1] = pose.getOrigin().y();
-  pf_init_pose_mean[2] = getYaw(pose);
+  pf_init_pose_mean[2] = yaw;
   Eigen::Matrix3d pf_init_pose_cov;
   // Copy in the covariance, converting from 6-D to 3-D
   for (int i = 0; i < 2; i++)
@@ -1176,13 +1182,6 @@ void Node::transformPoseToGlobalFrame(const geometry_msgs::PoseWithCovarianceSta
   initial_pose_hyp_ = std::make_shared<PoseHypothesis>();
   initial_pose_hyp_->mean = pf_init_pose_mean;
   initial_pose_hyp_->covariance = pf_init_pose_cov;
-}
-
-double Node::getYaw(const tf::Pose& t)
-{
-  double yaw, pitch, roll;
-  t.getBasis().getEulerYPR(yaw, pitch, roll);
-  return yaw;
 }
 
 std::string Node::getOdomFrameId()

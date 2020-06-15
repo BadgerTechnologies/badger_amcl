@@ -36,8 +36,8 @@
 #include <ros/assert.h>
 #include <ros/console.h>
 #include <ros/names.h>
-#include <tf/exceptions.h>
-#include <tf/transform_datatypes.h>
+#include <tf2/exceptions.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
 #include "node/node.h"
 
@@ -48,7 +48,8 @@ Node3D::Node3D(Node* node, std::mutex& configuration_mutex)
     : node_(node),
       configuration_mutex_(configuration_mutex),
       private_nh_("~"),
-      resample_count_(0)
+      resample_count_(0),
+      tf_listener_(tf_buffer_)
 {
   map_ = nullptr;
   octree_ = nullptr;
@@ -95,8 +96,8 @@ Node3D::Node3D(Node* node, std::mutex& configuration_mutex)
   cloud_topic_ = "cloud";
   scan_sub_ = std::unique_ptr<message_filters::Subscriber<sensor_msgs::PointCloud2>>(
       new message_filters::Subscriber<sensor_msgs::PointCloud2>(nh_, cloud_topic_, 5));
-  scan_filter_ = std::unique_ptr<tf::MessageFilter<sensor_msgs::PointCloud2>>(
-      new tf::MessageFilter<sensor_msgs::PointCloud2>(*scan_sub_, tf_, node_->getOdomFrameId(), 5));
+  scan_filter_ = std::unique_ptr<tf2_ros::MessageFilter<sensor_msgs::PointCloud2>>(
+      new tf2_ros::MessageFilter<sensor_msgs::PointCloud2>(*scan_sub_, tf_buffer_, node_->getOdomFrameId(), 5, nh_));
   scan_filter_->registerCallback(std::bind(&Node3D::scanReceived, this, std::placeholders::_1));
   // 15s timer to warn on lack of receipt of point cloud scans, #5209
   scanner_check_interval_ = ros::Duration(15.0);
@@ -164,8 +165,8 @@ void Node3D::reconfigure(AMCLConfig& config)
   scan_sub_ = std::unique_ptr<message_filters::Subscriber<sensor_msgs::PointCloud2>>(
       new message_filters::Subscriber<sensor_msgs::PointCloud2>(nh_, cloud_topic_, 5));
 
-  scan_filter_ = std::unique_ptr<tf::MessageFilter<sensor_msgs::PointCloud2>>(
-      new tf::MessageFilter<sensor_msgs::PointCloud2>(*scan_sub_, tf_, node_->getOdomFrameId(), 5));
+  scan_filter_ = std::unique_ptr<tf2_ros::MessageFilter<sensor_msgs::PointCloud2>>(
+      new tf2_ros::MessageFilter<sensor_msgs::PointCloud2>(*scan_sub_, tf_buffer_, node_->getOdomFrameId(), 5, nh_));
   scan_filter_->registerCallback(std::bind(&Node3D::scanReceived, this, std::placeholders::_1));
   pf_ = node_->getPfPtr();
 }
@@ -322,7 +323,6 @@ void Node3D::scanReceived(const sensor_msgs::PointCloud2ConstPtr& point_cloud_sc
   if (!global_localization_active_)
     deactivateGlobalLocalizationParams();
 
-  std::string frame_id = point_cloud_scan->header.frame_id;
   ros::Time stamp = point_cloud_scan->header.stamp;
   int scanner_index = getFrameToScannerIndex(point_cloud_scan->header.frame_id);
   if(scanner_index >= 0)
@@ -392,19 +392,19 @@ void Node3D::deactivateGlobalLocalizationParams()
   }
 }
 
-int Node3D::getFrameToScannerIndex(const std::string& frame_id)
+int Node3D::getFrameToScannerIndex(const std::string& scanner_frame_id)
 {
   int scanner_index;
   // Do we have the base->base_lidar Tx yet?
-  if (frame_to_scanner_.find(frame_id) == frame_to_scanner_.end())
+  if (frame_to_scanner_.find(scanner_frame_id) == frame_to_scanner_.end())
   {
-    scanner_index = initFrameToScanner(frame_id);
+    scanner_index = initFrameToScanner();
     if(scanner_index >= 0)
     {
-      tf::StampedTransform scanner_to_footprint_tf;
-      if(getFootprintToFrameTransform(frame_id, &scanner_to_footprint_tf))
+      geometry_msgs::Transform scanner_to_footprint_tf;
+      if(getFootprintToFrameTransform(scanner_frame_id, &scanner_to_footprint_tf))
       {
-        frame_to_scanner_[frame_id] = scanner_index;
+        frame_to_scanner_[scanner_frame_id] = scanner_index;
         scanners_[scanner_index]->setPointCloudScannerToFootprintTF(scanner_to_footprint_tf);
       }
       else
@@ -416,20 +416,20 @@ int Node3D::getFrameToScannerIndex(const std::string& frame_id)
   else
   {
     // we have the point cloud scanner pose, retrieve scanner index
-    scanner_index = frame_to_scanner_[frame_id];
+    scanner_index = frame_to_scanner_[scanner_frame_id];
   }
   return scanner_index;
 }
 
-bool Node3D::getFootprintToFrameTransform(const std::string& frame_id, tf::StampedTransform* stamped_transform)
+bool Node3D::getFootprintToFrameTransform(const std::string& scanner_frame_id, geometry_msgs::Transform* tf)
 {
+  std::string footprint_frame_id = node_->getBaseFrameId();
   try
   {
-    std::string footprint_frame_id = node_->getBaseFrameId();
-    tf_.waitForTransform(footprint_frame_id, frame_id, ros::Time::now(), ros::Duration(5.0));
-    tf_.lookupTransform(footprint_frame_id, frame_id, ros::Time::now(), *stamped_transform);
+    *tf = tf_buffer_.lookupTransform(footprint_frame_id, scanner_frame_id,
+                                     ros::Time::now(), ros::Duration(5.0)).transform;
   }
-  catch (tf::TransformException& e)
+  catch (tf2::TransformException& e)
   {
     ROS_ERROR("Failed to get transform from base footprint to given frame.");
     return false;
@@ -437,7 +437,7 @@ bool Node3D::getFootprintToFrameTransform(const std::string& frame_id, tf::Stamp
   return true;
 }
 
-int Node3D::initFrameToScanner(const std::string& frame_id)
+int Node3D::initFrameToScanner()
 {
   scanners_.push_back(std::make_shared<PointCloudScanner>(scanner_));
   scanners_update_.push_back(true);
@@ -537,24 +537,33 @@ bool Node3D::updatePose(const Eigen::Vector3d& max_pose, const ros::Time& stamp)
   node_->updatePose(max_pose, stamp);
   bool success = true;
   // subtracting base to odom from map to base and send map to odom instead
-  tf::Stamped<tf::Pose> odom_to_map;
+  tf2::Quaternion q;
+  q.setRPY(0.0, 0.0, max_pose[2]);
+  tf2::Transform base_to_map_tf(q, tf2::Vector3(max_pose[0], max_pose[1], 0.0));
+  base_to_map_tf = base_to_map_tf.inverse();
+  std::string odom_frame_id = node_->getOdomFrameId();
+  std::string base_frame_id = node_->getBaseFrameId();
+  geometry_msgs::Pose base_to_map_msg, odom_to_map_msg;
+  base_to_map_msg.position = tf2::toMsg(base_to_map_tf.getOrigin(), base_to_map_msg.position);
+  base_to_map_msg.orientation = tf2::toMsg(base_to_map_tf.getRotation());
   try
   {
-    tf::Transform tmp_tf(tf::createQuaternionFromYaw(max_pose[2]), tf::Vector3(max_pose[0], max_pose[1], 0.0));
-    std::string odom_frame_id = node_->getOdomFrameId();
-    std::string base_frame_id = node_->getBaseFrameId();
-    tf::Stamped<tf::Pose> tmp_tf_stamped(tmp_tf.inverse(), stamp, base_frame_id);
-    tf_.waitForTransform(base_frame_id, odom_frame_id, stamp, ros::Duration(1.0));
-    tf_.transformPose(odom_frame_id, tmp_tf_stamped, odom_to_map);
+    geometry_msgs::TransformStamped t;
+    t = tf_buffer_.lookupTransform(odom_frame_id, base_frame_id, stamp, ros::Duration(1.0));
+    tf2::doTransform(base_to_map_msg, odom_to_map_msg, t);
   }
-  catch (tf::TransformException)
+  catch (tf2::TransformException)
   {
     ROS_DEBUG("Failed to subtract base to odom transform");
     success = false;
   }
 
-  if(!(success and node_->updateOdomToMapTransform(odom_to_map)))
-    success = false;
+  if(success)
+  {
+    tf2::Transform odom_to_map_transform;
+    tf2::fromMsg(odom_to_map_msg, odom_to_map_transform);
+    node_->updateOdomToMapTransform(odom_to_map_transform);
+  }
   return success;
 }
 

@@ -26,6 +26,8 @@
 #include <pcl_ros/transforms.h>
 #include <ros/assert.h>
 #include <tf/exceptions.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <tf2_sensor_msgs/tf2_sensor_msgs.h>
 
 namespace badger_amcl
 {
@@ -80,10 +82,9 @@ void PointCloudScanner::setMapFactors(double off_map_factor, double non_free_spa
   non_free_space_radius_ = non_free_space_radius;
 }
 
-void PointCloudScanner::setPointCloudScannerToFootprintTF(
-tf::Transform point_cloud_scanner_to_footprint_tf)
+void PointCloudScanner::setPointCloudScannerToFootprintTF(geometry_msgs::Transform tf_msg)
 {
-  point_cloud_scanner_to_footprint_tf_ = point_cloud_scanner_to_footprint_tf;
+  tf2::fromMsg(tf_msg, point_cloud_scanner_to_footprint_tf_);
 }
 
 // Update the filter based on the sensor model.  Returns true if the
@@ -230,11 +231,20 @@ double PointCloudScanner::recalcWeight(std::shared_ptr<PFSampleSet> set)
 void PointCloudScanner::getMapCloud(std::shared_ptr<PointCloudData> data, const Eigen::Vector3d& pose,
                                     pcl::PointCloud<pcl::PointXYZ>& map_cloud)
 {
-  tf::Vector3 footprint_to_map_origin(pose[0], pose[1], 0.0);
-  tf::Quaternion footprint_to_map_q(tf::Vector3(0.0, 0.0, 1.0), pose[2]);
-  tf::Transform footprint_to_map_tf(footprint_to_map_q, footprint_to_map_origin);
-  tf::Transform point_cloud_scanner_to_map_tf = footprint_to_map_tf * point_cloud_scanner_to_footprint_tf_;
-  pcl_ros::transformPointCloud(data->points_, map_cloud, point_cloud_scanner_to_map_tf);
+  tf2::Vector3 footprint_to_map_origin(pose[0], pose[1], 0.0);
+  tf2::Quaternion footprint_to_map_q;
+  footprint_to_map_q.setRPY(0.0, 0.0, pose[2]);
+  tf2::Transform footprint_to_map_tf(footprint_to_map_q, footprint_to_map_origin);
+  tf2::Transform t = footprint_to_map_tf * point_cloud_scanner_to_footprint_tf_;
+  tf2::Stamped<tf2::Transform> t_s(t, ros::Time::now(), data->frame_id_);
+  geometry_msgs::TransformStamped tf_msg = tf2::toMsg(t_s);
+  pcl::PCLPointCloud2 pcl2;
+  pcl::toPCLPointCloud2(data->points_, pcl2);
+  sensor_msgs::PointCloud2 in_msg, out_msg;
+  pcl_conversions::fromPCL(pcl2, in_msg);
+  tf2::doTransform(in_msg, out_msg, tf_msg);
+  pcl_conversions::toPCL(out_msg, pcl2);
+  pcl::fromPCLPointCloud2(pcl2, map_cloud);
 }
 
 double PointCloudScanner::applyGompertz(double p)

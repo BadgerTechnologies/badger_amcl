@@ -45,9 +45,10 @@
 #include <ros/time.h>
 #include <ros/timer.h>
 #include <std_srvs/Empty.h>
-#include <tf/message_filter.h>
-#include <tf/transform_broadcaster.h>
-#include <tf/transform_listener.h>
+#include <tf2/LinearMath/Transform.h>
+#include <tf2_ros/message_filter.h>
+#include <tf2_ros/transform_broadcaster.h>
+#include <tf2_ros/transform_listener.h>
 #include <tf2_ros/buffer.h>
 #include <yaml-cpp/yaml.h>
 
@@ -87,7 +88,7 @@ public:
   std::shared_ptr<ParticleFilter> getPfPtr();
   void publishParticleCloud();
   void updatePose(const Eigen::Vector3d& max_hyp_mean, const ros::Time& stamp);
-  bool updateOdomToMapTransform(const tf::Stamped<tf::Pose>& odom_to_map);
+  void updateOdomToMapTransform(const tf2::Transform& odom_to_map);
   bool updatePf(const ros::Time& t, std::vector<bool>& scanners_update, int scanner_index,
                 int* resample_count, bool* force_publication, bool* force_update);
   void setPfDecayRateNormal();
@@ -96,15 +97,6 @@ public:
   void savePoseToFile();
 
 private:
-  // Use a child class to get access to tf2::Buffer class inside of tf_
-  struct TransformListenerWrapper : public tf::TransformListener
-  {
-    inline tf2_ros::Buffer& getBuffer()
-    {
-      return tf2_buffer_;
-    }
-  };
-
   void reconfigureCB(AMCLConfig& config, uint32_t level);
   bool globalLocalizationCallback(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
   // Generate a random pose in a free space on the map
@@ -120,8 +112,8 @@ private:
   void resolveFrameId(geometry_msgs::PoseWithCovarianceStamped& msg);
   bool checkInitialPose(const geometry_msgs::PoseWithCovarianceStamped& msg);
   void setMsgCovarianceVals(geometry_msgs::PoseWithCovarianceStamped* msg);
-  void transformMsgToTfPose(const geometry_msgs::PoseWithCovarianceStamped& msg, tf::Pose* pose);
-  void transformPoseToGlobalFrame(const geometry_msgs::PoseWithCovarianceStamped& msg, const tf::Pose& pose);
+  void transformMsgToTfPose(const geometry_msgs::PoseWithCovarianceStamped& msg, tf2::Transform* pose);
+  void transformPoseToGlobalFrame(const geometry_msgs::PoseWithCovarianceStamped& msg, const tf2::Transform& pose);
   void publishInitialPose();
   void newInitialPoseSubscriber(const ros::SingleSubscriberPublisher& single_sub_pub);
 
@@ -132,7 +124,6 @@ private:
   bool loadParamFromServer(std::string param_name, double* val);
   bool loadPoseFromFile();
   YAML::Node loadYamlFromFile();
-  double getYaw(const tf::Pose& t);
 
   // Odometry integrator
   void integrateOdom(const nav_msgs::OdometryConstPtr& msg);
@@ -168,10 +159,11 @@ private:
   bool wait_for_occupancy_map_;
   std::shared_ptr<NodeND> node_;
 
-  tf::TransformBroadcaster tfb_;
-  tf::TransformListener tf_;
+  tf2_ros::TransformBroadcaster tfb_;
+  tf2_ros::Buffer tf_buffer_;
+  tf2_ros::TransformListener tf_listener_;
   bool sent_first_transform_;
-  tf::Transform latest_tf_;
+  tf2::Transform latest_tf_;
   bool latest_tf_valid_;
   // time for tolerance on the published transform,
   // basically defines how long a map->odom transform is good for
@@ -183,7 +175,7 @@ private:
   // parameter for what odom to use
   std::string odom_frame_id_;
   // paramater to store latest odom pose
-  tf::Stamped<tf::Pose> latest_odom_pose_;
+  tf2::Stamped<tf2::Transform> latest_odom_pose_;
   geometry_msgs::PoseWithCovarianceStamped latest_amcl_pose_;
   ros::Subscriber odom_integrator_sub_;
   bool odom_integrator_enabled_;

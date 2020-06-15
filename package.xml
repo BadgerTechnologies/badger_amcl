@@ -29,7 +29,9 @@
     <depend>dynamic_reconfigure</depend>
     <depend>nav_msgs</depend>
     <depend>roscpp</depend>
-    <depend>tf</depend>
+    <depend>tf2_ros</depend>
+    <depend>tf2_geometry_msgs</depend>
+    <depend>tf2_sensor_msgs</depend>
     <depend>badger_file_lib</depend>
     <depend>yaml-cpp</depend>
     <depend>octomap</depend>

@@ -25,7 +25,9 @@
 #include <Eigen/Dense>
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
-#include <tf/transform_broadcaster.h>
+#include <tf2/transform_datatypes.h>
+#include <tf2/LinearMath/Transform.h>
+#include <tf2_ros/transform_broadcaster.h>
 
 #include "map/octomap.h"
 #include "pf/particle_filter.h"
@@ -71,7 +73,7 @@ public:
   void setMapFactors(double off_map_factor, double non_free_space_factor, double non_free_space_radius);
 
   // Set the scanner's pose after construction
-  void setPointCloudScannerToFootprintTF(tf::Transform lidarToFootprintTF);
+  void setPointCloudScannerToFootprintTF(geometry_msgs::Transform tf_msg);
 
   int getMaxBeams();
   double applyGompertz(double p);
@@ -108,7 +110,7 @@ private:
   // Max beams to consider
   int max_beams_;
 
-  tf::Transform point_cloud_scanner_to_footprint_tf_;
+  tf2::Transform point_cloud_scanner_to_footprint_tf_;
 
   // Vector to store converted map coordinates.
   // Making this a class variable reduces the number of

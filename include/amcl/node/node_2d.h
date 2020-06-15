@@ -33,7 +33,10 @@
 #include <ros/subscriber.h>
 #include <ros/time.h>
 #include <ros/timer.h>
-#include <tf/message_filter.h>
+#include <tf2/LinearMath/Transform.h>
+#include <tf2/transform_datatypes.h>
+#include <tf2_ros/transform_listener.h>
+#include <tf2_ros/message_filter.h>
 
 #include "badger_amcl/AMCLConfig.h"
 #include "map/occupancy_map.h"
@@ -68,13 +71,13 @@ private:
   bool updatePose(const Eigen::Vector3d& max_pose, const ros::Time& stamp);
   bool isMapInitialized();
   void deactivateGlobalLocalizationParams();
-  int getFrameToScannerIndex(const std::string& frame_id);
+  int getFrameToScannerIndex(const std::string& scanner_frame_id);
   void mapMsgReceived(const nav_msgs::OccupancyGridConstPtr& msg);
   void initFromNewMap();
   std::shared_ptr<OccupancyMap> convertMap(const nav_msgs::OccupancyGrid& map_msg);
   void checkScanReceived(const ros::TimerEvent& event);
-  bool initFrameToScanner(const std::string& frame_id, tf::Stamped<tf::Pose>* scanner_pose, int* scanner_index);
-  void updateScannerPose(const tf::Stamped<tf::Pose>& scanner_pose, int scanner_index);
+  bool initFrameToScanner(const std::string& scanner_frame_id, tf2::Transform* scanner_pose, int* scanner_index);
+  void updateScannerPose(const tf2::Transform& scanner_pose, int scanner_index);
   bool initLatestScanData(const sensor_msgs::LaserScanConstPtr& planar_scan, int scanner_index);
   bool getAngleStats(const sensor_msgs::LaserScanConstPtr& planar_scan, double* angle_min, double* angle_increment);
   void updateLatestScanData(const sensor_msgs::LaserScanConstPtr& planar_scan, double angle_min, double angle_increment);
@@ -84,7 +87,7 @@ private:
   Node* node_;
   std::shared_ptr<OccupancyMap> map_;
   std::unique_ptr<message_filters::Subscriber<sensor_msgs::LaserScan>> scan_sub_;
-  std::unique_ptr<tf::MessageFilter<sensor_msgs::LaserScan>> scan_filter_;
+  std::unique_ptr<tf2_ros::MessageFilter<sensor_msgs::LaserScan>> scan_filter_;
   std::string scan_topic_;
   std::map<std::string, int> frame_to_scanner_;
   std::mutex& configuration_mutex_;
@@ -102,7 +105,8 @@ private:
   ros::Timer check_scanner_timer_;
   ros::Time latest_scan_received_ts_;
   ros::Duration check_scanner_interval_;
-  tf::TransformListener tf_;
+  tf2_ros::Buffer tf_buffer_;
+  tf2_ros::TransformListener tf_listener_;
   int max_beams_;
   int map_scale_up_factor_;
   int resample_interval_;

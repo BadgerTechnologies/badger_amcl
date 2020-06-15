@@ -6,7 +6,9 @@ set(CMAKE_CXX_STANDARD 11)
 find_package(catkin REQUIRED
         COMPONENTS
             roscpp
-            tf
+            tf2_ros
+            tf2_geometry_msgs
+            tf2_sensor_msgs
             dynamic_reconfigure
             nav_msgs
             badger_file_lib
@@ -28,7 +30,9 @@ catkin_package(
     CATKIN_DEPENDS
         roscpp
         dynamic_reconfigure
-        tf
+        tf2_ros
+        tf2_geometry_msgs
+        tf2_sensor_msgs
         badger_file_lib
         pcl_ros
         octomap_msgs
