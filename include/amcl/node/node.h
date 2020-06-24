@@ -113,7 +113,7 @@ private:
   bool checkInitialPose(const geometry_msgs::PoseWithCovarianceStamped& msg);
   void setMsgCovarianceVals(geometry_msgs::PoseWithCovarianceStamped* msg);
   void transformMsgToTfPose(const geometry_msgs::PoseWithCovarianceStamped& msg, tf2::Transform* pose);
-  void transformPoseToGlobalFrame(const geometry_msgs::PoseWithCovarianceStamped& msg, const tf2::Transform& pose);
+  void setInitialPoseHyp(const geometry_msgs::PoseWithCovarianceStamped& msg, const tf2::Transform& pose);
   void publishInitialPose();
   void newInitialPoseSubscriber(const ros::SingleSubscriberPublisher& single_sub_pub);
 

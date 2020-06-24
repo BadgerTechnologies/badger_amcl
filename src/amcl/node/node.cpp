@@ -955,7 +955,7 @@ void Node::handleInitialPose(geometry_msgs::PoseWithCovarianceStamped& msg)
   setMsgCovarianceVals(&msg);
   tf2::Transform pose;
   transformMsgToTfPose(msg, &pose);
-  transformPoseToGlobalFrame(msg, pose);
+  setInitialPoseHyp(msg, pose);
   applyInitialPose();
   // disable global localization in case it was active
   global_localization_active_ = false;
@@ -1154,7 +1154,7 @@ void Node::transformMsgToTfPose(const geometry_msgs::PoseWithCovarianceStamped& 
   *pose = pose_old * tx_odom;
 }
 
-void Node::transformPoseToGlobalFrame(const geometry_msgs::PoseWithCovarianceStamped& msg, const tf2::Transform& pose)
+void Node::setInitialPoseHyp(const geometry_msgs::PoseWithCovarianceStamped& msg, const tf2::Transform& pose)
 {
   double roll, pitch, yaw;
   pose.getBasis().getRPY(roll, pitch, yaw);
