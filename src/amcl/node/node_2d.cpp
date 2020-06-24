@@ -45,6 +45,7 @@ Node2D::Node2D(Node* node, std::mutex& configuration_mutex)
 {
   map_ = nullptr;
   latest_scan_data_ = NULL;
+  fake_sample_set_ = std::make_shared<PFSampleSet>();
   private_nh_.param("first_map_only", first_map_only_, false);
   private_nh_.param("laser_min_range", sensor_min_range_, -1.0);
   private_nh_.param("laser_max_range", sensor_max_range_, -1.0);
