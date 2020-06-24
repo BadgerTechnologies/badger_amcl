@@ -229,8 +229,7 @@ void Node::reconfigureCB(AMCLConfig& config, uint32_t level)
   else if (config.odom_model_type == "omni-corrected")
     odom_model_type_ = ODOM_MODEL_OMNI_CORRECTED;
   else if (config.odom_model_type == "gaussian")
-    ;
-  odom_model_type_ = ODOM_MODEL_GAUSSIAN;
+    odom_model_type_ = ODOM_MODEL_GAUSSIAN;
 
   if (config.min_particles > config.max_particles)
   {
