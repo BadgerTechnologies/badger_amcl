@@ -107,14 +107,13 @@ private:
 
   // Initial pose related functions
   void initialPoseReceived(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg);
-  void initialPoseReceivedInternal(geometry_msgs::PoseWithCovarianceStamped& msg_ptr);
-  void handleInitialPose(geometry_msgs::PoseWithCovarianceStamped& msg);
+  void setInitialPose(const tf2::Transform& pose, const std::vector<double>& covariance);
   void resolveFrameId(geometry_msgs::PoseWithCovarianceStamped& msg);
   bool checkInitialPose(const geometry_msgs::PoseWithCovarianceStamped& msg);
-  void setMsgCovarianceVals(geometry_msgs::PoseWithCovarianceStamped* msg);
+  void setCovarianceVals(const geometry_msgs::PoseWithCovarianceStamped& msg, std::vector<double>* cov_vals);
   void transformMsgToTfPose(const geometry_msgs::PoseWithCovarianceStamped& msg, tf2::Transform* pose);
-  void setInitialPoseHyp(const geometry_msgs::PoseWithCovarianceStamped& msg, const tf2::Transform& pose);
-  void publishInitialPose();
+  void setInitialPoseHyp(const tf2::Transform& pose, const std::vector<double>& covariance);
+  void createInitialPose(tf2::Transform* pose, std::vector<double>* cov_vals);
   void newInitialPoseSubscriber(const ros::SingleSubscriberPublisher& single_sub_pub);
 
   void loadPose();
@@ -136,7 +135,8 @@ private:
   void computeDelta(const Eigen::Vector3d& pose, Eigen::Vector3d* delta);
   void setScannersUpdateFlags(const Eigen::Vector3d& delta, std::vector<bool>& scanners_update, bool* force_update);
   void updateOdom(const Eigen::Vector3d& pose, const Eigen::Vector3d& delta);
-  void initOdom(const Eigen::Vector3d& pose, std::vector<bool>& scanners_update, int* resample_count, bool* force_publication);
+  void initOdom(const Eigen::Vector3d& pose, std::vector<bool>& scanners_update,
+                int* resample_count, bool* force_publication);
 
   std::function<Eigen::Vector3d()> uniform_pose_generator_fn_;
 
@@ -148,9 +148,6 @@ private:
   ros::Publisher alt_pose_pub_;
   ros::Publisher alt_particlecloud_pub_;
   ros::Publisher map_odom_transform_pub_;
-  bool publish_initial_pose_at_startup_;
-  bool initial_pose_loaded_;
-  ros::Publisher initial_pose_pub_;
   ros::Subscriber initial_pose_sub_;
   ros::ServiceServer global_loc_srv_;
 

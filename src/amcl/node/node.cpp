@@ -130,11 +130,6 @@ Node::Node()
 
   transform_tolerance_.fromSec(transform_tolerance_val);
 
-  private_nh_.param("publish_initial_pose_at_startup", publish_initial_pose_at_startup_, true);
-  if(publish_initial_pose_at_startup_)
-  {
-    initial_pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("/initialpose", 1, true);
-  }
   initial_pose_sub_ = nh_.subscribe("initialpose", 2, &Node::initialPoseReceived, this);
 
   pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("amcl_pose", 2, true);
@@ -425,13 +420,11 @@ void Node::loadPose()
   {
     ROS_INFO("Successfully loaded initial pose from server.");
     ROS_INFO("Pose loaded: (%.3f, %.3f)", init_pose_[0], init_pose_[1]);
-    initial_pose_loaded_ = true;
   }
   else if (loadPoseFromFile())
   {
     ROS_INFO("Failed to load pose from server, but successfully loaded pose from file.");
     ROS_INFO("Pose loaded: (%.3f, %.3f)", init_pose_[0], init_pose_[1]);
-    initial_pose_loaded_ = true;
   }
   else
   {
@@ -443,31 +436,20 @@ void Node::loadPose()
     init_cov_[1] = 0.5 * 0.5;
     init_cov_[2] = (M_PI / 12.0) * (M_PI / 12.0);
     ROS_INFO("Default pose: (%.3f, %.3f)", init_pose_[0], init_pose_[1]);
-    initial_pose_loaded_ = false;
   }
 }
 
-void Node::publishInitialPose()
+void Node::createInitialPose(tf2::Transform* pose, std::vector<double>* cov_vals)
 {
-  geometry_msgs::PoseWithCovarianceStamped pose;
-  pose.header.stamp = ros::Time::now();
-  pose.header.frame_id = "map";
-  pose.pose.pose.position.x = init_pose_[0];
-  pose.pose.pose.position.y = init_pose_[1];
-  pose.pose.pose.position.z = 0.0;
-  tf2::Quaternion q;
-  q.setRPY(0.0, 0.0, init_pose_[2]);
-  tf2::convert(q, pose.pose.pose.orientation);
-  std::vector<double> cov_vals(36, 0.0);
-  cov_vals[COVARIANCE_XX] = init_cov_[0];
-  cov_vals[COVARIANCE_YY] = init_cov_[1];
-  cov_vals[COVARIANCE_AA] = init_cov_[2];
-  for (int i = 0; i < cov_vals.size(); i++)
-  {
-    pose.pose.covariance[i] = cov_vals[i];
-  }
-  ROS_INFO("Initial pose: (%.3f, %.3f)", pose.pose.pose.position.x, pose.pose.pose.position.y);
-  initial_pose_pub_.publish(pose);
+  tf2::Vector3 origin(init_pose_[0], init_pose_[1], 0.0);
+  tf2::Quaternion rotation;
+  rotation.setRPY(0.0, 0.0, init_pose_[2]);
+  pose->setOrigin(origin);
+  pose->setRotation(rotation);
+  cov_vals->at(COVARIANCE_XX) = init_cov_[0];
+  cov_vals->at(COVARIANCE_YY) = init_cov_[1];
+  cov_vals->at(COVARIANCE_AA) = init_cov_[2];
+  ROS_INFO("Initial pose: (%.3f, %.3f)", pose->getOrigin().getX(), pose->getOrigin().getY());
 }
 
 bool Node::loadPoseFromServer()
@@ -726,15 +708,10 @@ void Node::initFromNewMap(std::shared_ptr<Map> new_map, bool use_initial_pose)
   // Odometry
   odom_.setModel(odom_model_type_, alpha1_, alpha2_, alpha3_, alpha4_, alpha5_);
 
-  if(publish_initial_pose_at_startup_ and initial_pose_loaded_)
-  {
-    // Publish initial pose loaded from the server or file at startup
-    publishInitialPose();
-  }
-  else
-  {
-    applyInitialPose();
-  }
+  tf2::Transform pose;
+  std::vector<double> cov_vals(36, 0.0);
+  createInitialPose(&pose, &cov_vals);
+  setInitialPose(pose, cov_vals);
 }
 
 void Node::updateFreeSpaceIndices(std::vector<std::pair<int, int>> fsi)
@@ -955,24 +932,20 @@ void Node::initialPoseReceived(const geometry_msgs::PoseWithCovarianceStampedCon
 {
   std::lock_guard<std::mutex> cfl(configuration_mutex_);
   geometry_msgs::PoseWithCovarianceStamped msg(*msg_ptr);
-  initialPoseReceivedInternal(msg);
-}
-
-void Node::initialPoseReceivedInternal(geometry_msgs::PoseWithCovarianceStamped& msg)
-{
   resolveFrameId(msg);
   if(checkInitialPose(msg))
   {
-    handleInitialPose(msg);
+    std::vector<double> cov_vals(36, 0.0);
+    setCovarianceVals(msg, &cov_vals);
+    tf2::Transform pose;
+    transformMsgToTfPose(msg, &pose);
+    setInitialPose(pose, cov_vals);
   }
 }
 
-void Node::handleInitialPose(geometry_msgs::PoseWithCovarianceStamped& msg)
+void Node::setInitialPose(const tf2::Transform& pose, const std::vector<double>& covariance)
 {
-  setMsgCovarianceVals(&msg);
-  tf2::Transform pose;
-  transformMsgToTfPose(msg, &pose);
-  setInitialPoseHyp(msg, pose);
+  setInitialPoseHyp(pose, covariance);
   applyInitialPose();
   // disable global localization in case it was active
   global_localization_active_ = false;
@@ -1125,17 +1098,21 @@ bool Node::checkInitialPose(const geometry_msgs::PoseWithCovarianceStamped& msg)
   return true;
 }
 
-void Node::setMsgCovarianceVals(geometry_msgs::PoseWithCovarianceStamped* msg)
+void Node::setCovarianceVals(const geometry_msgs::PoseWithCovarianceStamped& msg, std::vector<double>* cov_vals)
 {
   std::vector<double> default_cov_vals(36, 0.0);
   default_cov_vals[COVARIANCE_XX] = 0.5 * 0.5;
   default_cov_vals[COVARIANCE_YY] = 0.5 * 0.5;
   default_cov_vals[COVARIANCE_AA] = (M_PI / 12.0) * (M_PI / 12.0);
-  for (int i = 0; i < msg->pose.covariance.size(); i++)
+  for (int i = 0; i < msg.pose.covariance.size(); i++)
   {
-    if (std::isnan(msg->pose.covariance[i]))
+    if (std::isnan(msg.pose.covariance[i]))
     {
-      msg->pose.covariance[i] = default_cov_vals[i];
+      cov_vals->at(i) = default_cov_vals[i];
+    }
+    else
+    {
+      cov_vals->at(i) = msg.pose.covariance[i];
     }
   }
 }
@@ -1171,7 +1148,7 @@ void Node::transformMsgToTfPose(const geometry_msgs::PoseWithCovarianceStamped& 
   *pose = pose_old * tx_odom;
 }
 
-void Node::setInitialPoseHyp(const geometry_msgs::PoseWithCovarianceStamped& msg, const tf2::Transform& pose)
+void Node::setInitialPoseHyp(const tf2::Transform& pose, const std::vector<double>& covariance)
 {
   double roll, pitch, yaw;
   pose.getBasis().getRPY(roll, pitch, yaw);
@@ -1189,12 +1166,12 @@ void Node::setInitialPoseHyp(const geometry_msgs::PoseWithCovarianceStamped& msg
   {
     for (int j = 0; j < 2; j++)
     {
-      pf_init_pose_cov(i, j) = msg.pose.covariance[6 * i + j];
+      pf_init_pose_cov(i, j) = covariance[6 * i + j];
     }
-    pf_init_pose_cov(i, 2) = msg.pose.covariance[6 * i + 5];
-    pf_init_pose_cov(2, i) = msg.pose.covariance[6 * 5 + i];
+    pf_init_pose_cov(i, 2) = covariance[6 * i + 5];
+    pf_init_pose_cov(2, i) = covariance[6 * 5 + i];
   }
-  pf_init_pose_cov(2, 2) = msg.pose.covariance[6 * 5 + 5];
+  pf_init_pose_cov(2, 2) = covariance[6 * 5 + 5];
   initial_pose_hyp_ = std::make_shared<PoseHypothesis>();
   initial_pose_hyp_->mean = pf_init_pose_mean;
   initial_pose_hyp_->covariance = pf_init_pose_cov;
