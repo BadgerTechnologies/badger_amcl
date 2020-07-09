@@ -622,7 +622,13 @@ void Node::savePoseToFile()
 {
   if (!save_pose_)
   {
-    ROS_DEBUG("As specified, not saving pose to file");
+    ROS_DEBUG("As specified, not saving pose to file.");
+    return;
+  }
+  if (!latest_tf_valid_)
+  {
+    // We can enter this state on shutdown when the main function in main.cpp calls this function directly.
+    ROS_DEBUG("TF is not valid, not saving pose to file.");
     return;
   }
   std::lock_guard<std::mutex> lpl(latest_amcl_pose_mutex_);
