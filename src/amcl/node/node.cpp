@@ -503,15 +503,17 @@ bool Node::loadParamFromServer(std::string param_name, double* val)
 
 bool Node::loadPoseFromFile()
 {
-  double x, y, z, w, roll, pitch, yaw, xx, yy, aa;
+  double pose_x, pose_y, orientation_x, orientation_y, orientation_z, orientation_w, roll, pitch, yaw, xx, yy, aa;
   try
   {
     YAML::Node config = loadYamlFromFile();
-    x = config["pose"]["pose"]["position"]["x"].as<double>();
-    y = config["pose"]["pose"]["position"]["y"].as<double>();
-    z = config["pose"]["pose"]["orientation"]["z"].as<double>();
-    w = config["pose"]["pose"]["orientation"]["w"].as<double>();
-    tf2::Quaternion q(0.0, 0.0, z, w);
+    pose_x = config["pose"]["pose"]["position"]["x"].as<double>();
+    pose_y = config["pose"]["pose"]["position"]["y"].as<double>();
+    orientation_x = config["pose"]["pose"]["orientation"]["x"].as<double>();
+    orientation_y = config["pose"]["pose"]["orientation"]["y"].as<double>();
+    orientation_z = config["pose"]["pose"]["orientation"]["z"].as<double>();
+    orientation_w = config["pose"]["pose"]["orientation"]["w"].as<double>();
+    tf2::Quaternion q(orientation_x, orientation_y, orientation_z, orientation_w);
     tf2::Matrix3x3 m(q);
     m.getRPY(roll, pitch, yaw);
     xx = config["pose"]["covariance"][COVARIANCE_XX].as<double>();
@@ -523,13 +525,22 @@ bool Node::loadPoseFromFile()
     ROS_WARN_STREAM("Exception while loading pose from file. Failed to parse saved YAML pose. " << e.what());
     return false;
   }
-  if (std::isnan(x) or std::isnan(y) or std::isnan(yaw) or std::isnan(xx) or std::isnan(yy) or std::isnan(aa))
+  if (std::isnan(pose_x) or std::isnan(pose_y)
+      or std::isnan(orientation_x) or std::isnan(orientation_y)
+      or std::isnan(orientation_z) or std::isnan(orientation_w)
+      or std::isnan(xx) or std::isnan(yy) or std::isnan(aa))
   {
     ROS_WARN("Failed to parse saved YAML pose. NAN value read from file.");
     return false;
   }
-  init_pose_[0] = x;
-  init_pose_[1] = y;
+  else if (std::isnan(yaw))
+  {
+    ROS_WARN("Failed to parse saved YAML pose. Rotation quaternion (%f, %f, %f, %f) invalid.",
+             orientation_x, orientation_y, orientation_z, orientation_w);
+    return false;
+  }
+  init_pose_[0] = pose_x;
+  init_pose_[1] = pose_y;
   init_pose_[2] = yaw;
   init_cov_[0] = xx;
   init_cov_[1] = yy;
