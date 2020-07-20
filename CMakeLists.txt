@@ -82,6 +82,11 @@ target_link_libraries(
     badger_amcl_core
 )
 
+if(CATKIN_ENABLE_TESTING)
+    catkin_add_gtest(TestBadgerAmcl test/test_badger_amcl.cpp)
+    target_link_libraries(TestBadgerAmcl badger_amcl_core ${catkin_LIBRARIES})
+endif()
+
 install( TARGETS
     badger_amcl badger_amcl_core
     ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
