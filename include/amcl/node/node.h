@@ -93,7 +93,7 @@ public:
                 int* resample_count, bool* force_publication, bool* force_update);
   void setPfDecayRateNormal();
   void attemptSavePose();
-  void savePoseToServer();
+  void savePoseToServer(const tf2::Transform& latest_tf);
   void savePoseToFile();
 
 private:
@@ -124,6 +124,7 @@ private:
   bool loadParamFromServer(std::string param_name, double* val);
   bool loadPoseFromFile();
   YAML::Node loadYamlFromFile();
+  bool getLatestTf(tf2::Transform* latest_tf);
 
   // Odometry integrator
   void integrateOdom(const nav_msgs::OdometryConstPtr& msg);
