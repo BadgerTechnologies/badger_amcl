@@ -405,21 +405,21 @@ bool Node::updateOdomToMapTransform(const tf::Stamped<tf::Pose>& odom_to_map)
 
 void Node::attemptSavePose()
 {
-  std::lock_guard<std::mutex> tfl(tf_mutex_);
-  if (latest_tf_valid_)
+  tf::Transform latest_tf;
+  if (getLatestTf(&latest_tf))
   {
     // Is it time to save our last pose to the param server
     ros::Time now = ros::Time::now();
     if ((save_pose_to_server_period_.toSec() > 0.0)
         && (now - save_pose_to_server_last_time_) >= save_pose_to_server_period_)
     {
-      savePoseToServer();
+      savePoseToServer(latest_tf);
       save_pose_to_server_last_time_ = now;
     }
     if ((save_pose_to_file_period_.toSec() > 0.0)
         && (now - save_pose_to_file_last_time_) >= save_pose_to_file_period_)
     {
-      ROS_DEBUG_STREAM("save pose to file period: " << save_pose_to_file_period_.toSec());
+      ROS_DEBUG_STREAM("Save pose to file period: " << save_pose_to_file_period_.toSec());
       savePoseToFile();
       save_pose_to_file_last_time_ = now;
     }
@@ -590,8 +590,7 @@ YAML::Node Node::loadYamlFromFile()
   }
 }
 
-// Caller must be holding tf_mutex_
-void Node::savePoseToServer()
+void Node::savePoseToServer(const tf::Transform& latest_tf)
 {
   if (!save_pose_)
   {
@@ -602,7 +601,7 @@ void Node::savePoseToServer()
   // We need to apply the last transform to the latest odom pose to get
   // the latest map pose to store.  We'll take the covariance from
   // last_published_pose_.
-  tf::Pose map_pose = latest_tf_.inverse() * latest_odom_pose_;
+  tf::Pose map_pose = latest_tf.inverse() * latest_odom_pose_;
   double yaw, pitch, roll;
   map_pose.getBasis().getEulerYPR(yaw, pitch, roll);
 
@@ -895,24 +894,22 @@ bool Node::globalLocalizationCallback(std_srvs::Empty::Request& req, std_srvs::E
 
 void Node::publishTransform(const ros::TimerEvent& event)
 {
-  std::lock_guard<std::mutex> tfl(tf_mutex_);
-  if (tf_broadcast_ && latest_tf_valid_)
+  tf::Transform tf_transform;
+  if (tf_broadcast_ && getLatestTf(&tf_transform))
   {
     // We want to send a transform that is good up until a
     // tolerance time so that odom can be used
     ros::Time transform_expiration = (ros::Time::now() + transform_tolerance_);
     tf::StampedTransform tmp_tf_stamped;
-    tf::Transform tf_transform;
     if (tf_reverse_)
     {
-      tmp_tf_stamped = tf::StampedTransform(latest_tf_, transform_expiration, odom_frame_id_, global_frame_id_);
-      tf_transform = latest_tf_;
+      tmp_tf_stamped = tf::StampedTransform(tf_transform, transform_expiration, odom_frame_id_, global_frame_id_);
     }
     else
     {
-      tmp_tf_stamped = tf::StampedTransform(latest_tf_.inverse(), transform_expiration,
+      tmp_tf_stamped = tf::StampedTransform(tf_transform.inverse(), transform_expiration,
                                             global_frame_id_, odom_frame_id_);
-      tf_transform = latest_tf_.inverse();
+      tf_transform = tf_transform.inverse();
     }
     geometry_msgs::Quaternion quaternion;
     tf::quaternionTFToMsg(tf_transform.getRotation(), quaternion);
@@ -930,6 +927,17 @@ void Node::publishTransform(const ros::TimerEvent& event)
     tfb_.sendTransform(tmp_tf_stamped);
     sent_first_transform_ = true;
   }
+}
+
+bool Node::getLatestTf(tf::Transform* latest_tf)
+{
+  std::lock_guard<std::mutex> tfl(tf_mutex_);
+  if(latest_tf_valid_)
+  {
+    *latest_tf = latest_tf_;
+    return true;
+  }
+  return false;
 }
 
 void Node::initialPoseReceived(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg_ptr)
