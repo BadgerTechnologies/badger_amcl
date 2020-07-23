@@ -95,9 +95,9 @@ Node3D::Node3D(Node* node, std::mutex& configuration_mutex)
 
   cloud_topic_ = "cloud";
   scan_sub_ = std::unique_ptr<message_filters::Subscriber<sensor_msgs::PointCloud2>>(
-      new message_filters::Subscriber<sensor_msgs::PointCloud2>(nh_, cloud_topic_, 5));
+      new message_filters::Subscriber<sensor_msgs::PointCloud2>(nh_, cloud_topic_, 1));
   scan_filter_ = std::unique_ptr<tf2_ros::MessageFilter<sensor_msgs::PointCloud2>>(
-      new tf2_ros::MessageFilter<sensor_msgs::PointCloud2>(*scan_sub_, tf_buffer_, node_->getOdomFrameId(), 5, nh_));
+      new tf2_ros::MessageFilter<sensor_msgs::PointCloud2>(*scan_sub_, tf_buffer_, node_->getOdomFrameId(), 1, nh_));
   scan_filter_->registerCallback(std::bind(&Node3D::scanReceived, this, std::placeholders::_1));
   // 15s timer to warn on lack of receipt of point cloud scans, #5209
   scanner_check_interval_ = ros::Duration(15.0);
@@ -163,10 +163,10 @@ void Node3D::reconfigure(AMCLConfig& config)
 
   scanner_.setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
   scan_sub_ = std::unique_ptr<message_filters::Subscriber<sensor_msgs::PointCloud2>>(
-      new message_filters::Subscriber<sensor_msgs::PointCloud2>(nh_, cloud_topic_, 5));
+      new message_filters::Subscriber<sensor_msgs::PointCloud2>(nh_, cloud_topic_, 1));
 
   scan_filter_ = std::unique_ptr<tf2_ros::MessageFilter<sensor_msgs::PointCloud2>>(
-      new tf2_ros::MessageFilter<sensor_msgs::PointCloud2>(*scan_sub_, tf_buffer_, node_->getOdomFrameId(), 5, nh_));
+      new tf2_ros::MessageFilter<sensor_msgs::PointCloud2>(*scan_sub_, tf_buffer_, node_->getOdomFrameId(), 1, nh_));
   scan_filter_->registerCallback(std::bind(&Node3D::scanReceived, this, std::placeholders::_1));
   pf_ = node_->getPfPtr();
 }
