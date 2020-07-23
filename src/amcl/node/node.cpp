@@ -49,6 +49,7 @@ Node::Node()
     private_nh_("~"),
     initial_pose_hyp_(NULL),
     first_reconfigure_call_(true),
+    publish_transform_spinner_(1, &publish_transform_queue_),
     global_localization_active_(false),
     dsrv_(ros::NodeHandle("~"))
 {
@@ -167,8 +168,12 @@ Node::Node()
                                                                        std::placeholders::_1, std::placeholders::_2);
   dsrv_.setCallback(cb);
 
-  publish_transform_timer_ = nh_.createTimer(transform_publish_period_, std::bind(&Node::publishTransform, this,
-                                                                                  std::placeholders::_1));
+  publish_transform_nh_ = nh_;
+  publish_transform_nh_.setCallbackQueue(&publish_transform_queue_);
+  publish_transform_timer_ = publish_transform_nh_.createTimer(transform_publish_period_,
+                                                               std::bind(&Node::publishTransform, this,
+                                                               std::placeholders::_1));
+  publish_transform_spinner_.start();
 }
 
 void Node::reconfigureCB(AMCLConfig& config, uint32_t level)

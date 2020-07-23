@@ -225,6 +225,9 @@ private:
   std::mutex latest_amcl_pose_mutex_;
   dynamic_reconfigure::Server<AMCLConfig> dsrv_;
   AMCLConfig default_config_;
+  ros::CallbackQueue publish_transform_queue_;
+  ros::AsyncSpinner publish_transform_spinner_;
+  ros::NodeHandle publish_transform_nh_;
   ros::Timer publish_transform_timer_;
 
   bool global_localization_active_;
