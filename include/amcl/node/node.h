@@ -114,13 +114,14 @@ private:
   void createInitialPose(tf2::Transform* pose, std::vector<double>* cov_vals);
   void newInitialPoseSubscriber(const ros::SingleSubscriberPublisher& single_sub_pub);
 
-  void savePoseToFile(const tf2::Transform& latest_tf);
+  void savePoseToFile(const geometry_msgs::PoseWithCovarianceStamped& latest_amcl_pose);
   void loadPose();
   void publishPose(const geometry_msgs::PoseWithCovarianceStamped& p);
   void applyInitialPose();
   bool loadPoseFromFile();
   YAML::Node loadYamlFromFile();
   bool getLatestTf(tf2::Transform* latest_tf);
+  void getLatestAmclPose(tf2::Transform latest_tf, geometry_msgs::PoseWithCovarianceStamped* latest_amcl_pose);
 
   // Odometry integrator
   void integrateOdom(const nav_msgs::OdometryConstPtr& msg);
