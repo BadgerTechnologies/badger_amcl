@@ -92,9 +92,7 @@ public:
   bool updatePf(const ros::Time& t, std::vector<bool>& scanners_update, int scanner_index,
                 int* resample_count, bool* force_publication, bool* force_update);
   void setPfDecayRateNormal();
-  void attemptSavePose();
-  void savePoseToServer(const tf2::Transform& latest_tf);
-  void savePoseToFile();
+  void attemptSavePose(bool force_save);
 
 private:
   void reconfigureCB(AMCLConfig& config, uint32_t level);
@@ -116,11 +114,10 @@ private:
   void createInitialPose(tf2::Transform* pose, std::vector<double>* cov_vals);
   void newInitialPoseSubscriber(const ros::SingleSubscriberPublisher& single_sub_pub);
 
+  void savePoseToFile(const tf2::Transform& latest_tf);
   void loadPose();
   void publishPose(const geometry_msgs::PoseWithCovarianceStamped& p);
   void applyInitialPose();
-  bool loadPoseFromServer();
-  bool loadParamFromServer(std::string param_name, double* val);
   bool loadPoseFromFile();
   YAML::Node loadYamlFromFile();
   bool getLatestTf(tf2::Transform* latest_tf);
@@ -188,9 +185,7 @@ private:
   std::string global_alt_frame_id_;
 
   ros::Duration transform_publish_period_;
-  ros::Time save_pose_to_server_last_time_;
   ros::Time save_pose_to_file_last_time_;
-  ros::Duration save_pose_to_server_period_;
   ros::Duration save_pose_to_file_period_;
   bool save_pose_;
   std::string saved_pose_filepath_;
