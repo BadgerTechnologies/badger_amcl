@@ -29,73 +29,38 @@
 namespace badger_amcl
 {
 
-// Info for a node in the tree
 struct PFKDTreeNode
 {
-  // Depth in the tree
-  int leaf, depth;
-
-  // Pivot dimension and value
+  int depth;
   int pivot_dim;
-  double pivot_value;
-
-  // The key for this node
   int key[3];
-
-  // The value for this node
   double value;
-
-  // The cluster label (leaf nodes)
   int cluster;
-
-  // Child nodes
   struct PFKDTreeNode* children[2];
 
 };
 
-// A kd tree
 class PFKDTree
 {
 public:
-  // Create a tree
   PFKDTree();
-
-  // Clear all entries from the tree
   void clearKDTree();
-
-  // Insert a pose into the tree
   void insertPose(const Eigen::Vector3d& pose, double value);
-
-  // Cluster the leaves in the tree
   void cluster();
-
-  // Determine the cluster label for the given pose
   int getCluster(const Eigen::Vector3d& pose);
-
   int getLeafCount();
 
 private:
-  // Compare keys to see if they are equal
   bool equals(int key_a[], int key_b[]);
-
-  // Insert a node into the tree
-  PFKDTreeNode* insertNode(PFKDTreeNode* parent, PFKDTreeNode* node, int key[], double value);
-
-  // Recursive node search
+  PFKDTreeNode* insertNode(PFKDTreeNode* node, int key[], double value, int depth);
+  PFKDTreeNode* makeLeafNode(int key[], double value, int depth);
+  void traverseNode(PFKDTreeNode* node, int key[], double value, int depth);
   PFKDTreeNode* findNode(PFKDTreeNode* node, int key[]);
+  void clusterNode(PFKDTreeNode* node);
 
-  // Recursively label nodes in this cluster
-  void clusterNode(PFKDTreeNode* node, int depth);
-
-  // Cell size
   double cell_size_[3];
-
-  // The root node of the tree
   PFKDTreeNode* root_;
-
   std::deque<PFKDTreeNode> nodes_;
-
-  // The number of leaf nodes in the tree
   int leaf_count_;
 };
 
