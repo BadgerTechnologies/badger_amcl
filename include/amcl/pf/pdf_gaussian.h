@@ -33,6 +33,8 @@ class PDFGaussian
 public:
   // Create a gaussian pdf
   PDFGaussian(const Eigen::Vector3d& x, const Eigen::Matrix3d& cx);
+  // Constructor used to seed random for testing
+  PDFGaussian(const Eigen::Vector3d& x, const Eigen::Matrix3d& cx, int seed);
 
   // Generate a sample from the the pdf.
   void sample(Eigen::Vector3d* v);
