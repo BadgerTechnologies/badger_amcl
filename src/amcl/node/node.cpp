@@ -372,6 +372,7 @@ void Node::updatePose(const Eigen::Vector3d& max_hyp_mean, const ros::Time& stam
   // covariance for the highest-weight cluster
   p->pose.covariance[COVARIANCE_AA] = set->cov(2, 2);
   publishPose(*p);
+  std::lock_guard<std::mutex> lpl(latest_pose_mutex_);
   last_published_pose_ = p;
 }
 
@@ -404,7 +405,9 @@ void Node::attemptSavePose(bool force_save)
     if (force_save or time_to_save)
     {
       ROS_DEBUG_STREAM("Save pose to file period: " << save_pose_to_file_period_.toSec());
-      savePoseToFile(latest_tf);
+      geometry_msgs::PoseWithCovarianceStamped latest_pose;
+      getLatestPose(latest_tf, &latest_pose);
+      savePoseToFile(latest_pose);
       save_pose_to_file_last_time_ = now;
     }
   }
@@ -543,7 +546,7 @@ YAML::Node Node::loadYamlFromFile()
   }
 }
 
-void Node::savePoseToFile(const tf2::Transform& latest_tf)
+void Node::savePoseToFile(const geometry_msgs::PoseWithCovarianceStamped& latest_pose)
 {
   if (!save_pose_)
   {
@@ -556,25 +559,9 @@ void Node::savePoseToFile(const tf2::Transform& latest_tf)
     ROS_DEBUG("TF is not valid, not saving pose to file.");
     return;
   }
-  std::lock_guard<std::mutex> lpl(latest_amcl_pose_mutex_);
-
-  // We need to apply the last transform to the latest odom pose to get
-  // the latest map pose to store.  We'll take the covariance from
-  // last_published_pose_.
-  tf2::Transform map_pose = latest_tf.inverse() * latest_odom_pose_;
-  double yaw, pitch, roll;
-  map_pose.getBasis().getEulerYPR(yaw, pitch, roll);
-  geometry_msgs::Pose pose;
-  pose = tf2::toMsg(map_pose, pose);
-  latest_amcl_pose_.pose.pose = pose;
-  latest_amcl_pose_.pose.covariance[COVARIANCE_XX] = last_published_pose_->pose.covariance[COVARIANCE_XX];
-  latest_amcl_pose_.pose.covariance[COVARIANCE_YY] = last_published_pose_->pose.covariance[COVARIANCE_YY];
-  latest_amcl_pose_.pose.covariance[COVARIANCE_AA] = last_published_pose_->pose.covariance[COVARIANCE_AA];
-  latest_amcl_pose_.header.stamp = ros::Time::now();
-  latest_amcl_pose_.header.frame_id = "map";
 
   YAML::Node stamp_node;
-  ros::Time stamp = latest_amcl_pose_.header.stamp;
+  ros::Time stamp = latest_pose.header.stamp;
   stamp_node["sec"] = stamp.sec;
   stamp_node["nsec"] = stamp.nsec;
 
@@ -583,15 +570,15 @@ void Node::savePoseToFile(const tf2::Transform& latest_tf)
   header_node["frame_id"] = "map";
 
   YAML::Node pose_pose_position_node;
-  pose_pose_position_node["x"] = latest_amcl_pose_.pose.pose.position.x;
-  pose_pose_position_node["y"] = latest_amcl_pose_.pose.pose.position.y;
+  pose_pose_position_node["x"] = latest_pose.pose.pose.position.x;
+  pose_pose_position_node["y"] = latest_pose.pose.pose.position.y;
   pose_pose_position_node["z"] = 0.0;
 
   YAML::Node pose_pose_orientation_node;
   pose_pose_orientation_node["x"] = 0.0;
   pose_pose_orientation_node["y"] = 0.0;
-  pose_pose_orientation_node["z"] = latest_amcl_pose_.pose.pose.orientation.z;
-  pose_pose_orientation_node["w"] = latest_amcl_pose_.pose.pose.orientation.w;
+  pose_pose_orientation_node["z"] = latest_pose.pose.pose.orientation.z;
+  pose_pose_orientation_node["w"] = latest_pose.pose.pose.orientation.w;
 
   YAML::Node pose_pose_node;
   pose_pose_node["position"] = pose_pose_position_node;
@@ -599,9 +586,9 @@ void Node::savePoseToFile(const tf2::Transform& latest_tf)
 
   YAML::Node pose_covariance_node;
   std::vector<double> covariance(36, 0.0);
-  covariance[COVARIANCE_XX] = latest_amcl_pose_.pose.covariance[COVARIANCE_XX];
-  covariance[COVARIANCE_YY] = latest_amcl_pose_.pose.covariance[COVARIANCE_YY];
-  covariance[COVARIANCE_AA] = latest_amcl_pose_.pose.covariance[COVARIANCE_AA];
+  covariance[COVARIANCE_XX] = latest_pose.pose.covariance[COVARIANCE_XX];
+  covariance[COVARIANCE_YY] = latest_pose.pose.covariance[COVARIANCE_YY];
+  covariance[COVARIANCE_AA] = latest_pose.pose.covariance[COVARIANCE_AA];
   for (int i = 0; i < covariance.size(); i++)
   {
     pose_covariance_node[i] = covariance[i];
@@ -884,6 +871,26 @@ bool Node::getLatestTf(tf2::Transform* latest_tf)
   return false;
 }
 
+void Node::getLatestPose(tf2::Transform latest_tf, geometry_msgs::PoseWithCovarianceStamped* latest_pose)
+{
+  std::lock_guard<std::mutex> lpl(latest_pose_mutex_);
+  // We need to apply the last transform to the latest odom pose to get
+  // the latest map pose to store.  We'll take the covariance from
+  // last_published_pose_.
+  tf2::Transform map_pose = latest_tf.inverse() * latest_odom_pose_;
+  double yaw, pitch, roll;
+  map_pose.getBasis().getEulerYPR(yaw, pitch, roll);
+  geometry_msgs::Pose pose;
+  pose = tf2::toMsg(map_pose, pose);
+  latest_pose_.pose.pose = pose;
+  latest_pose_.pose.covariance[COVARIANCE_XX] = last_published_pose_->pose.covariance[COVARIANCE_XX];
+  latest_pose_.pose.covariance[COVARIANCE_YY] = last_published_pose_->pose.covariance[COVARIANCE_YY];
+  latest_pose_.pose.covariance[COVARIANCE_AA] = last_published_pose_->pose.covariance[COVARIANCE_AA];
+  latest_pose_.header.stamp = ros::Time::now();
+  latest_pose_.header.frame_id = "map";
+  *latest_pose = latest_pose_;
+}
+
 void Node::initialPoseReceived(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg_ptr)
 {
   std::lock_guard<std::mutex> cfl(configuration_mutex_);
@@ -925,12 +932,12 @@ void Node::applyInitialPose()
 
 void Node::newInitialPoseSubscriber(const ros::SingleSubscriberPublisher& single_sub_pub)
 {
-  std::lock_guard<std::mutex> lpl(latest_amcl_pose_mutex_);
-  if (latest_amcl_pose_.header.frame_id.compare("map") == 0)
+  std::lock_guard<std::mutex> lpl(latest_pose_mutex_);
+  if (latest_pose_.header.frame_id.compare("map") == 0)
   {
     ROS_INFO("New initial pose subscriber registered. Publishing latest amcl pose: (%f, %f).",
-             latest_amcl_pose_.pose.pose.position.x, latest_amcl_pose_.pose.pose.position.y);
-    single_sub_pub.publish(latest_amcl_pose_);
+             latest_pose_.pose.pose.position.x, latest_pose_.pose.pose.position.y);
+    single_sub_pub.publish(latest_pose_);
   }
   else
   {

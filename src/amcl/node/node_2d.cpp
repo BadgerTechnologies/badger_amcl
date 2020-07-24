@@ -340,7 +340,6 @@ void Node2D::scanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan)
   if(!isMapInitialized())
     return;
 
-  std::lock_guard<std::mutex> cfl(configuration_mutex_);
   if(!global_localization_active_)
     deactivateGlobalLocalizationParams();
 
@@ -407,6 +406,7 @@ bool Node2D::isMapInitialized()
 
 void Node2D::deactivateGlobalLocalizationParams()
 {
+  std::lock_guard<std::mutex> cfl(configuration_mutex_);
   // Handle corner cases like getting dynamically reconfigured or getting a
   // new map by de-activating the global localization parameters here if we are
   // no longer globally localizing.

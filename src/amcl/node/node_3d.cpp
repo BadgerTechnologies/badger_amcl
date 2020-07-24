@@ -319,7 +319,6 @@ void Node3D::scanReceived(const sensor_msgs::PointCloud2ConstPtr& point_cloud_sc
   if(!isMapInitialized())
     return;
 
-  std::lock_guard<std::mutex> cfl(configuration_mutex_);
   if (!global_localization_active_)
     deactivateGlobalLocalizationParams();
 
@@ -382,6 +381,7 @@ bool Node3D::isMapInitialized()
 
 void Node3D::deactivateGlobalLocalizationParams()
 {
+  std::lock_guard<std::mutex> cfl(configuration_mutex_);
   // Handle corner cases like getting dynamically reconfigured or getting a
   // new map by de-activating the global localization parameters here.
   node_->setPfDecayRateNormal();

@@ -114,13 +114,14 @@ private:
   void createInitialPose(tf2::Transform* pose, std::vector<double>* cov_vals);
   void newInitialPoseSubscriber(const ros::SingleSubscriberPublisher& single_sub_pub);
 
-  void savePoseToFile(const tf2::Transform& latest_tf);
+  void savePoseToFile(const geometry_msgs::PoseWithCovarianceStamped& latest_pose);
   void loadPose();
   void publishPose(const geometry_msgs::PoseWithCovarianceStamped& p);
   void applyInitialPose();
   bool loadPoseFromFile();
   YAML::Node loadYamlFromFile();
   bool getLatestTf(tf2::Transform* latest_tf);
+  void getLatestPose(tf2::Transform latest_tf, geometry_msgs::PoseWithCovarianceStamped* latest_pose);
 
   // Odometry integrator
   void integrateOdom(const nav_msgs::OdometryConstPtr& msg);
@@ -171,7 +172,7 @@ private:
   std::string odom_frame_id_;
   // paramater to store latest odom pose
   tf2::Stamped<tf2::Transform> latest_odom_pose_;
-  geometry_msgs::PoseWithCovarianceStamped latest_amcl_pose_;
+  geometry_msgs::PoseWithCovarianceStamped latest_pose_;
   ros::Subscriber odom_integrator_sub_;
   bool odom_integrator_enabled_;
   bool odom_integrator_ready_;
@@ -206,7 +207,7 @@ private:
   bool first_reconfigure_call_;
   std::mutex configuration_mutex_;
   std::mutex tf_mutex_;
-  std::mutex latest_amcl_pose_mutex_;
+  std::mutex latest_pose_mutex_;
   dynamic_reconfigure::Server<AMCLConfig> dsrv_;
   AMCLConfig default_config_;
   ros::CallbackQueue publish_transform_queue_;
