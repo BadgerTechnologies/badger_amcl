@@ -52,7 +52,7 @@ include_directories(
     ${EIGEN3_INCLUDE_DIRS}
 )
 
-add_library(badger_amcl_core
+add_library(badger_amcl
     src/amcl/pf/particle_filter.cpp
     src/amcl/pf/pf_kdtree.cpp
     src/amcl/pf/pdf_gaussian.cpp
@@ -66,29 +66,30 @@ add_library(badger_amcl_core
     src/amcl/node/node_3d.cpp
     src/amcl/node/node.cpp
 )
-target_link_libraries(badger_amcl_core
+
+target_link_libraries(badger_amcl
     ${OCTOMAP_LIBRARIES}
     ${Boost_LIBRARIES}
     ${catkin_LIBRARIES}
     yaml-cpp
 )
 
-add_executable(badger_amcl
+add_executable(badger_amcl_exe
 	src/main.cpp)
-add_dependencies(badger_amcl ${PROJECT_NAME}_gencfg)
+add_dependencies(badger_amcl_exe ${PROJECT_NAME}_gencfg)
 
 target_link_libraries(
+    badger_amcl_exe
     badger_amcl
-    badger_amcl_core
 )
 
 if(CATKIN_ENABLE_TESTING)
     catkin_add_gtest(TestBadgerAmcl test/test_badger_amcl.cpp)
-    target_link_libraries(TestBadgerAmcl badger_amcl_core ${catkin_LIBRARIES})
+    target_link_libraries(TestBadgerAmcl badger_amcl ${catkin_LIBRARIES})
 endif()
 
 install( TARGETS
-    badger_amcl badger_amcl_core
+    badger_amcl_exe badger_amcl
     ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
     LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
     RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

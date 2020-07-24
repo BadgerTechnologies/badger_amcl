@@ -44,6 +44,11 @@ PDFGaussian::PDFGaussian(const Eigen::Vector3d& x, const Eigen::Matrix3d& cx)
   cd_[2] = std::sqrt(m(2, 2));
 }
 
+PDFGaussian::PDFGaussian(const Eigen::Vector3d& x, const Eigen::Matrix3d& cx, int seed) : PDFGaussian(x, cx)
+{
+  srand(seed);
+}
+
 // Generate a sample from the the pdf.
 void PDFGaussian::sample(Eigen::Vector3d* v)
 {

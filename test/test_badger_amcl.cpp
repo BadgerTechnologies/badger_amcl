@@ -19,14 +19,66 @@
 
 #include <gtest/gtest.h>
 
-TEST(TestBadgerAmcl, helloWorldFail)
+#include <Eigen/Dense>
+
+#include "pf/pdf_gaussian.h"
+#include "pf/pf_kdtree.h"
+
+TEST(TestBadgerAmcl, testPdfGaussian)
 {
-  ASSERT_TRUE(false);
+  // test 1
+  Eigen::Vector3d x(1, 1, 1);
+  Eigen::Matrix3d cx;
+  cx << 1, 0, 0, 0, 1, 0, 0, 0, 1;
+  badger_amcl::PDFGaussian pdf_gaussian(x, cx);
+  Eigen::Vector3d sample;
+  pdf_gaussian.sample(&sample);
+  EXPECT_DOUBLE_EQ(sample[0], 0.26562654174915334);
+  EXPECT_DOUBLE_EQ(sample[1], 0.97172090090793528);
+  EXPECT_DOUBLE_EQ(sample[2], -1.5856194295513539);
+  // test 2
+  Eigen::Vector3d x2(0, 3, 2);
+  Eigen::Matrix3d cx2;
+  cx2 << 0.5, 0.1, 0.2, 0.3, 0.6, 0.2, 0.1, 0.7, 0.2, 0.8;
+  badger_amcl::PDFGaussian pdf_gaussian2(x2, cx2);
+  Eigen::Vector3d sample2;
+  pdf_gaussian.sample(&sample2);
+  EXPECT_DOUBLE_EQ(sample2[0], 1.6262083813236745);
+  EXPECT_DOUBLE_EQ(sample2[1], 1.1142314205031041);
+  EXPECT_DOUBLE_EQ(sample2[2], 0.37407538872488655);
 }
 
-TEST(TestBadgerAmcl, helloWorldPass)
+TEST(TestBadgerAmcl, testPfKdtree)
 {
-  ASSERT_TRUE(true);
+  badger_amcl::PFKDTree pf_kdtree;
+  EXPECT_EQ(pf_kdtree.getLeafCount(), 0);
+  Eigen::Vector3d pose(1, 1, 1);
+  double value = 0.0;
+  pf_kdtree.insertPose(pose, value);
+  EXPECT_EQ(pf_kdtree.getLeafCount(), 1);
+  pf_kdtree.clearKDTree();
+  EXPECT_EQ(pf_kdtree.getLeafCount(), 0);
+  pf_kdtree.insertPose(pose, value);
+  EXPECT_EQ(pf_kdtree.getCluster(pose), -1);
+  pf_kdtree.cluster();
+  EXPECT_EQ(pf_kdtree.getCluster(pose), 0);
+  Eigen::Vector3d pose2(0, 1, 1);
+  Eigen::Vector3d pose3(3, 0, 0);
+  pf_kdtree.insertPose(pose2, value);
+  pf_kdtree.insertPose(pose3, value);
+  pf_kdtree.cluster();
+  EXPECT_EQ(pf_kdtree.getCluster(pose), 0);
+  EXPECT_EQ(pf_kdtree.getCluster(pose2), 1);
+  EXPECT_EQ(pf_kdtree.getCluster(pose3), 2);
+  EXPECT_EQ(pf_kdtree.getLeafCount(), 2);
+  Eigen::Vector3d pose4(0.5, 1, 1);
+  pf_kdtree.insertPose(pose4, value);
+  pf_kdtree.cluster();
+  EXPECT_EQ(pf_kdtree.getCluster(pose), 0);
+  EXPECT_EQ(pf_kdtree.getCluster(pose2), 0);
+  EXPECT_EQ(pf_kdtree.getCluster(pose3), 1);
+  EXPECT_EQ(pf_kdtree.getCluster(pose4), 0);
+  EXPECT_EQ(pf_kdtree.getLeafCount(), 2);
 }
 
 int main(int argc, char* argv[])
