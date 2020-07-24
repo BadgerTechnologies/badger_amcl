@@ -48,7 +48,7 @@ int main(int argc, char** argv)
   ros::MultiThreadedSpinner spinner;
   spinner.spin();
 
-  amcl_node.savePoseToFile();
+  amcl_node.attemptSavePose(true);
 
   return 0;
 }

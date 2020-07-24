@@ -63,8 +63,6 @@ Node::Node()
   double param_val;
   private_nh_.param("transform_publish_rate", param_val, 50.0);
   transform_publish_period_ = ros::Duration(1.0 / param_val);
-  private_nh_.param("save_pose_to_server_rate", param_val, 0.5);
-  save_pose_to_server_period_ = ros::Duration(1.0 / param_val);
   private_nh_.param("save_pose_to_file_rate", param_val, 0.1);
   save_pose_to_file_period_ = ros::Duration(1.0 / param_val);
 
@@ -209,7 +207,6 @@ void Node::reconfigureCB(AMCLConfig& config, uint32_t level)
   }
 
   transform_publish_period_ = ros::Duration(1.0 / config.transform_publish_rate);
-  save_pose_to_server_period_ = ros::Duration(1.0 / config.save_pose_to_server_rate);
   save_pose_to_file_period_ = ros::Duration(1.0 / config.save_pose_to_file_rate);
 
   transform_tolerance_.fromSec(config.transform_tolerance);
@@ -396,24 +393,18 @@ void Node::updateOdomToMapTransform(const tf2::Transform& odom_to_map)
   latest_tf_valid_ = true;
 }
 
-void Node::attemptSavePose()
+void Node::attemptSavePose(bool force_save)
 {
   tf2::Transform latest_tf;
   if (getLatestTf(&latest_tf))
   {
-    // Is it time to save our last pose to the param server
     ros::Time now = ros::Time::now();
-    if ((save_pose_to_server_period_.toSec() > 0.0)
-        && (now - save_pose_to_server_last_time_) >= save_pose_to_server_period_)
-    {
-      savePoseToServer(latest_tf);
-      save_pose_to_server_last_time_ = now;
-    }
-    if ((save_pose_to_file_period_.toSec() > 0.0)
-        && (now - save_pose_to_file_last_time_) >= save_pose_to_file_period_)
+    bool time_to_save = (save_pose_to_file_period_.toSec() > 0.0
+                         && (now - save_pose_to_file_last_time_) >= save_pose_to_file_period_);
+    if (force_save or time_to_save)
     {
       ROS_DEBUG_STREAM("Save pose to file period: " << save_pose_to_file_period_.toSec());
-      savePoseToFile();
+      savePoseToFile(latest_tf);
       save_pose_to_file_last_time_ = now;
     }
   }
@@ -421,19 +412,14 @@ void Node::attemptSavePose()
 
 void Node::loadPose()
 {
-  if (loadPoseFromServer())
+  if (loadPoseFromFile())
   {
-    ROS_INFO("Successfully loaded initial pose from server.");
-    ROS_INFO("Pose loaded: (%.3f, %.3f)", init_pose_[0], init_pose_[1]);
-  }
-  else if (loadPoseFromFile())
-  {
-    ROS_INFO("Failed to load pose from server, but successfully loaded pose from file.");
+    ROS_INFO("Successfully loaded pose from file.");
     ROS_INFO("Pose loaded: (%.3f, %.3f)", init_pose_[0], init_pose_[1]);
   }
   else
   {
-    ROS_WARN("Failed to load pose from server or file. Setting pose to default values.");
+    ROS_WARN("Failed to load pose from file. Setting pose to default values.");
     init_pose_[0] = 0.0;
     init_pose_[1] = 0.0;
     init_pose_[2] = 0.0;
@@ -455,32 +441,6 @@ void Node::createInitialPose(tf2::Transform* pose, std::vector<double>* cov_vals
   cov_vals->at(COVARIANCE_YY) = init_cov_[1];
   cov_vals->at(COVARIANCE_AA) = init_cov_[2];
   ROS_INFO("Initial pose: (%.3f, %.3f)", pose->getOrigin().getX(), pose->getOrigin().getY());
-}
-
-bool Node::loadPoseFromServer()
-{
-  bool success = loadParamFromServer("initial_pose_x", &init_pose_[0]);
-  success = success and loadParamFromServer("initial_pose_y", &init_pose_[1]);
-  success = success and loadParamFromServer("initial_pose_a", &init_pose_[2]);
-  success = success and loadParamFromServer("initial_cov_xx", &init_cov_[0]);
-  success = success and loadParamFromServer("initial_cov_yy", &init_cov_[1]);
-  success = success and loadParamFromServer("initial_cov_aa", &init_cov_[2]);
-  return success;
-}
-
-bool Node::loadParamFromServer(std::string param_name, double* val)
-{
-  double param_val;
-  bool success = private_nh_.getParam(param_name, param_val) and !std::isnan(param_val);
-  if(success)
-  {
-    *val = param_val;
-  }
-  else
-  {
-    ROS_DEBUG_STREAM("Failed to load " << param_name << " from server.");
-  }
-  return success;
 }
 
 bool Node::loadPoseFromFile()
@@ -583,39 +543,7 @@ YAML::Node Node::loadYamlFromFile()
   }
 }
 
-void Node::savePoseToServer(const tf2::Transform& latest_tf)
-{
-  if (!save_pose_)
-  {
-    ROS_DEBUG("As specified, not saving pose to server");
-    return;
-  }
-
-  // We need to apply the last transform to the latest odom pose to get
-  // the latest map pose to store.  We'll take the covariance from
-  // last_published_pose_.
-  tf2::Transform map_pose = latest_tf.inverse() * latest_odom_pose_;
-  double yaw, pitch, roll;
-  map_pose.getBasis().getEulerYPR(yaw, pitch, roll);
-
-  private_nh_.setParam("initial_pose_x", map_pose.getOrigin().x());
-  private_nh_.setParam("initial_pose_y", map_pose.getOrigin().y());
-  private_nh_.setParam("initial_pose_a", yaw);
-  private_nh_.setParam("initial_cov_xx", last_published_pose_->pose.covariance[COVARIANCE_XX]);
-  private_nh_.setParam("initial_cov_yy", last_published_pose_->pose.covariance[COVARIANCE_YY]);
-  private_nh_.setParam("initial_cov_aa", last_published_pose_->pose.covariance[COVARIANCE_AA]);
-  geometry_msgs::Pose pose;
-  pose = tf2::toMsg(map_pose, pose);
-  std::lock_guard<std::mutex> lpl(latest_amcl_pose_mutex_);
-  latest_amcl_pose_.pose.pose = pose;
-  latest_amcl_pose_.pose.covariance[COVARIANCE_XX] = last_published_pose_->pose.covariance[COVARIANCE_XX];
-  latest_amcl_pose_.pose.covariance[COVARIANCE_YY] = last_published_pose_->pose.covariance[COVARIANCE_YY];
-  latest_amcl_pose_.pose.covariance[COVARIANCE_AA] = last_published_pose_->pose.covariance[COVARIANCE_AA];
-  latest_amcl_pose_.header.stamp = ros::Time::now();
-  latest_amcl_pose_.header.frame_id = "map";
-}
-
-void Node::savePoseToFile()
+void Node::savePoseToFile(const tf2::Transform& latest_tf)
 {
   if (!save_pose_)
   {
@@ -629,6 +557,21 @@ void Node::savePoseToFile()
     return;
   }
   std::lock_guard<std::mutex> lpl(latest_amcl_pose_mutex_);
+
+  // We need to apply the last transform to the latest odom pose to get
+  // the latest map pose to store.  We'll take the covariance from
+  // last_published_pose_.
+  tf2::Transform map_pose = latest_tf.inverse() * latest_odom_pose_;
+  double yaw, pitch, roll;
+  map_pose.getBasis().getEulerYPR(yaw, pitch, roll);
+  geometry_msgs::Pose pose;
+  pose = tf2::toMsg(map_pose, pose);
+  latest_amcl_pose_.pose.pose = pose;
+  latest_amcl_pose_.pose.covariance[COVARIANCE_XX] = last_published_pose_->pose.covariance[COVARIANCE_XX];
+  latest_amcl_pose_.pose.covariance[COVARIANCE_YY] = last_published_pose_->pose.covariance[COVARIANCE_YY];
+  latest_amcl_pose_.pose.covariance[COVARIANCE_AA] = last_published_pose_->pose.covariance[COVARIANCE_AA];
+  latest_amcl_pose_.header.stamp = ros::Time::now();
+  latest_amcl_pose_.header.frame_id = "map";
 
   YAML::Node stamp_node;
   ros::Time stamp = latest_amcl_pose_.header.stamp;

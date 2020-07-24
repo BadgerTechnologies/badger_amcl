@@ -335,7 +335,7 @@ void Node3D::scanReceived(const sensor_msgs::PointCloud2ConstPtr& point_cloud_sc
       success = success and resamplePose(stamp);
     if(success)
     {
-      node_->attemptSavePose();
+      node_->attemptSavePose(false);
     }
   }
 }
