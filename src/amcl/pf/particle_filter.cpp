@@ -92,7 +92,6 @@ ParticleFilter::ParticleFilter(int min_samples, int max_samples, double alpha_sl
   alpha_slow_ = alpha_slow;
   alpha_fast_ = alpha_fast;
 
-  // set converged to 0
   initConverged();
 }
 
@@ -102,7 +101,7 @@ void ParticleFilter::setResampleModel(PFResampleModelType resample_model)
 }
 
 // Initialize the filter using a guassian
-void ParticleFilter::init(const Eigen::Vector3d& mean, const Eigen::Matrix3d& cov)
+void ParticleFilter::initWithGaussian(const Eigen::Vector3d& mean, const Eigen::Matrix3d& cov)
 {
   int i;
   std::shared_ptr<PFSampleSet> set;
@@ -117,7 +116,7 @@ void ParticleFilter::init(const Eigen::Vector3d& mean, const Eigen::Matrix3d& co
   {
     sample = &(set->samples[i]);
     sample->weight = 1.0 / max_samples_;
-    pdf.sample(&(sample->pose));
+    sample->pose = pdf.sample();
 
     // Add sample to histogram
     set->kdtree->insertPose(sample->pose, sample->weight);
@@ -128,12 +127,11 @@ void ParticleFilter::init(const Eigen::Vector3d& mean, const Eigen::Matrix3d& co
   // Re-compute cluster statistics
   clusterStats(set);
 
-  // set converged to false
   initConverged();
 }
 
 // Initialize the filter using some model
-void ParticleFilter::initModel(std::function<Eigen::Vector3d()> init_fn)
+void ParticleFilter::initWithPoseFn(std::function<Eigen::Vector3d()> pose_fn)
 {
   int i;
   std::shared_ptr<PFSampleSet> set;
@@ -150,7 +148,7 @@ void ParticleFilter::initModel(std::function<Eigen::Vector3d()> init_fn)
   {
     sample = &(set->samples[i]);
     sample->weight = 1.0 / max_samples_;
-    sample->pose = init_fn();
+    sample->pose = pose_fn();
     // Add sample to histogram
     set->kdtree->insertPose(sample->pose, sample->weight);
   }
@@ -158,17 +156,16 @@ void ParticleFilter::initModel(std::function<Eigen::Vector3d()> init_fn)
   // Re-compute cluster statistics
   clusterStats(set);
 
-  // set converged to false
   initConverged();
 }
 
 void ParticleFilter::initConverged()
 {
-  sets_[current_set_]->converged = 0;
+  sets_[current_set_]->converged = false;
   converged_ = false;
 }
 
-bool ParticleFilter::updateConverged()
+void ParticleFilter::updateConverged()
 {
   int i;
   std::shared_ptr<PFSampleSet> set;
@@ -188,20 +185,19 @@ bool ParticleFilter::updateConverged()
   mean_x /= set->sample_count;
   mean_y /= set->sample_count;
 
+  set->converged = true;
+  converged_ = true;
   for (i = 0; i < set->sample_count; i++)
   {
     sample = &(set->samples[i]);
     if (std::fabs(sample->pose[0] - mean_x) > dist_threshold_
         || std::fabs(sample->pose[1] - mean_y) > dist_threshold_)
     {
-      set->converged = 0;
+      set->converged = false;
       converged_ = false;
-      return 0;
+      break;
     }
   }
-  set->converged = 1;
-  converged_ = 1;
-  return 1;
 }
 
 // Update the filter with some new sensor observation
@@ -651,12 +647,6 @@ std::shared_ptr<PFSampleSet> ParticleFilter::getCurrentSet()
 bool ParticleFilter::isConverged()
 {
   return converged_;
-}
-
-// sets whether the particle filter has converged
-void ParticleFilter::setConverged(bool converged)
-{
-  converged_ = converged;
 }
 
 }  // namespace amcl

@@ -99,15 +99,11 @@ public:
   // Set the resample model
   void setResampleModel(PFResampleModelType resample_model);
 
-  double resampleSystematic(double w_diff);
+  // Initialize the filter using a guassian to generate initial poses
+  void initWithGaussian(const Eigen::Vector3d& mean, const Eigen::Matrix3d& cov);
 
-  double resampleMultinomial(double w_diff);
-
-  // Initialize the filter using a guassian
-  void init(const Eigen::Vector3d& mean, const Eigen::Matrix3d& cov);
-
-  // Initialize the filter using some model
-  void initModel(std::function<Eigen::Vector3d()> init_fn);
+  // Initialize the filter using a function to generate initial poses
+  void initWithPoseFn(std::function<Eigen::Vector3d()> pose_fn);
 
   // Update the filter with some new sensor observation
   void updateSensor(std::function<double(std::shared_ptr<SensorData>,
@@ -121,13 +117,6 @@ public:
   // there is no such cluster.
   bool getClusterStats(int cluster, double* weight, Eigen::Vector3d* mean);
 
-  // calculate if the particle filter has converged -
-  // and sets the converged flag in the current set and the pf
-  bool updateConverged();
-
-  // sets the current set and pf converged values to zero
-  void initConverged();
-
   // sets population size parameters
   void setPopulationSizeParameters(double pop_err, double pop_z);
 
@@ -137,14 +126,23 @@ public:
   // gets pointer to current sample set
   std::shared_ptr<PFSampleSet> getCurrentSet();
 
-  // getter and setter for whether the particle filter has converged
+  // getter for whether the particle filter has converged
   bool isConverged();
-  void setConverged(bool converged);
 
 private:
   // Compute the required number of samples, given that there are k bins
   // with samples in them.
   int resampleLimit(int k);
+
+  double resampleSystematic(double w_diff);
+  double resampleMultinomial(double w_diff);
+
+  // sets the current set and pf converged values to false
+  void initConverged();
+
+  // calculate if the particle filter has converged -
+  // and sets the converged flag in the current set and the pf
+  void updateConverged();
 
   // Re-compute the cluster statistics for a sample set
   void clusterStats(std::shared_ptr<PFSampleSet> sample_set);
