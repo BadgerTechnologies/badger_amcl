@@ -37,7 +37,7 @@ public:
   PDFGaussian(const Eigen::Vector3d& x, const Eigen::Matrix3d& cx, int seed);
 
   // Generate a sample from the the pdf.
-  void sample(Eigen::Vector3d* v);
+  Eigen::Vector3d sample();
 
   // Draw randomly from a zero-mean Gaussian distribution, with standard
   // deviation sigma.

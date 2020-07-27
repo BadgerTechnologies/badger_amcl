@@ -50,10 +50,10 @@ PDFGaussian::PDFGaussian(const Eigen::Vector3d& x, const Eigen::Matrix3d& cx, in
 }
 
 // Generate a sample from the the pdf.
-void PDFGaussian::sample(Eigen::Vector3d* v)
+Eigen::Vector3d PDFGaussian::sample()
 {
   int i, j;
-  Eigen::Vector3d r;
+  Eigen::Vector3d r, v;
 
   // Generate a random vector
   for (i = 0; i < 3; i++)
@@ -63,10 +63,11 @@ void PDFGaussian::sample(Eigen::Vector3d* v)
 
   for (i = 0; i < 3; i++)
   {
-    (*v)(i) = x_[i];
+    v(i) = x_[i];
     for (j = 0; j < 3; j++)
-      (*v)(i) += cr_(i, j) * r[j];
+      v(i) += cr_(i, j) * r[j];
   }
+  return v;
 }
 
 // Draw randomly from a zero-mean Gaussian distribution, with standard

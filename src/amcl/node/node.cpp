@@ -263,7 +263,7 @@ void Node::reconfigureCB(AMCLConfig& config, uint32_t level)
   pf_init_pose_cov(0, 0) = last_published_pose_->pose.covariance[COVARIANCE_XX];
   pf_init_pose_cov(1, 1) = last_published_pose_->pose.covariance[COVARIANCE_YY];
   pf_init_pose_cov(2, 2) = last_published_pose_->pose.covariance[COVARIANCE_AA];
-  pf_->init(pf_init_pose_mean, pf_init_pose_cov);
+  pf_->initWithGaussian(pf_init_pose_mean, pf_init_pose_cov);
   odom_init_ = false;
 
   // Instantiate the sensor objects
@@ -635,7 +635,7 @@ void Node::initFromNewMap(std::shared_ptr<Map> new_map, bool use_initial_pose)
   pf_init_pose_cov(0, 0) = init_cov_[0];
   pf_init_pose_cov(1, 1) = init_cov_[1];
   pf_init_pose_cov(2, 2) = init_cov_[2];
-  pf_->init(pf_init_pose_mean, pf_init_pose_cov);
+  pf_->initWithGaussian(pf_init_pose_mean, pf_init_pose_cov);
   odom_init_ = false;
 
   // Instantiate the sensor objects
@@ -817,7 +817,7 @@ bool Node::globalLocalizationCallback(std_srvs::Empty::Request& req, std_srvs::E
   global_localization_active_ = true;
   pf_->setDecayRates(global_localization_alpha_slow_, global_localization_alpha_fast_);
   node_->globalLocalizationCallback();
-  pf_->initModel(uniform_pose_generator_fn_);
+  pf_->initWithPoseFn(uniform_pose_generator_fn_);
   odom_init_ = false;
   return true;
 }
@@ -923,7 +923,7 @@ void Node::applyInitialPose()
 {
   if (initial_pose_hyp_ != NULL && map_ != NULL)
   {
-    pf_->init(initial_pose_hyp_->mean, initial_pose_hyp_->covariance);
+    pf_->initWithGaussian(initial_pose_hyp_->mean, initial_pose_hyp_->covariance);
     odom_init_ = false;
 
     initial_pose_hyp_ = NULL;
