@@ -145,7 +145,14 @@ private:
   void updateConverged();
 
   // Re-compute the cluster statistics for a sample set
-  void clusterStats(std::shared_ptr<PFSampleSet> sample_set);
+  void computeClusterStatsForSet(std::shared_ptr<PFSampleSet> sample_set);
+  void initCluster(PFCluster* cluster);
+  void normalizeCluster(PFCluster* cluster);
+  int getClusterIndexOfSampleInSet(std::shared_ptr<PFSampleSet> set, PFSample* sample);
+  void addSampleStatsToCluster(const PFSample*, PFCluster* cluster);
+  void addSampleStatsToSet(const PFSample* sample, double* weight, double* m, double* c);
+  void computeSetStats(double weight, const double m[], const double c[],
+                       std::shared_ptr<PFSampleSet> set);
 
   PFResampleModelType resample_model_;
 
