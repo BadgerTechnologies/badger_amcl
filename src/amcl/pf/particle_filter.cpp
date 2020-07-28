@@ -125,7 +125,7 @@ void ParticleFilter::initWithGaussian(const Eigen::Vector3d& mean, const Eigen::
   w_slow_ = w_fast_ = 0.0;
 
   // Re-compute cluster statistics
-  clusterStats(set);
+  computeClusterStatsForSet(set);
 
   initConverged();
 }
@@ -154,7 +154,7 @@ void ParticleFilter::initWithPoseFn(std::function<Eigen::Vector3d()> pose_fn)
   }
   w_slow_ = w_fast_ = 0.0;
   // Re-compute cluster statistics
-  clusterStats(set);
+  computeClusterStatsForSet(set);
 
   initConverged();
 }
@@ -443,7 +443,7 @@ void ParticleFilter::updateResample()
   }
 
   // Re-compute cluster statistics
-  clusterStats(set_b);
+  computeClusterStatsForSet(set_b);
 
   // Use the newly created sample set
   current_set_ = (current_set_ + 1) % 2;
@@ -483,123 +483,133 @@ int ParticleFilter::resampleLimit(int k)
 }
 
 // Re-compute the cluster statistics for a sample set
-void ParticleFilter::clusterStats(std::shared_ptr<PFSampleSet> set)
+void ParticleFilter::computeClusterStatsForSet(std::shared_ptr<PFSampleSet> set)
 {
-  int i, j, k, cidx;
-  PFSample* sample;
-  PFCluster* cluster;
-
-  // Workspace
-  double m[4], c[2][2];
-  std::size_t count;
-  double weight;
+  double m[4] = {0.0, 0.0, 0.0, 0.0}, c[2*2] = {0.0, 0.0, 0.0, 0.0};
+  double weight = 0.0;
 
   // Cluster the samples
   set->kdtree->cluster();
-
-  // Initialize cluster stats
-  set->cluster_count = 0;
-
-  for (i = 0; i < set->cluster_max_count; i++)
+  for (int i = 0; i < set->cluster_max_count; i++)
   {
-    cluster = &(set->clusters[i]);
-    cluster->count = 0;
-    cluster->weight = 0;
-    cluster->mean = Eigen::Vector3d();
-    cluster->cov = Eigen::Matrix3d();
-
-    for (j = 0; j < 4; j++)
-      cluster->m[j] = 0.0;
-    for (j = 0; j < 2; j++)
-      for (k = 0; k < 2; k++)
-        cluster->c[j][k] = 0.0;
+    initCluster(&(set->clusters[i]));
   }
-
-  // Initialize overall filter stats
-  count = 0;
-  weight = 0.0;
+  set->cluster_count = 0;
   set->mean = Eigen::Vector3d();
   set->cov = Eigen::Matrix3d();
-  for (j = 0; j < 4; j++)
-    m[j] = 0.0;
-  for (j = 0; j < 2; j++)
-    for (k = 0; k < 2; k++)
-      c[j][k] = 0.0;
 
   // Compute cluster stats
-  for (i = 0; i < set->sample_count; i++)
+  for (int i = 0; i < set->sample_count; i++)
   {
-    sample = &(set->samples[i]);
-
-    // Get the cluster label for this sample
-    cidx = set->kdtree->getCluster(sample->pose);
-    ROS_ASSERT(cidx >= 0);
-    if (cidx >= set->cluster_max_count)
-      continue;
-    if (cidx + 1 > set->cluster_count)
-      set->cluster_count = cidx + 1;
-
-    cluster = &(set->clusters[cidx]);
-
-    cluster->count += 1;
-    cluster->weight += sample->weight;
-
-    count += 1;
-    weight += sample->weight;
-
-    // Compute mean
-    cluster->m[0] += sample->weight * sample->pose[0];
-    cluster->m[1] += sample->weight * sample->pose[1];
-    cluster->m[2] += sample->weight * std::cos(sample->pose[2]);
-    cluster->m[3] += sample->weight * std::sin(sample->pose[2]);
-
-    m[0] += sample->weight * sample->pose[0];
-    m[1] += sample->weight * sample->pose[1];
-    m[2] += sample->weight * std::cos(sample->pose[2]);
-    m[3] += sample->weight * std::sin(sample->pose[2]);
-
-    // Compute covariance in linear components
-    for (j = 0; j < 2; j++)
+    PFSample* sample = &(set->samples[i]);
+    int cidx = getClusterIndexOfSampleInSet(set, sample);
+    if(cidx >= 0)
     {
-      for (k = 0; k < 2; k++)
-      {
-        cluster->c[j][k] += sample->weight * sample->pose[j] * sample->pose[k];
-        c[j][k] += sample->weight * sample->pose[j] * sample->pose[k];
-      }
+      addSampleStatsToCluster(sample, &(set->clusters[cidx]));
+      addSampleStatsToSet(sample, &weight, m, c);
     }
   }
 
   // Normalize
-  for (i = 0; i < set->cluster_count; i++)
+  for (int i = 0; i < set->cluster_count; i++)
   {
-    cluster = &(set->clusters[i]);
-
-    cluster->mean[0] = cluster->m[0] / cluster->weight;
-    cluster->mean[1] = cluster->m[1] / cluster->weight;
-    cluster->mean[2] = std::atan2(cluster->m[3], cluster->m[2]);
-
-    cluster->cov = Eigen::Matrix3d();
-
-    // Covariance in linear components
-    for (j = 0; j < 2; j++)
-      for (k = 0; k < 2; k++)
-        cluster->cov(j, k) = (cluster->c[j][k] / cluster->weight
-                                - cluster->mean[j] * cluster->mean[k]);
-
-    // Covariance in angular components; I think this is the correct
-    // formula for circular statistics.
-    cluster->cov(2, 2) = -2 * std::log(std::sqrt(cluster->m[2] * cluster->m[2] + cluster->m[3] * cluster->m[3]));
+    normalizeCluster(&(set->clusters[i]));
   }
 
+  computeSetStats(weight, m, c, set);
+}
+
+void ParticleFilter::initCluster(PFCluster* cluster)
+{
+  cluster->count = 0;
+  cluster->weight = 0;
+  cluster->mean = Eigen::Vector3d();
+  cluster->cov = Eigen::Matrix3d();
+
+  for (int j = 0; j < 4; j++)
+    cluster->m[j] = 0.0;
+  for (int j = 0; j < 2; j++)
+    for (int k = 0; k < 2; k++)
+      cluster->c[j][k] = 0.0;
+}
+
+void ParticleFilter::normalizeCluster(PFCluster* cluster)
+{
+  cluster->mean[0] = cluster->m[0] / cluster->weight;
+  cluster->mean[1] = cluster->m[1] / cluster->weight;
+  cluster->mean[2] = std::atan2(cluster->m[3], cluster->m[2]);
+  cluster->cov = Eigen::Matrix3d();
+
+  // Covariance in linear components
+  for (int j = 0; j < 2; j++)
+    for (int k = 0; k < 2; k++)
+      cluster->cov(j, k) = (cluster->c[j][k] / cluster->weight - cluster->mean[j] * cluster->mean[k]);
+
+  cluster->cov(2, 2) = -2 * std::log(std::sqrt(cluster->m[2] * cluster->m[2] + cluster->m[3] * cluster->m[3]));
+}
+
+int ParticleFilter::getClusterIndexOfSampleInSet(std::shared_ptr<PFSampleSet> set, PFSample* sample)
+{
+  // Get the cluster label for this sample
+  int cidx = set->kdtree->getCluster(sample->pose);
+  ROS_ASSERT(cidx >= 0);
+  if (cidx >= set->cluster_max_count)
+    return -1;
+  if (cidx + 1 > set->cluster_count)
+    set->cluster_count = cidx + 1;
+  return cidx;
+}
+
+void ParticleFilter::addSampleStatsToCluster(const PFSample* sample, PFCluster* cluster)
+{
+  cluster->count += 1;
+  cluster->weight += sample->weight;
+
+  // Compute mean
+  cluster->m[0] += sample->weight * sample->pose[0];
+  cluster->m[1] += sample->weight * sample->pose[1];
+  cluster->m[2] += sample->weight * std::cos(sample->pose[2]);
+  cluster->m[3] += sample->weight * std::sin(sample->pose[2]);
+
+  // Compute covariance in linear components
+  for (int j = 0; j < 2; j++)
+  {
+    for (int k = 0; k < 2; k++)
+    {
+      cluster->c[j][k] += sample->weight * sample->pose[j] * sample->pose[k];
+    }
+  }
+}
+
+void ParticleFilter::addSampleStatsToSet(const PFSample* sample, double* weight, double* m, double* c)
+{
+  *weight += sample->weight;
+  *(m+0) += sample->weight * sample->pose[0];
+  *(m+1) += sample->weight * sample->pose[1];
+  *(m+2) += sample->weight * std::cos(sample->pose[2]);
+  *(m+3) += sample->weight * std::sin(sample->pose[2]);
+  // Compute covariance in linear components
+  for (int j = 0; j < 2; j++)
+  {
+    for (int k = 0; k < 2; k++)
+    {
+      *(c+2*j+k) += sample->weight * sample->pose[j] * sample->pose[k];
+    }
+  }
+}
+
+void ParticleFilter::computeSetStats(double weight, const double m[], const double c[],
+                                     std::shared_ptr<PFSampleSet> set)
+{
   // Compute overall filter stats
   set->mean[0] = m[0] / weight;
   set->mean[1] = m[1] / weight;
   set->mean[2] = std::atan2(m[3], m[2]);
 
   // Covariance in linear components
-  for (j = 0; j < 2; j++)
-    for (k = 0; k < 2; k++)
-      set->cov(j, k) = c[j][k] / weight - set->mean[j] * set->mean[k];
+  for (int j = 0; j < 2; j++)
+    for (int k = 0; k < 2; k++)
+      set->cov(j, k) = c[2*j+k] / weight - set->mean[j] * set->mean[k];
 
   // Covariance in angular components; I think this is the correct
   // formula for circular statistics.
@@ -607,20 +617,14 @@ void ParticleFilter::clusterStats(std::shared_ptr<PFSampleSet> set)
 }
 
 // Get the statistics for a particular cluster.
-bool ParticleFilter::getClusterStats(int clabel, double* weight, Eigen::Vector3d* mean)
+bool ParticleFilter::getClusterStats(int cidx, double* weight, Eigen::Vector3d* mean)
 {
-  std::shared_ptr<PFSampleSet> set;
-  PFCluster* cluster;
-
-  set = sets_[current_set_];
-
-  if (clabel >= set->cluster_count)
+  std::shared_ptr<PFSampleSet> set = sets_[current_set_];
+  if (cidx >= set->cluster_count)
     return false;
-  cluster = &(set->clusters[clabel]);
-
+  PFCluster* cluster = &(set->clusters[cidx]);
   *weight = cluster->weight;
   *mean = cluster->mean;
-
   return true;
 }
 
