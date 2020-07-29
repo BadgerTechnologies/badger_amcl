@@ -61,6 +61,7 @@ public:
   OctoMap(double resolution);
   OctoMap(double resolution, bool publish_distances_lut);
   virtual ~OctoMap() = default;
+  virtual void initFromOctree(std::shared_ptr<octomap::OcTree> octree, double max_distance_to_object);
   // Convert from map index to world coords
   virtual void convertMapToWorld(const std::vector<int>& map_coords,
                                  std::vector<double>* world_coords);
@@ -74,7 +75,6 @@ public:
   virtual void setMapBounds(const std::vector<double>& map_min, const std::vector<double>& map_max);
   // Update the distance values
   virtual void updateDistancesLUT();
-  virtual void initFromOctree(std::shared_ptr<octomap::OcTree> octree, double max_distance_to_object);
   virtual double getMaxDistanceToObject();
   // This function is called very frequently.
   // Do not make it virtual as this would hinder performance.

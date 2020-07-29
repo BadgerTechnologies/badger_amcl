@@ -21,6 +21,8 @@
 
 #include <Eigen/Dense>
 
+#include "map/occupancy_map.h"
+#include "map/octomap.h"
 #include "pf/pdf_gaussian.h"
 #include "pf/pf_kdtree.h"
 
@@ -79,8 +81,57 @@ TEST(TestBadgerAmcl, testPfKdtree)
   EXPECT_EQ(pf_kdtree.getLeafCount(), 2);
 }
 
+TEST(TestBadgerAmcl, testOctoMap)
+{
+  badger_amcl::OctoMap octomap(0.05, false);
+  std::vector<int> rtn_vec_map;
+  std::vector<double> rtn_vec_world;
+  std::vector<int> map_coords_2d = {1, 2};
+  std::vector<double> world_coords_2d = {.05, .1};
+  rtn_vec_world.resize(2);
+  rtn_vec_map.resize(2);
+  octomap.convertMapToWorld(map_coords_2d, &rtn_vec_world);
+  octomap.convertWorldToMap(world_coords_2d, &rtn_vec_map);
+  for (int i = 0; i < world_coords_2d.size(); i++)
+  {
+    EXPECT_DOUBLE_EQ(world_coords_2d[i], rtn_vec_world[i]);
+  }
+  EXPECT_EQ(map_coords_2d, rtn_vec_map);
+  std::vector<int> map_coords_3d = {3, 5, -1};
+  std::vector<double> world_coords_3d {.15, .25, -.05};
+  rtn_vec_world.resize(3);
+  rtn_vec_map.resize(3);
+  octomap.convertMapToWorld(map_coords_3d, &rtn_vec_world);
+  octomap.convertWorldToMap(world_coords_3d, &rtn_vec_map);
+  for (int i = 0; i < world_coords_3d.size(); i++)
+  {
+    EXPECT_DOUBLE_EQ(world_coords_3d[i], rtn_vec_world[i]);
+  }
+  EXPECT_EQ(map_coords_3d, rtn_vec_map);
+}
+
+TEST(TestBadgerAmcl, testOccupancyMap)
+{
+  badger_amcl::OccupancyMap occupancy_map(0.05);
+  std::vector<int> rtn_vec_map;
+  std::vector<double> rtn_vec_world;
+  std::vector<int> map_coords = {1, 2};
+  std::vector<double> world_coords = {.05, .1};
+  rtn_vec_world.resize(2);
+  rtn_vec_map.resize(2);
+  occupancy_map.convertMapToWorld(map_coords, &rtn_vec_world);
+  occupancy_map.convertWorldToMap(world_coords, &rtn_vec_map);
+  for (int i = 0; i < world_coords.size(); i++)
+  {
+    EXPECT_DOUBLE_EQ(world_coords[i], rtn_vec_world[i]);
+  }
+  EXPECT_EQ(map_coords, rtn_vec_map);
+}
+
 int main(int argc, char* argv[])
 {
   testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
+  ros::init(argc, argv, "BadgerAMCLTests");
+  auto v = RUN_ALL_TESTS();
+  return v;
 }
