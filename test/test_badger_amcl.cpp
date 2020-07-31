@@ -81,7 +81,7 @@ TEST(TestBadgerAmcl, testPfKdtree)
   EXPECT_EQ(pf_kdtree.getLeafCount(), 2);
 }
 
-TEST(TestBadgerAmcl, testOctoMap)
+TEST(TestBadgerAmcl, testOctoMapConversions)
 {
   badger_amcl::OctoMap octomap(0.05, false);
   std::vector<int> rtn_vec_map;
@@ -110,7 +110,7 @@ TEST(TestBadgerAmcl, testOctoMap)
   EXPECT_EQ(map_coords_3d, rtn_vec_map);
 }
 
-TEST(TestBadgerAmcl, testOccupancyMap)
+TEST(TestBadgerAmcl, testOccupancyMapConversions)
 {
   badger_amcl::OccupancyMap occupancy_map(0.05);
   std::vector<int> rtn_vec_map;
@@ -126,6 +126,44 @@ TEST(TestBadgerAmcl, testOccupancyMap)
     EXPECT_DOUBLE_EQ(world_coords[i], rtn_vec_world[i]);
   }
   EXPECT_EQ(map_coords, rtn_vec_map);
+}
+
+TEST(TestBadgerAmcl, testOccupancyMapDistances)
+{
+  double resolution = 0.05;
+  badger_amcl::OccupancyMap occupancy_map(resolution);
+  std::vector<int> size_vec = {100, 150};
+  occupancy_map.setSize(size_vec);
+  EXPECT_EQ(occupancy_map.getSize(), size_vec);
+  double x_origin, y_origin;
+  x_origin = size_vec[0] / 2 * resolution;
+  y_origin = size_vec[1] / 2 * resolution;
+  occupancy_map.setOrigin(pcl::PointXYZ(x_origin, y_origin, 0.0));
+  for (int x = 0; x < size_vec[0]; x++)
+  {
+    for (int y = 0; y < size_vec[1]; y++)
+    {
+      unsigned int index = occupancy_map.computeCellIndex(x, y);
+      badger_amcl::MapCellState state;
+      if (x == 1 and y > 2 and y < 12)
+        state = badger_amcl::MapCellState::CELL_UNKNOWN;
+      else if (x > 4 and x < 14 and (y == 10 or y == 15))
+        state = badger_amcl::MapCellState::CELL_OCCUPIED;
+      else
+        state = badger_amcl::MapCellState::CELL_FREE;
+      occupancy_map.setCellState(index, state);
+      EXPECT_EQ(occupancy_map.getCellState(x, y), state);
+    }
+  }
+  EXPECT_TRUE(occupancy_map.isValid({0, 0}));
+  EXPECT_TRUE(not occupancy_map.isValid({-1, 5}));
+  EXPECT_TRUE(occupancy_map.isValid({99, 149}));
+  EXPECT_TRUE(not occupancy_map.isValid({100, 150}));
+  EXPECT_TRUE(not occupancy_map.isValid({149, 99}));
+  occupancy_map.updateDistancesLUT(0.3);
+  EXPECT_EQ(occupancy_map.getCellState(0, 0), badger_amcl::MapCellState::CELL_FREE);
+  EXPECT_EQ(occupancy_map.getCellState(1, 3), badger_amcl::MapCellState::CELL_UNKNOWN);
+  EXPECT_EQ(occupancy_map.getCellState(5, 10), badger_amcl::MapCellState::CELL_OCCUPIED);
 }
 
 int main(int argc, char* argv[])
