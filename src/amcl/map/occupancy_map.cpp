@@ -52,16 +52,12 @@ void OccupancyMap::setSize(std::vector<int> size_vec)
 {
   size_x_ = size_vec[0];
   size_y_ = size_vec[1];
+  cells_.resize(size_vec[0] * size_vec[1]);
 }
 
 double OccupancyMap::getMaxDistanceToObject()
 {
   return max_distance_to_object_;
-}
-
-void OccupancyMap::initCells(int num)
-{
-  cells_.resize(num);
 }
 
 float OccupancyMap::getDistanceToObject(int i, int j)

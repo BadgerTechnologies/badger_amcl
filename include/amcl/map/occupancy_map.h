@@ -74,7 +74,6 @@ public:
   // Compute the cell index for the given map coords.
   virtual unsigned int computeCellIndex(int i, int j);
   virtual double getMaxDistanceToObject();
-  virtual void initCells(int num);
   virtual MapCellState getCellState(int i, int j);
   virtual void setCellState(int index, MapCellState state);
   // This function is called very frequently.
