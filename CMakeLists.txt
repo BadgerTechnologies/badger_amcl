@@ -83,9 +83,6 @@ target_link_libraries(
     badger_amcl
 )
 
-set_target_properties(badger_amcl_bin
-    PROPERTIES OUTPUT_NAME badger_amcl)
-
 if(CATKIN_ENABLE_TESTING)
     catkin_add_gtest(TestBadgerAmcl test/test_badger_amcl.cpp)
     target_link_libraries(TestBadgerAmcl badger_amcl ${catkin_LIBRARIES})
@@ -104,4 +101,8 @@ install(DIRECTORY include/amcl/
 
 install(DIRECTORY examples/
     DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/examples
+)
+
+set_target_properties(badger_amcl_bin
+    PROPERTIES OUTPUT_NAME badger_amcl
 )
