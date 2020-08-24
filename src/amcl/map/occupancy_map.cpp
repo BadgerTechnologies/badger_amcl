@@ -259,7 +259,7 @@ double OccupancyMap::calcRange(double ox, double oy, double oa, double max_range
   int x0, x1, y0, y1;
   int x, y;
   int xstep, ystep;
-  char steep;
+  bool steep;
   int placeholder;
   int deltax, deltay, error, deltaerr;
 
@@ -275,9 +275,9 @@ double OccupancyMap::calcRange(double ox, double oy, double oa, double max_range
   y1 = map_vec_[1];
 
   if (std::abs(y1 - y0) > std::abs(x1 - x0))
-    steep = 1;
+    steep = true;
   else
-    steep = 0;
+    steep = false;
 
   if (steep)
   {
