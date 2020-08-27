@@ -1,0 +1,143 @@
+<launch>
+<arg name="global_frame_id" default="map" />
+<arg name="global_alt_frame_id" default="" />
+<arg name="tf_reverse" default="false" />
+<arg name="output" default="screen" />
+<arg name="required" default="false" />
+<arg name="respawn" default="false" />
+<arg name="respawn_delay" default="0" />
+<node pkg="badger_amcl" type="badger_amcl" name="amcl_front_laser" output="$(arg output)"
+    required="$(arg required)" respawn="$(arg respawn)" respawn_delay="$(arg respawn_delay)">
+  <remap from="scan" to="/scans/localization" />
+  <remap from="map" to="/map" />
+  <!-- Global ROS Configuration -->
+  <param name="map_type" value="2"/>
+  <param name="global_frame_id" value="$(arg global_frame_id)"/>
+  <param name="global_alt_frame_id" value="$(arg global_alt_frame_id)"/>
+  <param name="odom_frame_id" value="odom"/>
+  <param name="base_frame_id" value="base_footprint"/>
+  <!-- Future dating needs to be long enough to keep the TF valid until the next update -->
+  <param name="transform_tolerance" value="2.0" />
+  <param name="tf_reverse" value="$(arg tf_reverse)"/>
+  <param name="gui_publish_rate" value="10.0"/>
+  <param name="transform_publish_rate" value="50.0"/>
+
+  <!-- Particle Filter Settings -->
+  <!--
+  Update rather often to integrate laser data as it comes in.
+  This could make the filter over-confident, so resample strategy is important.
+  -->
+  <param name="update_min_d" value="0.10"/>
+  <param name="update_min_a" value="0.15"/>
+  <!--
+  Use the systematic resample model.
+  It is faster, and actually performs slightly better than the multinomial model.
+  -->
+  <param name="resample_model_type" value="systematic"/>
+  <!--
+  Do not resample every update.
+  TODO: Ideally we would only resample when a metric crosses a threshold.
+  If the localizer ever supports adapative resampling, switch to that.
+  -->
+  <param name="resample_interval" value="2"/>
+  <!-- Disable recovery, it uses random poses! (Very bad!) -->
+  <param name="recovery_alpha_slow" value="0.0"/>
+  <param name="recovery_alpha_fast" value="0.0"/>
+  <!-- kld_err and kld_z factor into how many particles the filter will sample -->
+  <param name="kld_err" value="0.0025"/>
+  <param name="kld_z" value="0.9975"/>
+  <!-- Lower/upper bounds for above -->
+  <param name="min_particles" value="2000"/>
+  <param name="max_particles" value="8000"/>
+
+  <!-- Motion Model Settings -->
+  <param name="odom_model_type" value="gaussian"/>
+  <param name="odom_integrator_topic" value="/odom"/>
+  <!-- standard deviation of rotational noise due to rotational motion (rad/rad) -->
+  <param name="odom_alpha1" value="0.01"/>
+  <!-- standard deviation of rotational noise due to forward translational motion (rad/m) -->
+  <param name="odom_alpha2" value="0.0025"/>
+  <!-- standard deviation of forward translational noise due to forward motion (m/m) -->
+  <param name="odom_alpha3" value="0.015"/>
+  <!-- standard deviation of translational noise due to rotational motion (m/rad) -->
+  <param name="odom_alpha4" value="0.001"/>
+  <!-- standard deviation of sideways translational noise due to sideways motion (m/m) -->
+  <param name="odom_alpha5" value="0.015"/>
+
+  <!-- Sensor Model Settings -->
+  <!-- Use the likelihood field with gompertz weighting function laser model -->
+  <param name="laser_model_type" value="likelihood_field_gompertz"/>
+  <!--
+  This value is a tradeoff between extreme accuracy (which isn't really
+  necessary) and CPU time.
+  Important: when using the non-gompertz models, changing this value will alter
+  what mixing weights (laser_z_hit and laser_z_rand) work best. With the
+  gompertz model, it is normalized by valid scans, and does not divide the
+  z_rand by the max laser range, as it doesn't attempt to model the sensor
+  using a normalized probability density.
+  -->
+  <param name="laser_max_beams" value="60"/>
+  <!--
+  Use a value for laser_sigma_hit that closely matches the accuracy of the
+  laser scanner. Specifying artificially high values will pull particles closer
+  to nearby walls in the presence of dynamic noise. Far away from obstacles, we
+  want laser_z_rand to dominate.
+  -->
+  <param name="laser_sigma_hit" value="0.05"/>
+  <!--
+  Scale the map up internally to get higher precision on the occupancy distance
+  for the likelihood field model.
+  Be careful with this field, as RAM usage will go up with its square.
+  Three is a good value as it yields more accurate results with a low
+  laser_sigma_hit, yet doesn't cost too much extra RAM (nine times more for the
+  likelihood field occupancy distance, which is 32-bit floats). Using a value
+  of four would give even more accurate results, but cost sixteen times the RAM
+  as no scaling.
+  -->
+  <param name="map_scale_up_factor" value="2"/>
+  <!--
+  There is little point to this being more than six times the laser_sigma_hit,
+  as the value mixed in by laser_z_hit is pratically zero at that point.
+  However, this value must be > than the laser_non_free_space_radius
+  -->
+  <param name="laser_likelihood_max_dist" value="0.36"/>
+  <!--
+  The below values for z_hit, z_rand and gompertz constants yield the following
+  key points by total laser scan match:
+  0.0: 0.259750, 0.25: 0.358678, 0.5: 0.589446, 0.75: 0.831322, 1.0: 0.999520
+  This is a good distribution for not over-weighting a very good match (to
+  tolerate some noise while matching), and from under-weighting a missing scan
+  (which will cause us to hunt for a solution too much). Also, it keeps the
+  multiplier less than 1, making tuning the uniform pose weight threshold
+  straightforward.
+  -->
+  <param name="laser_z_hit" value="0.5"/>
+  <param name="laser_z_rand" value="0.5"/>
+  <param name="laser_gompertz_a" value="0.941"/>
+  <param name="laser_gompertz_b" value="5.0"/>
+  <param name="laser_gompertz_c" value="3.0"/>
+  <param name="laser_gompertz_input_shift" value="-.97"/>
+  <param name="laser_gompertz_input_scale" value="2"/>
+  <param name="laser_gompertz_output_shift" value=".25"/>
+   <!-- laser_lambda_short is ignored by the likelihood models -->
+  <param name="laser_lambda_short" value="0.0"/>
+  <!-- Use a very small down-weight off map -->
+  <param name="laser_off_map_factor" value="0.95"/>
+  <!-- Use a very small down-weight in non-free space -->
+  <param name="laser_non_free_space_factor" value="0.95"/>
+  <!-- This radius is almost entirely inside our robot -->
+  <param name="laser_non_free_space_radius" value="0.3"/>
+
+  <!-- Global Localization Settings -->
+  <!-- Only pick good poses while doing global localization or recovery -->
+  <param name="uniform_pose_starting_weight_threshold" value="0.8"/>
+  <param name="uniform_pose_deweight_multiplier" value="0.98"/>
+  <!-- While globally localizing, recover aggressively until we converge -->
+  <param name="global_localization_alpha_slow" value="0.075"/>
+  <param name="global_localization_alpha_fast" value="0.75"/>
+  <!-- While globally localizing, severely down-weight non-free space -->
+  <param name="global_localization_laser_off_map_factor" value="0.001"/>
+  <param name="global_localization_laser_non_free_space_factor" value="0.25"/>
+  <param name="save_pose" value="True"/>
+</node>
+</launch>

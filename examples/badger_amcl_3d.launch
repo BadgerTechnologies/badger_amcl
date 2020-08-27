@@ -1,0 +1,66 @@
+<launch>
+  <node pkg="badger_amcl" type="badger_amcl" name="amcl_top_laser_3d" output="screen" required="true">
+    <remap from="map" to="map_high" />
+    <remap from="scan" to="/scans/top/high" />
+    <remap from="cloud" to="/scans/top/points_filtered" />
+    <!-- Global ROS Configuration -->
+    <param name="map_type" value="3"/>
+    <param name="wait_for_occupancy_map" value="false" />
+    <param name="global_frame_id" value="map"/>
+    <param name="odom_frame_id" value="odom"/>
+    <param name="base_frame_id" value="base_footprint"/>
+    <param name="transform_tolerance" value="0.05" />
+    <param name="gui_publish_rate" value="10.0"/>
+    <param name="transform_publish_rate" value="50.0"/>
+    <!-- Particle Filter Settings -->
+    <param name="update_min_d" value="0.25"/>
+    <param name="update_min_a" value="0.5"/>
+    <param name="resample_model_type" value="systematic"/>
+    <param name="resample_interval" value="2"/>
+    <param name="recovery_alpha_slow" value="0.0"/>
+    <param name="recovery_alpha_fast" value="0.0"/>
+    <param name="kld_err" value="0.0025"/>
+    <param name="kld_z" value="0.9975"/>
+    <param name="min_particles" value="1000"/>
+    <param name="max_particles" value="10000"/>
+    <!-- Motion Model Settings -->
+    <param name="odom_model_type" value="gaussian"/>
+    <param name="odom_integrator_topic" value="/odom"/>
+    <param name="odom_alpha1" value="0.01"/>
+    <param name="odom_alpha2" value="0.0025"/>
+    <param name="odom_alpha3" value="0.015"/>
+    <param name="odom_alpha4" value="0.001"/>
+    <param name="odom_alpha4" value="0.015"/>
+    <!-- Sensor Model Settings -->
+    <param name="laser_model_type" value="likelihood_field_gompertz"/>
+    <param name="laser_max_beams" value="128"/>
+    <!-- TODO  -->
+    <!-- Setting sigma hit to 1/3 of max dist will include 99.7% of the data -->
+    <param name="laser_sigma_hit" value="0.1"/>
+    <param name="laser_likelihood_max_dist" value="0.3"/>
+    <param name="laser_z_hit" value="0.5"/>
+    <param name="laser_z_rand" value="0.5"/>
+    <param name="laser_gompertz_a" value="0.748"/>
+    <param name="laser_gompertz_b" value="5.0"/>
+    <param name="laser_gompertz_c" value="1.2"/>
+    <param name="laser_gompertz_input_shift" value="-3.2"/>
+    <param name="laser_gompertz_input_scale" value="6.7"/>
+    <param name="laser_gompertz_output_shift" value=".25"/>
+    <!-- Use a very small down-weight off map -->
+    <param name="laser_off_map_factor" value="0.95"/>
+    <!-- Use a very small down-weight in non-free space -->
+    <param name="laser_non_free_space_factor" value="0.95"/>
+    <!-- This radius is almost entirely inside our robot -->
+    <param name="laser_non_free_space_radius" value="0.3"/>
+    <!-- Global Localization Settings -->
+    <param name="uniform_pose_starting_weight_threshold" value="0.8"/>
+    <param name="uniform_pose_deweight_multiplier" value="0.98"/>
+    <param name="global_localization_alpha_slow" value="0.075"/>
+    <param name="global_localization_alpha_fast" value="0.75"/>
+    <param name="off_object_penalty_factor" value="10000.0" />
+    <!-- While globally localizing, severely down-weight non-free space -->
+    <param name="global_localization_point_cloud_scanner_off_map_factor" value="0.001"/>
+    <param name="global_localization_point_cloud_scanner_non_free_space_factor" value="0.25"/>
+    <param name="save_pose" value="True"/>
+  </node>
+</launch>
