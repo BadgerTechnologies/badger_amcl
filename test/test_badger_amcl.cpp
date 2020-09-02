@@ -164,6 +164,10 @@ TEST(TestBadgerAmcl, testOccupancyMapDistances)
   EXPECT_EQ(occupancy_map.getCellState(0, 0), badger_amcl::MapCellState::CELL_FREE);
   EXPECT_EQ(occupancy_map.getCellState(1, 3), badger_amcl::MapCellState::CELL_UNKNOWN);
   EXPECT_EQ(occupancy_map.getCellState(5, 10), badger_amcl::MapCellState::CELL_OCCUPIED);
+  double range = occupancy_map.calcRange(0, 0, 0, 0);
+  EXPECT_DOUBLE_EQ(range, 0.0);
+  range = occupancy_map.calcRange(0.05, 0, 1.5708, 0.5);
+  EXPECT_DOUBLE_EQ(range, 0.15);
 }
 
 int main(int argc, char* argv[])
