@@ -92,7 +92,7 @@ public:
   bool updatePf(const ros::Time& t, std::vector<bool>& scanners_update, int scanner_index,
                 int* resample_count, bool* force_publication, bool* force_update);
   void setPfDecayRateNormal();
-  void attemptSavePose(bool force_save);
+  void attemptSavePose(bool exiting);
 
 private:
   void reconfigureCB(AMCLConfig& config, uint32_t level);
@@ -114,7 +114,7 @@ private:
   void createInitialPose(tf2::Transform* pose, std::vector<double>* cov_vals);
   void newInitialPoseSubscriber(const ros::SingleSubscriberPublisher& single_sub_pub);
 
-  void savePoseToFile(const geometry_msgs::PoseWithCovarianceStamped& latest_pose);
+  void savePoseToFile(const geometry_msgs::PoseWithCovarianceStamped& latest_pose, bool save_on_exit);
   void loadPose();
   void publishPose(const geometry_msgs::PoseWithCovarianceStamped& p);
   void applyInitialPose();
@@ -202,6 +202,7 @@ private:
   std::shared_ptr<PoseHypothesis> initial_pose_hyp_;
   double init_pose_[3];
   double init_cov_[3];
+  std::vector<double> default_cov_vals_;
   std::shared_ptr<geometry_msgs::PoseWithCovarianceStamped> last_published_pose_;
 
   bool first_reconfigure_call_;

@@ -142,6 +142,11 @@ Node::Node()
   }
   map_odom_transform_pub_ = nh_.advertise<nav_msgs::Odometry>("amcl_map_odom_transform", 1);
   global_loc_srv_ = nh_.advertiseService("global_localization", &Node::globalLocalizationCallback, this);
+
+  default_cov_vals_.resize(36, 0.0);
+  default_cov_vals_[COVARIANCE_XX] = 0.5 * 0.5;
+  default_cov_vals_[COVARIANCE_YY] = 0.5 * 0.5;
+  default_cov_vals_[COVARIANCE_AA] = (M_PI / 12.0) * (M_PI / 12.0);
   loadPose();
 
   if(odom_integrator_enabled_);
@@ -394,7 +399,7 @@ void Node::updateOdomToMapTransform(const tf2::Transform& odom_to_map)
   latest_tf_valid_ = true;
 }
 
-void Node::attemptSavePose(bool force_save)
+void Node::attemptSavePose(bool exiting)
 {
   tf2::Transform latest_tf;
   if (getLatestTf(&latest_tf))
@@ -402,12 +407,12 @@ void Node::attemptSavePose(bool force_save)
     ros::Time now = ros::Time::now();
     bool time_to_save = (save_pose_to_file_period_.toSec() > 0.0
                          && (now - save_pose_to_file_last_time_) >= save_pose_to_file_period_);
-    if (force_save or time_to_save)
+    if (exiting or time_to_save)
     {
       ROS_DEBUG_STREAM("Save pose to file period: " << save_pose_to_file_period_.toSec());
       geometry_msgs::PoseWithCovarianceStamped latest_pose;
       getLatestPose(latest_tf, &latest_pose);
-      savePoseToFile(latest_pose);
+      savePoseToFile(latest_pose, exiting);
       save_pose_to_file_last_time_ = now;
     }
   }
@@ -426,9 +431,9 @@ void Node::loadPose()
     init_pose_[0] = 0.0;
     init_pose_[1] = 0.0;
     init_pose_[2] = 0.0;
-    init_cov_[0] = 0.5 * 0.5;
-    init_cov_[1] = 0.5 * 0.5;
-    init_cov_[2] = (M_PI / 12.0) * (M_PI / 12.0);
+    init_cov_[0] = default_cov_vals_[COVARIANCE_XX];
+    init_cov_[1] = default_cov_vals_[COVARIANCE_YY];
+    init_cov_[2] = default_cov_vals_[COVARIANCE_AA];
     ROS_INFO("Default pose: (%.3f, %.3f)", init_pose_[0], init_pose_[1]);
   }
 }
@@ -448,6 +453,7 @@ void Node::createInitialPose(tf2::Transform* pose, std::vector<double>* cov_vals
 
 bool Node::loadPoseFromFile()
 {
+  bool on_exit;
   double pose_x, pose_y, orientation_x, orientation_y, orientation_z, orientation_w, roll, pitch, yaw, xx, yy, aa;
   try
   {
@@ -464,10 +470,15 @@ bool Node::loadPoseFromFile()
     xx = config["pose"]["covariance"][COVARIANCE_XX].as<double>();
     yy = config["pose"]["covariance"][COVARIANCE_YY].as<double>();
     aa = config["pose"]["covariance"][COVARIANCE_AA].as<double>();
+    if(config["header"]["on_exit"])
+      on_exit = config["header"]["on_exit"].as<bool>();
+    else
+      // assume pose was saved on exit if flag does not exist
+      on_exit = true;
   }
   catch (std::exception& e)
   {
-    ROS_WARN_STREAM("Exception while loading pose from file. Failed to parse saved YAML pose. " << e.what());
+    ROS_WARN_STREAM("Exception while loading pose from file. Failed to parse saved pose. " << e.what());
     return false;
   }
   if (std::isnan(pose_x) or std::isnan(pose_y)
@@ -487,9 +498,18 @@ bool Node::loadPoseFromFile()
   init_pose_[0] = pose_x;
   init_pose_[1] = pose_y;
   init_pose_[2] = yaw;
-  init_cov_[0] = xx;
-  init_cov_[1] = yy;
-  init_cov_[2] = aa;
+  if(on_exit)
+  {
+    init_cov_[0] = xx;
+    init_cov_[1] = yy;
+    init_cov_[2] = aa;
+  }
+  else
+  {
+    init_cov_[0] = default_cov_vals_[COVARIANCE_XX];
+    init_cov_[1] = default_cov_vals_[COVARIANCE_YY];
+    init_cov_[2] = default_cov_vals_[COVARIANCE_AA];
+  }
   return true;
 }
 
@@ -546,7 +566,7 @@ YAML::Node Node::loadYamlFromFile()
   }
 }
 
-void Node::savePoseToFile(const geometry_msgs::PoseWithCovarianceStamped& latest_pose)
+void Node::savePoseToFile(const geometry_msgs::PoseWithCovarianceStamped& latest_pose, bool save_on_exit)
 {
   if (!save_pose_)
   {
@@ -568,6 +588,7 @@ void Node::savePoseToFile(const geometry_msgs::PoseWithCovarianceStamped& latest
   YAML::Node header_node;
   header_node["stamp"] = stamp_node;
   header_node["frame_id"] = "map";
+  header_node["on_exit"] = save_on_exit;
 
   YAML::Node pose_pose_position_node;
   pose_pose_position_node["x"] = latest_pose.pose.pose.position.x;
@@ -1063,15 +1084,11 @@ bool Node::checkInitialPose(const geometry_msgs::PoseWithCovarianceStamped& msg)
 
 void Node::setCovarianceVals(const geometry_msgs::PoseWithCovarianceStamped& msg, std::vector<double>* cov_vals)
 {
-  std::vector<double> default_cov_vals(36, 0.0);
-  default_cov_vals[COVARIANCE_XX] = 0.5 * 0.5;
-  default_cov_vals[COVARIANCE_YY] = 0.5 * 0.5;
-  default_cov_vals[COVARIANCE_AA] = (M_PI / 12.0) * (M_PI / 12.0);
   for (int i = 0; i < msg.pose.covariance.size(); i++)
   {
     if (std::isnan(msg.pose.covariance[i]))
     {
-      cov_vals->at(i) = default_cov_vals[i];
+      cov_vals->at(i) = default_cov_vals_[i];
     }
     else
     {
