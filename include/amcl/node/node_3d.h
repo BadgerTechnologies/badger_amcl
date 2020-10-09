@@ -94,8 +94,8 @@ private:
   std::shared_ptr<PointCloudData> latest_scan_data_;
   std::shared_ptr<PFSampleSet> fake_sample_set_;
   std::shared_ptr<ParticleFilter> pf_;
-  std::unique_ptr<message_filters::Subscriber<sensor_msgs::PointCloud2>> scan_sub_;
-  std::unique_ptr<tf2_ros::MessageFilter<sensor_msgs::PointCloud2>> scan_filter_;
+  std::unique_ptr<message_filters::Subscriber<sensor_msgs::PointCloud2>> cloud_sub_;
+  std::unique_ptr<tf2_ros::MessageFilter<sensor_msgs::PointCloud2>> cloud_filter_;
   std::string cloud_topic_;
   std::map<std::string, int> frame_to_scanner_;
   std::mutex& configuration_mutex_;
