@@ -173,7 +173,7 @@ Node::Node()
   publish_transform_nh_.setCallbackQueue(&publish_transform_queue_);
   publish_transform_timer_ = publish_transform_nh_.createTimer(transform_publish_period_,
                                                                std::bind(&Node::publishTransform, this,
-                                                               std::placeholders::_1));
+                                                                         std::placeholders::_1));
   publish_transform_spinner_.start();
 }
 
@@ -280,9 +280,7 @@ void Node::reconfigureCB(AMCLConfig& config, uint32_t level)
   node_->reconfigure(config);
   save_pose_ = config.save_pose;
   saved_pose_filepath_ = config.saved_pose_filepath;
-  initial_pose_sub_ = nh_.subscribe("initialpose", 2, &Node::initialPoseReceived, this);
-  publish_transform_timer_ = nh_.createTimer(transform_publish_period_, std::bind(&Node::publishTransform, this,
-                                                                                  std::placeholders::_1));
+  publish_transform_timer_.setPeriod(transform_publish_period_);
 }
 
 void Node::setPfDecayRateNormal()
