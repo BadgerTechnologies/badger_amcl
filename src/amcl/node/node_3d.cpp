@@ -106,6 +106,7 @@ Node3D::Node3D(Node* node, std::mutex& configuration_mutex)
   force_update_ = false;
   first_occupancy_map_received_ = false;
   first_octomap_received_ = false;
+  occupancy_bounds_received_ = false;
   octo_map_sub_ = nh_.subscribe("octomap", 1, &Node3D::octoMapMsgReceived, this);
   occupancy_map_sub_ = nh_.subscribe("map", 1, &Node3D::occupancyMapMsgReceived, this);
 }
