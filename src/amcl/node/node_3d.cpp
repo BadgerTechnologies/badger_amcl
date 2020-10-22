@@ -163,11 +163,14 @@ void Node3D::reconfigure(AMCLConfig& config)
   }
 
   scanner_.setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
-  cloud_sub_ = std::unique_ptr<message_filters::Subscriber<sensor_msgs::PointCloud2>>(
-      new message_filters::Subscriber<sensor_msgs::PointCloud2>(nh_, cloud_topic_, 1));
 
-  cloud_filter_ = std::unique_ptr<tf2_ros::MessageFilter<sensor_msgs::PointCloud2>>(
-      new tf2_ros::MessageFilter<sensor_msgs::PointCloud2>(*cloud_sub_, tf_buffer_, node_->getOdomFrameId(), 1, nh_));
+  cloud_filter_.reset();
+  cloud_sub_.reset();
+
+  cloud_sub_.reset(new message_filters::Subscriber<sensor_msgs::PointCloud2>(nh_, cloud_topic_, 1));
+  cloud_filter_.reset(new tf2_ros::MessageFilter<sensor_msgs::PointCloud2>(*cloud_sub_, tf_buffer_,
+                                                                           node_->getOdomFrameId(), 1, nh_));
+
   cloud_filter_->registerCallback(std::bind(&Node3D::scanReceived, this, std::placeholders::_1));
   pf_ = node_->getPfPtr();
 }

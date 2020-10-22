@@ -187,10 +187,14 @@ void Node2D::reconfigure(AMCLConfig& config)
     ROS_INFO("Done initializing likelihood (gompertz) field model.");
   }
   scanner_.setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
-  scan_sub_ = std::unique_ptr<message_filters::Subscriber<sensor_msgs::LaserScan>>(
-      new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, scan_topic_, 1));
-  scan_filter_ = std::unique_ptr<tf2_ros::MessageFilter<sensor_msgs::LaserScan>>(
-      new tf2_ros::MessageFilter<sensor_msgs::LaserScan>(*scan_sub_.get(), tf_buffer_, node_->getOdomFrameId(), 1, nh_));
+
+  scan_filter_.reset();
+  scan_sub_.reset();
+
+  scan_sub_.reset(new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, scan_topic_, 1));
+  scan_filter_.reset(new tf2_ros::MessageFilter<sensor_msgs::LaserScan>(*scan_sub_.get(), tf_buffer_,
+                                                                        node_->getOdomFrameId(), 1, nh_));
+
   scan_filter_->registerCallback(std::bind(&Node2D::scanReceived, this, std::placeholders::_1));
   pf_ = node_->getPfPtr();
 }
