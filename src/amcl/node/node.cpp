@@ -498,12 +498,14 @@ bool Node::loadPoseFromFile()
   init_pose_[2] = yaw;
   if(on_exit)
   {
+    ROS_INFO("Pose was saved on exit, using covariance values from saved pose file.");
     init_cov_[0] = xx;
     init_cov_[1] = yy;
     init_cov_[2] = aa;
   }
   else
   {
+    ROS_INFO("Pose was not saved on exit, using default covariance values.");
     init_cov_[0] = default_cov_vals_[COVARIANCE_XX];
     init_cov_[1] = default_cov_vals_[COVARIANCE_YY];
     init_cov_[2] = default_cov_vals_[COVARIANCE_AA];
