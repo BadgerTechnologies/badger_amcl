@@ -489,7 +489,7 @@ void Node2D::updateScannerPose(const tf2::Transform& scanner_pose, int scanner_i
             scanner_pose_v[0], scanner_pose_v[1], scanner_pose_v[2]);
 }
 
-bool Node2D::initLatestScanData(const sensor_msgs::LaserScanConstPtr& planar_scan,
+void Node2D::initLatestScanData(const sensor_msgs::LaserScanConstPtr& planar_scan,
                                 int scanner_index)
 {
   latest_scan_data_ = std::make_shared<PlanarData>();

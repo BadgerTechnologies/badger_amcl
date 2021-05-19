@@ -78,7 +78,7 @@ private:
   void checkScanReceived(const ros::TimerEvent& event);
   bool initFrameToScanner(const std::string& scanner_frame_id, tf2::Transform* scanner_pose, int* scanner_index);
   void updateScannerPose(const tf2::Transform& scanner_pose, int scanner_index);
-  bool initLatestScanData(const sensor_msgs::LaserScanConstPtr& planar_scan, int scanner_index);
+  void initLatestScanData(const sensor_msgs::LaserScanConstPtr& planar_scan, int scanner_index);
   bool getAngleStats(const sensor_msgs::LaserScanConstPtr& planar_scan, double* angle_min, double* angle_increment);
   void updateLatestScanData(const sensor_msgs::LaserScanConstPtr& planar_scan, double angle_min, double angle_increment);
   bool updatePf(const sensor_msgs::LaserScanConstPtr& planar_scan, int scanner_index, bool* resampled);
