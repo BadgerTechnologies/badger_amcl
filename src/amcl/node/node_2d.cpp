@@ -395,12 +395,12 @@ bool Node2D::updateScanner(const sensor_msgs::LaserScanConstPtr& planar_scan,
 
 bool Node2D::isMapInitialized()
 {
-  if (map_ == NULL)
+  if (map_ == nullptr)
   {
     ROS_DEBUG("Map is null");
     return false;
   }
-  if (pf_ == NULL)
+  if (pf_ == nullptr)
   {
     ROS_DEBUG("PF is null");
     return false;
