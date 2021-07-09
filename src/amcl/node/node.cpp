@@ -47,9 +47,9 @@ namespace badger_amcl
 Node::Node()
   : sent_first_transform_(false),
     latest_tf_valid_(false),
-    map_(NULL),
+    map_(nullptr),
     private_nh_("~"),
-    initial_pose_hyp_(NULL),
+    initial_pose_hyp_(nullptr),
     first_reconfigure_call_(true),
     publish_transform_spinner_(1, &publish_transform_queue_),
     global_localization_active_(false),
@@ -828,7 +828,7 @@ Eigen::Vector3d Node::uniformPoseGenerator()
 
 bool Node::globalLocalizationCallback(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res)
 {
-  if (map_ == NULL)
+  if (map_ == nullptr)
   {
     return true;
   }
@@ -936,16 +936,16 @@ void Node::setInitialPose(const tf2::Transform& pose, const std::vector<double>&
 /**
  * If initial_pose_hyp_ and map_ are both non-null, apply the initial
  * pose to the particle filter state. Initial_pose_hyp_ is deleted
- * and set to NULL after it is used.
+ * and set to nullptr after it is used.
  */
 void Node::applyInitialPose()
 {
-  if (initial_pose_hyp_ != NULL && map_ != NULL)
+  if (initial_pose_hyp_ != nullptr && map_ != nullptr)
   {
     pf_->initWithGaussian(initial_pose_hyp_->mean, initial_pose_hyp_->covariance);
     odom_init_ = false;
 
-    initial_pose_hyp_ = NULL;
+    initial_pose_hyp_ = nullptr;
   }
 }
 

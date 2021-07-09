@@ -53,7 +53,7 @@ Node3D::Node3D(Node* node, std::mutex& configuration_mutex)
 {
   map_ = nullptr;
   octree_ = nullptr;
-  latest_scan_data_ = NULL;
+  latest_scan_data_ = nullptr;
   fake_sample_set_ = std::make_shared<PFSampleSet>();
   private_nh_.param("first_map_only", first_map_only_, false);
   private_nh_.param("wait_for_occupancy_map", wait_for_occupancy_map_, false);
@@ -212,7 +212,7 @@ void Node3D::octoMapMsgReceived(const octomap_msgs::OctomapConstPtr& msg)
   scanners_.clear();
   scanners_update_.clear();
   frame_to_scanner_.clear();
-  latest_scan_data_ = NULL;
+  latest_scan_data_ = nullptr;
   initFromNewMap();
   first_octomap_received_ = true;
 }
@@ -287,7 +287,7 @@ double Node3D::scorePose(const Eigen::Vector3d& p)
 {
   // If there is no data to match, return a perfect match
   double score = 1.0;
-  if (latest_scan_data_ != NULL)
+  if (latest_scan_data_ != nullptr)
   {
     // Create a fake "sample set" of just this pose to score it.
     fake_sample_.pose[0] = p[0];
@@ -370,12 +370,12 @@ void Node3D::updateScanner(const sensor_msgs::PointCloud2ConstPtr& point_cloud_s
 
 bool Node3D::isMapInitialized()
 {
-  if (map_ == NULL)
+  if (map_ == nullptr)
   {
     ROS_DEBUG("Map is null");
     return false;
   }
-  if (pf_ == NULL)
+  if (pf_ == nullptr)
   {
     ROS_DEBUG("PF is null");
     return false;

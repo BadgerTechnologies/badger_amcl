@@ -44,7 +44,7 @@ Node2D::Node2D(Node* node, std::mutex& configuration_mutex)
       tf_listener_(tf_buffer_)
 {
   map_ = nullptr;
-  latest_scan_data_ = NULL;
+  latest_scan_data_ = nullptr;
   fake_sample_set_ = std::make_shared<PFSampleSet>();
   private_nh_.param("first_map_only", first_map_only_, false);
   private_nh_.param("laser_min_range", sensor_min_range_, -1.0);
@@ -214,7 +214,7 @@ void Node2D::mapMsgReceived(const nav_msgs::OccupancyGridConstPtr& msg)
   scanners_.clear();
   scanners_update_.clear();
   frame_to_scanner_.clear();
-  latest_scan_data_ = NULL;
+  latest_scan_data_ = nullptr;
   initFromNewMap();
   updateFreeSpaceIndices();
   first_map_received_ = true;
@@ -299,7 +299,7 @@ double Node2D::scorePose(const Eigen::Vector3d& p)
 {
   // There is no data to match, so return a perfect match
   double score = 1.0;
-  if (latest_scan_data_ != NULL)
+  if (latest_scan_data_ != nullptr)
   {
     // Create a fake "sample set" of just this pose to score it.
     fake_sample_.pose[0] = p[0];
@@ -395,12 +395,12 @@ bool Node2D::updateScanner(const sensor_msgs::LaserScanConstPtr& planar_scan,
 
 bool Node2D::isMapInitialized()
 {
-  if (map_ == NULL)
+  if (map_ == nullptr)
   {
     ROS_DEBUG("Map is null");
     return false;
   }
-  if (pf_ == NULL)
+  if (pf_ == nullptr)
   {
     ROS_DEBUG("PF is null");
     return false;

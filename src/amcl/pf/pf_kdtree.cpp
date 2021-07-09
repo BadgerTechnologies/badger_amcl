@@ -35,13 +35,13 @@ PFKDTree::PFKDTree()
   cell_size_[0] = 0.50;
   cell_size_[1] = 0.50;
   cell_size_[2] = (10 * M_PI / 180);
-  root_ = NULL;
+  root_ = nullptr;
   leaf_count_ = 0;
 }
 
 void PFKDTree::clearKDTree()
 {
-  root_ = NULL;
+  root_ = nullptr;
   leaf_count_ = 0;
   nodes_.clear();
 }
@@ -84,7 +84,7 @@ int PFKDTree::getCluster(const Eigen::Vector3d& pose)
   key[1] = std::floor(pose[1] / cell_size_[1]);
   key[2] = std::floor(pose[2] / cell_size_[2]);
   node = findNode(root_, key);
-  if (node == NULL)
+  if (node == nullptr)
     return -1;
   return node->cluster;
 }
@@ -96,7 +96,7 @@ int PFKDTree::getLeafCount()
 
 PFKDTreeNode* PFKDTree::insertNode(PFKDTreeNode* node, int key[], double value, int depth)
 {
-  if (node == NULL)
+  if (node == nullptr)
   {
     node = makeLeafNode(key, value, depth);
   }
@@ -151,9 +151,9 @@ void PFKDTree::traverseNode(PFKDTreeNode* node, int key[], double value, int dep
 
 PFKDTreeNode* PFKDTree::findNode(PFKDTreeNode* node, int key[])
 {
-  if (node == NULL)
+  if (node == nullptr)
   {
-    return NULL;
+    return nullptr;
   }
   else if (equals(key, node->key))
   {
@@ -181,7 +181,7 @@ void PFKDTree::clusterNode(PFKDTreeNode* node)
     if (equals(node->key, next_key))
       continue;
     next_node = findNode(root_, next_key);
-    if (next_node == NULL)
+    if (next_node == nullptr)
       continue;
     if (next_node->cluster >= 0)
     {
