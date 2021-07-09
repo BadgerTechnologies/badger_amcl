@@ -397,6 +397,12 @@ bool Node2D::isMapInitialized()
 {
   if (map_ == NULL)
   {
+    ROS_DEBUG("Map is null");
+    return false;
+  }
+  if (pf_ == NULL)
+  {
+    ROS_DEBUG("PF is null");
     return false;
   }
   if (not map_->isDistancesLUTCreated())

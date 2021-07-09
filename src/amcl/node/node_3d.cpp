@@ -375,6 +375,11 @@ bool Node3D::isMapInitialized()
     ROS_DEBUG("Map is null");
     return false;
   }
+  if (pf_ == NULL)
+  {
+    ROS_DEBUG("PF is null");
+    return false;
+  }
   if (not map_->isDistancesLUTCreated())
   {
     ROS_DEBUG("Distances not yet created");
