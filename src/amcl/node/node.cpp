@@ -61,6 +61,7 @@ Node::Node()
   private_nh_.param("map_type", map_type_, 0);
 
   double param_val;
+  double convergence_threshold_;
   private_nh_.param("transform_publish_rate", param_val, 50.0);
   transform_publish_period_ = ros::Duration(1.0 / param_val);
   private_nh_.param("save_pose_to_file_rate", param_val, 0.1);
@@ -76,6 +77,7 @@ Node::Node()
   private_nh_.param("odom_alpha3", alpha3_, 0.2);
   private_nh_.param("odom_alpha4", alpha4_, 0.2);
   private_nh_.param("odom_alpha5", alpha5_, 0.2);
+  private_nh_.param("global_localization_convergence_threshold", convergence_threshold_, 95.0);
 
   private_nh_.param("save_pose", save_pose_, false);
   const std::string default_filepath = "badger_amcl_saved_pose.yaml";
@@ -252,7 +254,7 @@ void Node::reconfigureCB(AMCLConfig& config, uint32_t level)
   tf_reverse_ = config.tf_reverse;
 
   uniform_pose_generator_fn_ = std::bind(&Node::uniformPoseGenerator, this);
-  pf_ = std::make_shared<ParticleFilter>(min_particles_, max_particles_, alpha_slow_, alpha_fast_,
+  pf_ = std::make_shared<ParticleFilter>(min_particles_, max_particles_, alpha_slow_, alpha_fast_, convergence_threshold_,
                                          uniform_pose_generator_fn_);
   pf_err_ = config.kld_err;
   pf_z_ = config.kld_z;
@@ -634,7 +636,7 @@ void Node::initFromNewMap(std::shared_ptr<Map> new_map, bool use_initial_pose)
 
   // Create the particle filter
   uniform_pose_generator_fn_ = std::bind(&Node::uniformPoseGenerator, this);
-  pf_ = std::make_shared<ParticleFilter>(min_particles_, max_particles_, alpha_slow_, alpha_fast_,
+  pf_ = std::make_shared<ParticleFilter>(min_particles_, max_particles_, alpha_slow_, alpha_fast_, convergence_threshold_,
                                          uniform_pose_generator_fn_);
   pf_->setPopulationSizeParameters(pf_err_, pf_z_);
   pf_->setResampleModel(resample_model_type_);
