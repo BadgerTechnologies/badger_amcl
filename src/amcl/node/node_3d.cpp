@@ -482,9 +482,11 @@ void Node3D::updateLatestScanData(const pcl::PointCloud<pcl::PointXYZ>::Ptr poin
 void Node3D::resampleParticles()
 {
   pf_->updateResample();
-  if (pf_->isConverged() && global_localization_active_)
+  bool is_converged = pf_->isConverged();
+  ROS_INFO_STREAM("Localization Converged: " << is_converged << ", Localization Active: " << global_localization_active_);
+  if (is_converged && global_localization_active_)
   {
-    ROS_INFO("Global localization converged!");
+    ROS_INFO("Global localization convergeed!");
     global_localization_active_ = false;
   }
 }
@@ -593,6 +595,7 @@ void Node3D::globalLocalizationCallback()
                      global_localization_non_free_space_factor_,
                      non_free_space_radius_);
   }
+  global_localization_active_ = true;
 }
 
 }  // namespace amcl
