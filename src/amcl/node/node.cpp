@@ -76,6 +76,7 @@ Node::Node()
   private_nh_.param("odom_alpha3", alpha3_, 0.2);
   private_nh_.param("odom_alpha4", alpha4_, 0.2);
   private_nh_.param("odom_alpha5", alpha5_, 0.2);
+  private_nh_.param("global_localizaton_convergence_threshold", convergence_threshold);
 
   private_nh_.param("save_pose", save_pose_, false);
   const std::string default_filepath = "badger_amcl_saved_pose.yaml";
@@ -253,7 +254,7 @@ void Node::reconfigureCB(AMCLConfig& config, uint32_t level)
 
   uniform_pose_generator_fn_ = std::bind(&Node::uniformPoseGenerator, this);
   pf_ = std::make_shared<ParticleFilter>(min_particles_, max_particles_, alpha_slow_, alpha_fast_,
-                                         uniform_pose_generator_fn_);
+                                         uniform_pose_generator_fn_, convergence_threshold);
   pf_err_ = config.kld_err;
   pf_z_ = config.kld_z;
   pf_->setPopulationSizeParameters(pf_err_, pf_z_);

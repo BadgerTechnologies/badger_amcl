@@ -167,6 +167,8 @@ private:
 
   double dist_threshold_;  // distance threshold in each axis over which the pf is considered to not be converged
 
+  double convergence_threshold; //Global Localization Convergence Threshold
+
   // Population size parameters
   double pop_err_, pop_z_;
 
