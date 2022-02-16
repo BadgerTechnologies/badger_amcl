@@ -27,6 +27,7 @@
 #include <cstdlib>
 
 #include <ros/assert.h>
+#include "ros/ros.h"
 
 #include "pf/pdf_gaussian.h"
 #include "sensors/sensor.h"
@@ -35,7 +36,7 @@ namespace badger_amcl
 {
 
 // Create a new filter
-ParticleFilter::ParticleFilter(int min_samples, int max_samples, double alpha_slow,
+ParticleFilter::ParticleFilter(int min_samples, int max_samples, double alpha_slow, double convergence_threshold,
                                double alpha_fast, std::function<Eigen::Vector3d()> random_pose_fn)
 {
   int i, j;
@@ -167,17 +168,21 @@ void ParticleFilter::initConverged()
 
 void ParticleFilter::updateConverged()
 {
-  int i;
+  int particles_converged;
+  double percent_converged;
+  particles_converged = 0;
   std::shared_ptr<PFSampleSet> set;
   PFSample* sample;
+  convergence_threshold = convergence_threshold;
   double total;
 
   set = sets_[current_set_];
   double mean_x = 0, mean_y = 0;
 
-  for (i = 0; i < set->sample_count; i++)
+  int sample_index;
+  for (sample_index = 0; sample_index < set->sample_count; sample_index++)
   {
-    sample = &(set->samples[i]);
+    sample = &(set->samples[sample_index]);
 
     mean_x += sample->pose[0];
     mean_y += sample->pose[1];
@@ -187,16 +192,33 @@ void ParticleFilter::updateConverged()
 
   set->converged = true;
   converged_ = true;
-  for (i = 0; i < set->sample_count; i++)
+
+  for (sample_index = 0; sample_index < set->sample_count; sample_index++)
   {
-    sample = &(set->samples[i]);
-    if (std::fabs(sample->pose[0] - mean_x) > dist_threshold_
-        || std::fabs(sample->pose[1] - mean_y) > dist_threshold_)
-    {
-      set->converged = false;
-      converged_ = false;
-      break;
-    }
+    sample = &(set->samples[sample_index]);
+    if (std::fabs(sample->pose[0] - mean_x) <= dist_threshold_
+        && std::fabs(sample->pose[1] - mean_y) <= dist_threshold_)
+      {
+        particles_converged++;
+      }
+  }
+
+  percent_converged =(static_cast<float>(particles_converged) / static_cast<float>(sample_index)) * 100;
+  ROS_INFO_STREAM(percent_converged << "% of the particles are converging");
+  ROS_INFO_STREAM(convergence_threshold << "Is the convergence threshold");
+  ROS_INFO_STREAM(particles_converged << "particles have converged");
+  ROS_INFO_STREAM(set->sample_count << " Is the sample count");
+  ROS_INFO_STREAM(sample_index << "% is the sample index");
+  if (percent_converged >= convergence_threshold)
+  {
+    set->converged = true;
+    converged_ = true;
+    ROS_INFO("The Particles have converged!");
+  }
+  else
+  {
+    set->converged = false;
+    converged_ = false;
   }
 }
 
