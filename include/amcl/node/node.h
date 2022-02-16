@@ -198,6 +198,7 @@ private:
   double d_thresh_, a_thresh_;
   PFResampleModelType resample_model_type_;
   int min_particles_, max_particles_;
+  double global_localization_convergence_threshold_;
   std::shared_ptr<PoseHypothesis> initial_pose_hyp_;
   double init_pose_[3];
   double init_cov_[3];
