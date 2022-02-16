@@ -35,8 +35,9 @@ namespace badger_amcl
 {
 
 // Create a new filter
-ParticleFilter::ParticleFilter(int min_samples, int max_samples, double alpha_slow,
-                               double alpha_fast, std::function<Eigen::Vector3d()> random_pose_fn)
+ParticleFilter::ParticleFilter(int min_samples, int max_samples, double alpha_slow, double alpha_fast,
+                               double global_localization_convergence_threshold,
+                               std::function<Eigen::Vector3d()> random_pose_fn)
 {
   int i, j;
   std::shared_ptr<PFSampleSet> set;
@@ -48,6 +49,7 @@ ParticleFilter::ParticleFilter(int min_samples, int max_samples, double alpha_sl
   min_samples_ = min_samples;
   max_samples_ = max_samples;
 
+  global_localization_convergence_threshold_ = global_localization_convergence_threshold;
   // Control parameters for the population size calculation.  [err] is
   // the max error between the true distribution and the estimated
   // distribution.  [z] is the upper standard normal quantile for (1 -
@@ -167,7 +169,9 @@ void ParticleFilter::initConverged()
 
 void ParticleFilter::updateConverged()
 {
-  int i;
+  int particles_converged;
+  double percent_converged;
+  particles_converged = 0;
   std::shared_ptr<PFSampleSet> set;
   PFSample* sample;
   double total;
@@ -175,9 +179,10 @@ void ParticleFilter::updateConverged()
   set = sets_[current_set_];
   double mean_x = 0, mean_y = 0;
 
-  for (i = 0; i < set->sample_count; i++)
+  int sample_index;
+  for (sample_index = 0; sample_index < set->sample_count; sample_index++)
   {
-    sample = &(set->samples[i]);
+    sample = &(set->samples[sample_index]);
 
     mean_x += sample->pose[0];
     mean_y += sample->pose[1];
@@ -187,16 +192,30 @@ void ParticleFilter::updateConverged()
 
   set->converged = true;
   converged_ = true;
-  for (i = 0; i < set->sample_count; i++)
+
+  for (sample_index = 0; sample_index < set->sample_count; sample_index++)
   {
-    sample = &(set->samples[i]);
-    if (std::fabs(sample->pose[0] - mean_x) > dist_threshold_
-        || std::fabs(sample->pose[1] - mean_y) > dist_threshold_)
+    sample = &(set->samples[sample_index]);
+    if (std::fabs(sample->pose[0] - mean_x) <= dist_threshold_
+        && std::fabs(sample->pose[1] - mean_y) <= dist_threshold_)
     {
-      set->converged = false;
-      converged_ = false;
-      break;
+      particles_converged++;
     }
+  }
+
+  percent_converged = static_cast<float>(particles_converged) / static_cast<float>(sample_index) * 100;
+  ROS_INFO_STREAM(percent_converged << "% of the particles are converging");
+
+  if (percent_converged >= global_localization_convergence_threshold_)
+  {
+    set->converged = true;
+    converged_ = true;
+    ROS_INFO("The Particles have converged!");
+  }
+  else
+  {
+    set->converged = false;
+    converged_ = false;
   }
 }
 

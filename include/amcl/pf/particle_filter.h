@@ -94,7 +94,7 @@ class ParticleFilter
 public:
   // Create a new filter
   ParticleFilter(int min_samples, int max_samples, double alpha_slow, double alpha_fast,
-                 std::function<Eigen::Vector3d()> random_pose_fn);
+                double global_localization_convergence_threshold, std::function<Eigen::Vector3d()> random_pose_fn);
 
   // Set the resample model
   void setResampleModel(PFResampleModelType resample_model);
@@ -166,6 +166,8 @@ private:
   std::function<Eigen::Vector3d()> random_pose_fn_;
 
   double dist_threshold_;  // distance threshold in each axis over which the pf is considered to not be converged
+
+  double global_localization_convergence_threshold_;
 
   // Population size parameters
   double pop_err_, pop_z_;

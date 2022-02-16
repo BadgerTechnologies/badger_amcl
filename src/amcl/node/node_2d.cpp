@@ -673,6 +673,7 @@ void Node2D::globalLocalizationCallback()
                      global_localization_non_free_space_factor_,
                      non_free_space_radius_);
   }
+  global_localization_active_ = true;
 }
 
 }  // namespace amcl
