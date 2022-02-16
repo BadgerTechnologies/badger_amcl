@@ -19,13 +19,13 @@
  */
 
 #include "pf/particle_filter.h"
-
+#include "ros/ros.h"
 #include <stdlib.h>
-
+#include "std_msgs/String.h"
 #include <cmath>
 #include <cstddef>
 #include <cstdlib>
-
+#include <sstream>
 #include <ros/assert.h>
 
 #include "pf/pdf_gaussian.h"
@@ -167,7 +167,18 @@ void ParticleFilter::initConverged()
 
 void ParticleFilter::updateConverged()
 {
+  ROS_INFO("Looking for Particle Convergence");
   int i;
+  // Counting what particles succeed and fail
+  float success;
+  float failure;
+  float success_percent;
+  float failure_percent;
+  double success_threshold;
+  ros::NodeHandle node("~");
+  node.getParam("particle_success_threshold", success_threshold);
+  success = 0;
+  failure = 0;
   std::shared_ptr<PFSampleSet> set;
   PFSample* sample;
   double total;
@@ -187,16 +198,36 @@ void ParticleFilter::updateConverged()
 
   set->converged = true;
   converged_ = true;
+  ROS_INFO_STREAM("Testing: " << set->sample_count << " Particles");
   for (i = 0; i < set->sample_count; i++)
   {
     sample = &(set->samples[i]);
     if (std::fabs(sample->pose[0] - mean_x) > dist_threshold_
         || std::fabs(sample->pose[1] - mean_y) > dist_threshold_)
     {
-      set->converged = false;
-      converged_ = false;
-      break;
+      failure++;
     }
+    else
+    {
+      success++;
+    }
+  }
+  // Calculating success/failure percentage
+  success_percent = ((success/(failure + success)) * 100);
+  failure_percent = ((failure/(failure + success)) * 100);
+  ROS_INFO_STREAM("Printing Success Percentage: " << success_percent << " %");
+  ROS_INFO_STREAM("Printing Failure Percentage: " << failure_percent << " %");
+  if (success_percent >= success_threshold)
+  {
+    set->converged = true;
+    converged_ = true;
+    ROS_INFO("The Particles have converged!");
+  }
+  else
+  {
+    set->converged = false;
+    converged_ = false;
+    ROS_INFO("The Particles have NOT converged!");
   }
 }
 
