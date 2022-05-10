@@ -36,7 +36,7 @@ namespace badger_amcl
 {
 
 // Create a new filter
-ParticleFilter::ParticleFilter(int min_samples, int max_samples, double alpha_slow, double convergence_threshold,
+ParticleFilter::ParticleFilter(int min_samples, int max_samples, double alpha_slow, double convergence_threshold_,
                                double alpha_fast, std::function<Eigen::Vector3d()> random_pose_fn)
 {
   int i, j;
@@ -166,14 +166,14 @@ void ParticleFilter::initConverged()
   converged_ = false;
 }
 
-void ParticleFilter::updateConverged()
+void ParticleFilter::updateConverged(double convergence_threshold)
 {
   int particles_converged;
   double percent_converged;
+  convergence_threshold_ = convergence_threshold;
   particles_converged = 0;
   std::shared_ptr<PFSampleSet> set;
   PFSample* sample;
-  convergence_threshold = convergence_threshold;
   double total;
 
   set = sets_[current_set_];
@@ -205,10 +205,10 @@ void ParticleFilter::updateConverged()
 
   percent_converged =(static_cast<float>(particles_converged) / static_cast<float>(sample_index)) * 100;
   ROS_INFO_STREAM(percent_converged << "% of the particles are converging");
-  ROS_INFO_STREAM(convergence_threshold << "Is the convergence threshold");
+  ROS_INFO_STREAM(convergence_threshold << " Is the convergence threshold");
   ROS_INFO_STREAM(particles_converged << "particles have converged");
   ROS_INFO_STREAM(set->sample_count << " Is the sample count");
-  ROS_INFO_STREAM(sample_index << "% is the sample index");
+  ROS_INFO_STREAM(sample_index << " is the sample index");
   if (percent_converged >= convergence_threshold)
   {
     set->converged = true;
@@ -470,7 +470,7 @@ void ParticleFilter::updateResample()
   // Use the newly created sample set
   current_set_ = (current_set_ + 1) % 2;
 
-  updateConverged();
+  updateConverged(convergence_threshold_);
 }
 
 // Compute the required number of samples, given that there are k bins
