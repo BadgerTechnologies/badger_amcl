@@ -66,6 +66,7 @@ add_library(badger_amcl
     src/amcl/node/node_3d.cpp
     src/amcl/node/node.cpp
 )
+add_dependencies(badger_amcl ${PROJECT_NAME}_gencfg)
 
 target_link_libraries(badger_amcl
     ${OCTOMAP_LIBRARIES}
