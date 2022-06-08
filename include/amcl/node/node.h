@@ -186,7 +186,6 @@ private:
   std::string global_alt_frame_id_;
 
   ros::Duration transform_publish_period_;
-  ros::Time save_pose_to_file_last_time_;
   ros::Duration save_pose_to_file_period_;
   bool save_pose_;
   std::string saved_pose_filepath_;
@@ -215,6 +214,7 @@ private:
   ros::AsyncSpinner publish_transform_spinner_;
   ros::NodeHandle publish_transform_nh_;
   ros::Timer publish_transform_timer_;
+  ros::Timer save_pose_to_file_timer_;
 
   bool global_localization_active_;
   double global_localization_alpha_slow_, global_localization_alpha_fast_;

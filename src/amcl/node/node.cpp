@@ -175,6 +175,13 @@ Node::Node()
                                                                std::bind(&Node::publishTransform, this,
                                                                          std::placeholders::_1));
   publish_transform_spinner_.start();
+
+  // Save the pose on its own timer so if we get blocked for a long time on IO
+  // we can still localize as sensor data comes in. This works fine because we
+  // run on a multi-threaded spinner by design.
+  save_pose_to_file_timer_ = nh_.createTimer(
+      save_pose_to_file_period_,
+      std::bind(&Node::attemptSavePose, this, false));
 }
 
 void Node::reconfigureCB(AMCLConfig& config, uint32_t level)
@@ -281,6 +288,7 @@ void Node::reconfigureCB(AMCLConfig& config, uint32_t level)
   save_pose_ = config.save_pose;
   saved_pose_filepath_ = config.saved_pose_filepath;
   publish_transform_timer_.setPeriod(transform_publish_period_);
+  save_pose_to_file_timer_.setPeriod(save_pose_to_file_period_);
 }
 
 void Node::setPfDecayRateNormal()
@@ -399,20 +407,15 @@ void Node::updateOdomToMapTransform(const tf2::Transform& odom_to_map)
 
 void Node::attemptSavePose(bool exiting)
 {
+  // When called on exit the multi-threaded spinner has already stopped, so
+  // there is no need to worry about the direct call from main during exit
+  // running concurrently with the timer callback.
   tf2::Transform latest_tf;
   if (getLatestTf(&latest_tf))
   {
-    ros::Time now = ros::Time::now();
-    bool time_to_save = (save_pose_to_file_period_.toSec() > 0.0
-                         && (now - save_pose_to_file_last_time_) >= save_pose_to_file_period_);
-    if (exiting or time_to_save)
-    {
-      ROS_DEBUG_STREAM("Save pose to file period: " << save_pose_to_file_period_.toSec());
-      geometry_msgs::PoseWithCovarianceStamped latest_pose;
-      getLatestPose(latest_tf, &latest_pose);
-      savePoseToFile(latest_pose, exiting);
-      save_pose_to_file_last_time_ = now;
-    }
+    geometry_msgs::PoseWithCovarianceStamped latest_pose;
+    getLatestPose(latest_tf, &latest_pose);
+    savePoseToFile(latest_pose, exiting);
   }
 }
 

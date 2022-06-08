@@ -356,8 +356,6 @@ void Node2D::scanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan)
       success = success and updateScanner(planar_scan, scanner_index, &resampled);
     if(force_publication or resampled)
       success = success and resamplePose(stamp);
-    if(success)
-      node_->attemptSavePose(false);
   }
 }
 
