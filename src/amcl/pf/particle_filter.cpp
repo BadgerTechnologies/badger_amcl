@@ -43,6 +43,8 @@ ParticleFilter::ParticleFilter(int min_samples, int max_samples, double alpha_sl
   std::shared_ptr<PFSampleSet> set;
   PFSample* sample;
 
+  virtual void Resample() = 0;
+
   resample_model_ = PF_RESAMPLE_MULTINOMIAL;
   random_pose_fn_ = random_pose_fn;
 
@@ -419,8 +421,32 @@ double ParticleFilter::resampleMultinomial(double w_diff)
   return total;
 }
 
+class ParticleFilterMultinomial: public ParticleFilter {
+
+  public:
+    double total;
+    double w_diff;
+    w_diff = 1.0 - w_fast_ / w_slow_;
+    if (w_diff < 0.0)
+      w_diff = 0.0;
+    total = resampleMultinomial(w_diff);
+    Resample(total, w_diff);
+}
+
+class ParticleFilterSystematic: public ParticleFilter {
+
+  public:
+    double total;
+    double w_diff;
+    w_diff = 1.0 - w_fast_ / w_slow_;
+    if (w_diff < 0.0)
+      w_diff = 0.0;
+    total = resampleSystematic(w_diff);
+    Resample(total, w_diff);
+}
+
 // Resample the distribution
-void ParticleFilter::updateResample()
+void ParticleFilter::Resample(double total, double w_diff)
 {
   int i;
   double total;
@@ -434,21 +460,6 @@ void ParticleFilter::updateResample()
 
   // Create the kd tree for adaptive sampling
   set_b->kdtree->clearKDTree();
-
-  w_diff = 1.0 - w_fast_ / w_slow_;
-  if (w_diff < 0.0)
-    w_diff = 0.0;
-
-  switch (resample_model_)
-  {
-    case PF_RESAMPLE_MULTINOMIAL:
-    default:
-      total = resampleMultinomial(w_diff);
-      break;
-    case PF_RESAMPLE_SYSTEMATIC:
-      total = resampleSystematic(w_diff);
-      break;
-  }
 
   // Reset averages, to avoid spiraling off into complete randomness.
   if (w_diff > 0.0)
