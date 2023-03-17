@@ -25,6 +25,7 @@
     <license>LGPL</license>
 
     <buildtool_depend>catkin</buildtool_depend>
+    <build_depend>badger_test_lib</build_depend>
 
     <depend>dynamic_reconfigure</depend>
     <depend>nav_msgs</depend>

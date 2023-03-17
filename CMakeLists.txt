@@ -85,11 +85,13 @@ target_link_libraries(
 )
 
 if(CATKIN_ENABLE_TESTING)
-    find_package(rostest REQUIRED)
-    add_rostest_gtest(badger-amcl-test
-                      test/badger_amcl.test
-                      test/test_badger_amcl.cpp)
+    find_package(badger_test_lib)
+    badger_add_rostest_gtest(badger-amcl-test
+                             test/badger_amcl.test
+                             test/test_badger_amcl.cpp)
     target_link_libraries(badger-amcl-test badger_amcl ${catkin_LIBRARIES})
+
+    badger_generate_test_script()
 endif()
 
 install( TARGETS
