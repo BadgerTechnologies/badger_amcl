@@ -101,7 +101,8 @@ Node2D::Node2D(Node* node, std::mutex& configuration_mutex)
   scan_sub_ = std::unique_ptr<message_filters::Subscriber<sensor_msgs::LaserScan>>(
       new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, scan_topic_, 1));
   scan_filter_ = std::unique_ptr<tf2_ros::MessageFilter<sensor_msgs::LaserScan>>(
-      new tf2_ros::MessageFilter<sensor_msgs::LaserScan>(*scan_sub_.get(), tf_buffer_, node_->getOdomFrameId(), 1, nh_));
+      new tf2_ros::MessageFilter<sensor_msgs::LaserScan>(*scan_sub_.get(), tf_buffer_,
+                                                         node_->getOdomFrameId(), 1, nh_));
   scan_filter_->registerCallback(std::bind(&Node2D::scanReceived, this, std::placeholders::_1));
 
   // 15s timer to warn on lack of receipt of planar scans, #5209
@@ -254,7 +255,7 @@ void Node2D::initFromNewMap()
     ROS_INFO("Done initializing likelihood field model.");
   }
   scanner_.setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
-  node_->initFromNewMap(map_, not first_map_received_);
+  node_->initFromNewMap(map_, !first_map_received_);
   pf_ = node_->getPfPtr();
 }
 
@@ -340,22 +341,22 @@ void Node2D::updateFreeSpaceIndices()
 void Node2D::scanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan)
 {
   latest_scan_received_ts_ = ros::Time::now();
-  if(!isMapInitialized())
+  if (!isMapInitialized())
     return;
 
-  if(!global_localization_active_)
+  if (!global_localization_active_)
     deactivateGlobalLocalizationParams();
 
   ros::Time stamp = planar_scan->header.stamp;
   int scanner_index = getFrameToScannerIndex(planar_scan->header.frame_id);
-  if(scanner_index >= 0)
+  if (scanner_index >= 0)
   {
     bool force_publication = false, resampled = false, success;
     success = updateNodePf(stamp, scanner_index, &force_publication);
-    if(scanners_update_.at(scanner_index))
-      success = success and updateScanner(planar_scan, scanner_index, &resampled);
-    if(force_publication or resampled)
-      success = success and resamplePose(stamp);
+    if (scanners_update_.at(scanner_index))
+      success = success && updateScanner(planar_scan, scanner_index, &resampled);
+    if (force_publication || resampled)
+      success = success && resamplePose(stamp);
   }
 }
 
@@ -370,18 +371,18 @@ bool Node2D::updateScanner(const sensor_msgs::LaserScanConstPtr& planar_scan,
   initLatestScanData(planar_scan, scanner_index);
   double angle_min, angle_increment;
   bool success = true;
-  if(getAngleStats(planar_scan, &angle_min, &angle_increment))
+  if (getAngleStats(planar_scan, &angle_min, &angle_increment))
   {
     ROS_DEBUG("Planar scanner %d angles in base frame: min: %.3f inc: %.3f", scanner_index, angle_min, angle_increment);
     updateLatestScanData(planar_scan, angle_min, angle_increment);
     scanners_[scanner_index]->updateSensor(pf_, std::dynamic_pointer_cast<SensorData>(latest_scan_data_));
     scanners_update_.at(scanner_index) = false;
-    if(!(++resample_count_ % resample_interval_))
+    if (!(++resample_count_ % resample_interval_))
     {
       resampleParticles();
       *resampled = true;
     }
-    if(!force_update_)
+    if (!force_update_)
        node_->publishParticleCloud();
   }
   else
@@ -403,7 +404,7 @@ bool Node2D::isMapInitialized()
     ROS_DEBUG("PF is null");
     return false;
   }
-  if (not map_->isDistancesLUTCreated())
+  if (!map_->isDistancesLUTCreated())
   {
     ROS_DEBUG("Distances not yet created");
     return false;
@@ -433,7 +434,7 @@ int Node2D::getFrameToScannerIndex(const std::string& scanner_frame_id)
   {
     tf2::Transform scanner_pose;
     initFrameToScanner(scanner_frame_id, &scanner_pose, &scanner_index);
-    if(scanner_index >= 0)
+    if (scanner_index >= 0)
     {
       frame_to_scanner_[scanner_frame_id] = scanner_index;
       updateScannerPose(scanner_pose, scanner_index);
@@ -494,7 +495,8 @@ void Node2D::initLatestScanData(const sensor_msgs::LaserScanConstPtr& planar_sca
   latest_scan_data_->range_count_ = planar_scan->ranges.size();
 }
 
-bool Node2D::getAngleStats(const sensor_msgs::LaserScanConstPtr& planar_scan, double* angle_min, double* angle_increment)
+bool Node2D::getAngleStats(const sensor_msgs::LaserScanConstPtr& planar_scan,
+                           double* angle_min, double* angle_increment)
 {
   // To account for the planar scanners that are mounted upside-down, we determine the
   // min, max, and increment angles of the scanner in the base frame.
@@ -509,7 +511,8 @@ bool Node2D::getAngleStats(const sensor_msgs::LaserScanConstPtr& planar_scan, do
   bool success = true;
   try
   {
-    geometry_msgs::TransformStamped t = tf_buffer_.lookupTransform(node_->getBaseFrameId(), planar_scan->header.frame_id,
+    geometry_msgs::TransformStamped t = tf_buffer_.lookupTransform(node_->getBaseFrameId(),
+                                                                   planar_scan->header.frame_id,
                                                                    planar_scan->header.stamp, ros::Duration(5.0));
     tf2::doTransform(min_q_msg, min_q_msg, t);
     tf2::doTransform(inc_q_msg, inc_q_msg, t);
@@ -519,7 +522,7 @@ bool Node2D::getAngleStats(const sensor_msgs::LaserScanConstPtr& planar_scan, do
     ROS_WARN_STREAM("Unable to transform min/max planar scanner angles into base frame: " << e.what());
     success = false;
   }
-  if(success)
+  if (success)
   {
     tf2::fromMsg(min_q_msg, min_q);
     tf2::fromMsg(inc_q_msg, inc_q);
@@ -575,7 +578,7 @@ bool Node2D::resamplePose(const ros::Time& stamp)
   Eigen::Vector3d max_pose;
   getMaxWeightPose(&max_weight, &max_pose);
   bool success = true;
-  if(max_weight > 0.0)
+  if (max_weight > 0.0)
     success = updatePose(max_pose, stamp);
   else
   {
@@ -643,7 +646,7 @@ bool Node2D::updatePose(const Eigen::Vector3d& max_pose, const ros::Time& stamp)
     success = false;
   }
 
-  if(success)
+  if (success)
   {
     tf2::Transform odom_to_map_transform;
     tf2::fromMsg(odom_to_map_msg, odom_to_map_transform);
@@ -676,4 +679,4 @@ void Node2D::globalLocalizationCallback()
   global_localization_active_ = true;
 }
 
-}  // namespace amcl
+}  // namespace badger_amcl

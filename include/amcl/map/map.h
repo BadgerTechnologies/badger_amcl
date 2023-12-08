@@ -32,7 +32,7 @@ namespace badger_amcl
 class Map
 {
 public:
-  Map(double resolution);
+  explicit Map(double resolution);
   virtual ~Map() = default;
 
   // Convert from map index to world coords
@@ -52,6 +52,6 @@ protected:
   double max_distance_to_object_;
   std::atomic<bool> distances_lut_created_;
 };
-}  // namespace amcl
+}  // namespace badger_amcl
 
 #endif  // AMCL_MAP_MAP_H

@@ -80,6 +80,6 @@ private:
   double alpha1_, alpha2_, alpha3_, alpha4_, alpha5_;
 };
 
-}  // namespace amcl
+}  // namespace badger_amcl
 
 #endif  // AMCL_SENSORS_ODOM_H

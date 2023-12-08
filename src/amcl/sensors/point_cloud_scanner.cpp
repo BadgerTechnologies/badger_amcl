@@ -264,4 +264,4 @@ int PointCloudScanner::getMaxBeams()
   return max_beams_;
 }
 
-}  // namspace amcl
+}  // namespace badger_amcl
