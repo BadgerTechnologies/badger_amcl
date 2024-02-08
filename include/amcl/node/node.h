@@ -87,8 +87,7 @@ public:
   std::string getBaseFrameId();
   std::shared_ptr<ParticleFilter> getPfPtr();
   void publishParticleCloud();
-  void updatePose(const Eigen::Vector3d& max_hyp_mean, const ros::Time& stamp);
-  void updateOdomToMapTransform(const tf2::Transform& odom_to_map);
+  bool updatePose(const Eigen::Vector3d& max_pose, const ros::Time& stamp);
   bool updatePf(const ros::Time& t, std::vector<bool>& scanners_update, int scanner_index,
                 int* resample_count, bool* force_publication, bool* force_update);
   void setPfDecayRateNormal();
@@ -207,7 +206,7 @@ private:
 
   bool first_reconfigure_call_;
   std::mutex configuration_mutex_;
-  std::mutex tf_mutex_;
+  std::recursive_mutex tf_mutex_;
   std::mutex latest_pose_mutex_;
   dynamic_reconfigure::Server<AMCLConfig> dsrv_;
   AMCLConfig default_config_;

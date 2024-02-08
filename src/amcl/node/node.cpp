@@ -356,18 +356,26 @@ void Node::publishParticleCloud()
   }
 }
 
-void Node::updatePose(const Eigen::Vector3d& max_hyp_mean, const ros::Time& stamp)
+bool Node::updatePose(const Eigen::Vector3d& max_pose, const ros::Time& stamp)
 {
+  // It may be that the first map has yet to be received, if so, there will be
+  // no paticle filter constructed yet. Fail to update the pose if there is no map.
+  if (!pf_)
+  {
+    ROS_INFO_DELAYED_THROTTLE(5.0, "Unable to update pose until first map received...");
+    return false;
+  }
+  ROS_DEBUG("Update pose: %.3f %.3f %.3f", max_pose[0], max_pose[1], max_pose[2]);
   std::shared_ptr<geometry_msgs::PoseWithCovarianceStamped> p = (
           std::make_shared<geometry_msgs::PoseWithCovarianceStamped>());
   // Fill in the header
   p->header.frame_id = global_frame_id_;
   p->header.stamp = stamp;
   // Copy in the pose
-  p->pose.pose.position.x = max_hyp_mean[0];
-  p->pose.pose.position.y = max_hyp_mean[1];
+  p->pose.pose.position.x = max_pose[0];
+  p->pose.pose.position.y = max_pose[1];
   tf2::Quaternion q;
-  q.setRPY(0.0, 0.0, max_hyp_mean[2]);
+  q.setRPY(0.0, 0.0, max_pose[2]);
   p->pose.pose.orientation = tf2::toMsg(q);
   // Copy in the covariance, converting from 3-D to 6-D
   std::shared_ptr<PFSampleSet> set = pf_->getCurrentSet();
@@ -384,8 +392,44 @@ void Node::updatePose(const Eigen::Vector3d& max_hyp_mean, const ros::Time& stam
   // covariance for the highest-weight cluster
   p->pose.covariance[COVARIANCE_AA] = set->cov(2, 2);
   publishPose(*p);
-  std::lock_guard<std::mutex> lpl(latest_pose_mutex_);
-  last_published_pose_ = p;
+  {
+    std::lock_guard<std::mutex> lpl(latest_pose_mutex_);
+    last_published_pose_ = p;
+  }
+  bool success = false;
+  // subtracting base to odom from map to base and send map to odom instead
+  tf2::Transform base_to_map_tf(q, tf2::Vector3(max_pose[0], max_pose[1], 0.0));
+  base_to_map_tf = base_to_map_tf.inverse();
+  std::string odom_frame_id, base_frame_id;
+  {
+    std::lock_guard<std::mutex> cfl(configuration_mutex_);
+    odom_frame_id = odom_frame_id_;
+    base_frame_id = base_frame_id_;
+  }
+  geometry_msgs::Pose base_to_map_msg, odom_to_map_msg;
+  base_to_map_msg.position = tf2::toMsg(base_to_map_tf.getOrigin(), base_to_map_msg.position);
+  base_to_map_msg.orientation = tf2::toMsg(base_to_map_tf.getRotation());
+  try
+  {
+    geometry_msgs::TransformStamped t;
+    t = tf_buffer_.lookupTransform(odom_frame_id, base_frame_id, stamp, ros::Duration(1.0));
+    tf2::doTransform(base_to_map_msg, odom_to_map_msg, t);
+    success = true;
+  }
+  catch (tf2::TransformException)
+  {
+    ROS_WARN("Failed to lookup base to odom transform, unable to update pose");
+  }
+
+  if (success)
+  {
+    tf2::Transform odom_to_map_transform;
+    tf2::fromMsg(odom_to_map_msg, odom_to_map_transform);
+    std::lock_guard<std::recursive_mutex> tfl(tf_mutex_);
+    latest_tf_ = odom_to_map_transform;
+    latest_tf_valid_ = true;
+  }
+  return success;
 }
 
 void Node::publishPose(const geometry_msgs::PoseWithCovarianceStamped& p)
@@ -397,13 +441,6 @@ void Node::publishPose(const geometry_msgs::PoseWithCovarianceStamped& p)
     alt_p.header.frame_id = global_alt_frame_id_;
     alt_pose_pub_.publish(alt_p);
   }
-}
-
-void Node::updateOdomToMapTransform(const tf2::Transform& odom_to_map)
-{
-  std::lock_guard<std::mutex> tfl(tf_mutex_);
-  latest_tf_ = odom_to_map;
-  latest_tf_valid_ = true;
 }
 
 void Node::attemptSavePose(bool exiting)
@@ -885,8 +922,19 @@ void Node::publishTransform(const ros::TimerEvent& event)
 
 bool Node::getLatestTf(tf2::Transform* latest_tf)
 {
-  std::lock_guard<std::mutex> tfl(tf_mutex_);
-  if(latest_tf_valid_)
+  std::lock_guard<std::recursive_mutex> tfl(tf_mutex_);
+  if (!latest_tf_valid_)
+  {
+    // Try to update to the initial pose. The only time latest TF is not valid
+    // is during initalization prior to first sensor update. Because sensors
+    // may take time to come online, go ahead and begin publishing the map ->
+    // odom TF as soon as a map and odom have been received by using the
+    // initial pose. The below updatePose will succeed after the first map has
+    // been received and the TF for odom to base frame has been received.
+    Eigen::Vector3d init_pose(init_pose_[0], init_pose_[1], init_pose_[2]);
+    updatePose(init_pose, ros::Time::now());
+  }
+  if (latest_tf_valid_)
   {
     *latest_tf = latest_tf_;
     return true;
@@ -1119,7 +1167,7 @@ void Node::transformMsgToTfPose(const geometry_msgs::PoseWithCovarianceStamped& 
     // global_frame_id_ frame doesn't exist.  We only care about in-time
     // transformation for on-the-move pose-setting, so ignoring this
     // startup condition doesn't really cost us anything.
-    std::lock_guard<std::mutex> tfl(tf_mutex_);
+    std::lock_guard<std::recursive_mutex> tfl(tf_mutex_);
     if (sent_first_transform_)
       ROS_WARN_STREAM("Failed to transform initial pose in time (" << e.what() << ")");
     tx_odom.setIdentity();
