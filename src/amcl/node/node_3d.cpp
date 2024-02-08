@@ -499,7 +499,7 @@ bool Node3D::resamplePose(const ros::Time& stamp)
   getMaxWeightPose(&max_weight, &max_pose);
   bool success = true;
   if(max_weight > 0.0)
-    success = updatePose(max_pose, stamp);
+    success = node_->updatePose(max_pose, stamp);
   else
   {
     ROS_ERROR("No pose!");
@@ -537,42 +537,6 @@ void Node3D::getMaxWeightPose(double* max_weight_rtn, Eigen::Vector3d* max_pose)
   }
   *max_weight_rtn = max_weight;
   *max_pose = hyps[max_weight_hyp].mean;
-}
-
-bool Node3D::updatePose(const Eigen::Vector3d& max_pose, const ros::Time& stamp)
-{
-  ROS_DEBUG("Max weight pose: %.3f %.3f %.3f", max_pose[0], max_pose[1], max_pose[2]);
-  node_->updatePose(max_pose, stamp);
-  bool success = true;
-  // subtracting base to odom from map to base and send map to odom instead
-  tf2::Quaternion q;
-  q.setRPY(0.0, 0.0, max_pose[2]);
-  tf2::Transform base_to_map_tf(q, tf2::Vector3(max_pose[0], max_pose[1], 0.0));
-  base_to_map_tf = base_to_map_tf.inverse();
-  std::string odom_frame_id = node_->getOdomFrameId();
-  std::string base_frame_id = node_->getBaseFrameId();
-  geometry_msgs::Pose base_to_map_msg, odom_to_map_msg;
-  base_to_map_msg.position = tf2::toMsg(base_to_map_tf.getOrigin(), base_to_map_msg.position);
-  base_to_map_msg.orientation = tf2::toMsg(base_to_map_tf.getRotation());
-  try
-  {
-    geometry_msgs::TransformStamped t;
-    t = tf_buffer_.lookupTransform(odom_frame_id, base_frame_id, stamp, ros::Duration(1.0));
-    tf2::doTransform(base_to_map_msg, odom_to_map_msg, t);
-  }
-  catch (tf2::TransformException)
-  {
-    ROS_DEBUG("Failed to subtract base to odom transform");
-    success = false;
-  }
-
-  if(success)
-  {
-    tf2::Transform odom_to_map_transform;
-    tf2::fromMsg(odom_to_map_msg, odom_to_map_transform);
-    node_->updateOdomToMapTransform(odom_to_map_transform);
-  }
-  return success;
 }
 
 void Node3D::checkScanReceived(const ros::TimerEvent& event)
