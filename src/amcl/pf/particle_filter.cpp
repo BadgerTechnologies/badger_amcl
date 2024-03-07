@@ -367,7 +367,7 @@ double ParticleFilter::resampleMultinomial(double w_diff)
   set_b = sets_[(current_set_ + 1) % 2];
 
   // Build up cumulative probability table for resampling.
-  // TODO: Replace this with a more efficient procedure
+  // TODO(anyone): Replace this with a more efficient procedure
   // (e.g., http://www.network-theory.co.uk/docs/gslref/GeneralDiscreteDistributions.html)
   c = std::vector<double>(set_a->sample_count + 1);
   c[0] = 0.0;
@@ -522,7 +522,7 @@ void ParticleFilter::computeClusterStatsForSet(std::shared_ptr<PFSampleSet> set)
   {
     PFSample* sample = &(set->samples[i]);
     int cidx = getClusterIndexOfSampleInSet(set, sample);
-    if(cidx >= 0)
+    if (cidx >= 0)
     {
       addSampleStatsToCluster(sample, &(set->clusters[cidx]));
       addSampleStatsToSet(sample, &weight, m, c);
@@ -672,4 +672,4 @@ bool ParticleFilter::isConverged()
   return converged_;
 }
 
-}  // namespace amcl
+}  // namespace badger_amcl

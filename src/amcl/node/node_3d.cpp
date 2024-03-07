@@ -178,7 +178,7 @@ void Node3D::reconfigure(AMCLConfig& config)
 void Node3D::occupancyMapMsgReceived(const nav_msgs::OccupancyGridConstPtr& msg)
 {
   std::lock_guard<std::mutex> cfl(configuration_mutex_);
-  if(not wait_for_occupancy_map_ or (first_map_only_ && first_occupancy_map_received_))
+  if (!wait_for_occupancy_map_ || (first_map_only_ && first_occupancy_map_received_))
     return;
 
   first_occupancy_map_received_ = true;
@@ -189,7 +189,7 @@ void Node3D::occupancyMapMsgReceived(const nav_msgs::OccupancyGridConstPtr& msg)
   occupancy_map_min_ = {0.0, 0.0};
   occupancy_map_max_ = {size_vec[0] * resolution, size_vec[1] * resolution};
   occupancy_bounds_received_ = true;
-  if(first_octomap_received_)
+  if (first_octomap_received_)
   {
     map_->setMapBounds(occupancy_map_min_, occupancy_map_max_);
     updateFreeSpaceIndices();
@@ -239,16 +239,16 @@ void Node3D::initFromNewMap()
     ROS_INFO("Done initializing likelihood (gompertz) field model.");
   }
   scanner_.setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
-  node_->initFromNewMap(map_, not first_octomap_received_);
+  node_->initFromNewMap(map_, !first_octomap_received_);
   pf_ = node_->getPfPtr();
   // if we are using both maps as bounds
   // and the occupancy map has already arrived
-  if (wait_for_occupancy_map_ and occupancy_bounds_received_)
+  if (wait_for_occupancy_map_ && occupancy_bounds_received_)
   {
     map_->setMapBounds(occupancy_map_min_, occupancy_map_max_);
     updateFreeSpaceIndices();
   }
-  else if(!wait_for_occupancy_map_)
+  else if (!wait_for_occupancy_map_)
   {
     map_->updateDistancesLUT();
     updateFreeSpaceIndices();
@@ -305,7 +305,7 @@ double Node3D::scorePose(const Eigen::Vector3d& p)
 
 void Node3D::updateFreeSpaceIndices()
 {
-  // TODO: update free space indices with initialized 2D map
+  // TODO(anyone): update free space indices with initialized 2D map
   // Index of free space
   // Must be calculated after the distances lut is set
   std::vector<std::pair<int, int>> fsi;
@@ -320,7 +320,7 @@ void Node3D::updateFreeSpaceIndices()
 void Node3D::scanReceived(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan)
 {
   latest_scan_received_ts_ = ros::Time::now();
-  if(!isMapInitialized())
+  if (!isMapInitialized())
     return;
 
   if (!global_localization_active_)
@@ -328,14 +328,14 @@ void Node3D::scanReceived(const sensor_msgs::PointCloud2ConstPtr& point_cloud_sc
 
   ros::Time stamp = point_cloud_scan->header.stamp;
   int scanner_index = getFrameToScannerIndex(point_cloud_scan->header.frame_id);
-  if(scanner_index >= 0)
+  if (scanner_index >= 0)
   {
     bool force_publication = false, resampled = false, success;
     success = updateNodePf(stamp, scanner_index, &force_publication);
-    if(scanners_update_.at(scanner_index))
+    if (scanners_update_.at(scanner_index))
       updateScanner(point_cloud_scan, scanner_index, &resampled);
-    if(force_publication or resampled)
-      success = success and resamplePose(stamp);
+    if (force_publication || resampled)
+      success = success && resamplePose(stamp);
   }
 }
 
@@ -355,12 +355,12 @@ void Node3D::updateScanner(const sensor_msgs::PointCloud2ConstPtr& point_cloud_s
   scanners_[scanner_index]->updateSensor(pf_, std::dynamic_pointer_cast<SensorData>(
                                                 latest_scan_data_));
   scanners_update_.at(scanner_index) = false;
-  if(!(++resample_count_ % resample_interval_))
+  if (!(++resample_count_ % resample_interval_))
   {
     resampleParticles();
     *resampled = true;
   }
-  if(!force_update_)
+  if (!force_update_)
     node_->publishParticleCloud();
 }
 
@@ -376,7 +376,7 @@ bool Node3D::isMapInitialized()
     ROS_DEBUG("PF is null");
     return false;
   }
-  if (not map_->isDistancesLUTCreated())
+  if (!map_->isDistancesLUTCreated())
   {
     ROS_DEBUG("Distances not yet created");
     return false;
@@ -404,10 +404,10 @@ int Node3D::getFrameToScannerIndex(const std::string& scanner_frame_id)
   if (frame_to_scanner_.find(scanner_frame_id) == frame_to_scanner_.end())
   {
     scanner_index = initFrameToScanner();
-    if(scanner_index >= 0)
+    if (scanner_index >= 0)
     {
       geometry_msgs::Transform scanner_to_footprint_tf;
-      if(getFootprintToFrameTransform(scanner_frame_id, &scanner_to_footprint_tf))
+      if (getFootprintToFrameTransform(scanner_frame_id, &scanner_to_footprint_tf))
       {
         frame_to_scanner_[scanner_frame_id] = scanner_index;
         scanners_[scanner_index]->setPointCloudScannerToFootprintTF(scanner_to_footprint_tf);
@@ -498,7 +498,7 @@ bool Node3D::resamplePose(const ros::Time& stamp)
   Eigen::Vector3d max_pose;
   getMaxWeightPose(&max_weight, &max_pose);
   bool success = true;
-  if(max_weight > 0.0)
+  if (max_weight > 0.0)
     success = node_->updatePose(max_pose, stamp);
   else
   {
@@ -563,4 +563,4 @@ void Node3D::globalLocalizationCallback()
   global_localization_active_ = true;
 }
 
-}  // namespace amcl
+}  // namespace badger_amcl

@@ -37,7 +37,6 @@ struct PFKDTreeNode
   double value;
   int cluster;
   struct PFKDTreeNode* children[2];
-
 };
 
 class PFKDTree
@@ -64,6 +63,6 @@ private:
   int leaf_count_;
 };
 
-}  // namespace amcl
+}  // namespace badger_amcl
 
 #endif  // AMCL_PF_PF_KDTREE_H

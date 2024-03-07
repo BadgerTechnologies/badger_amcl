@@ -225,6 +225,6 @@ private:
   std::vector<std::pair<int, int>> free_space_indices_;
 };
 
-}  // namespace amcl
+}  // namespace badger_amcl
 
 #endif  // AMCL_NODE_NODE_H
