@@ -80,7 +80,8 @@ private:
   void updateScannerPose(const tf2::Transform& scanner_pose, int scanner_index);
   void initLatestScanData(const sensor_msgs::LaserScanConstPtr& planar_scan, int scanner_index);
   bool getAngleStats(const sensor_msgs::LaserScanConstPtr& planar_scan, double* angle_min, double* angle_increment);
-  void updateLatestScanData(const sensor_msgs::LaserScanConstPtr& planar_scan, double angle_min, double angle_increment);
+  void updateLatestScanData(const sensor_msgs::LaserScanConstPtr& planar_scan, double angle_min,
+      double angle_increment);
   bool updatePf(const sensor_msgs::LaserScanConstPtr& planar_scan, int scanner_index, bool* resampled);
   bool resamplePf(const sensor_msgs::LaserScanConstPtr& planar_scan);
 
@@ -134,6 +135,6 @@ private:
   bool global_localization_active_;
 };
 
-}  // namespace amcl
+}  // namespace badger_amcl
 
-#endif // AMCL_NODE_NODE_2D_H
+#endif  // AMCL_NODE_NODE_2D_H

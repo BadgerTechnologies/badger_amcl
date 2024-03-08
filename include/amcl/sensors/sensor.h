@@ -35,12 +35,12 @@ public:
   virtual ~Sensor() = default;
 
   virtual bool updateAction(std::shared_ptr<ParticleFilter> pf,
-                            std::shared_ptr<SensorData> data) { return false; };
+                            std::shared_ptr<SensorData> data) { return false; }
 
   // Update the filter based on the sensor model.  Returns true if the
   // filter has been updated.
   virtual bool updateSensor(std::shared_ptr<ParticleFilter> pf,
-                            std::shared_ptr<SensorData> data) { return false; };
+                            std::shared_ptr<SensorData> data) { return false; }
 };
 
 // Base class for all AMCL sensor measurements
@@ -51,6 +51,6 @@ public:
   virtual ~SensorData() = default;
 };
 
-}  // namespace amcl
+}  // namespace badger_amcl
 
 #endif  // AMCL_SENSORS_SENSOR_H

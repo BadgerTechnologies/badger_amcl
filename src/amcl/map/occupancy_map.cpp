@@ -138,7 +138,7 @@ CachedDistanceOccupancyMap::CachedDistanceOccupancyMap(double resolution, double
 void OccupancyMap::updateDistancesLUT(double max_distance_to_object)
 {
   max_distance_to_object_ = max_distance_to_object;
-  if(max_distance_to_object_ == 0.0)
+  if (max_distance_to_object_ == 0.0)
   {
     ROS_DEBUG("Failed to update distances lut, max distance to object is 0");
     return;
@@ -215,7 +215,7 @@ void OccupancyMap::updateNode(int i, int j, const OccupancyMapCellData& current_
                               std::vector<bool>& marked)
 {
   unsigned int index = computeCellIndex(i, j);
-  if (not marked.at(index))
+  if (!marked.at(index))
   {
     marked.at(index) = enqueue(i, j, current_cell.src_i, current_cell.src_j, q);
   }
@@ -276,7 +276,7 @@ double OccupancyMap::calcRange(double ox, double oy, double oa, double max_range
   x1 = map_vec_[0];
   y1 = map_vec_[1];
 
-  if (x0 == x1 and y0 == y1)
+  if (x0 == x1 && y0 == y1)
     return max_range;
 
   if (std::abs(y1 - y0) > std::abs(x1 - x0))
@@ -363,4 +363,4 @@ double OccupancyMap::calcRange(double ox, double oy, double oa, double max_range
   return max_range;
 }
 
-}  //namespace amcl
+}  // namespace badger_amcl

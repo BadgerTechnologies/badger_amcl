@@ -21,6 +21,8 @@
 #define AMCL_SENSORS_POINT_CLOUD_SCANNER_H
 
 #include <memory>
+#include <string>
+#include <vector>
 
 #include <Eigen/Dense>
 #include <pcl/point_types.h>
@@ -119,6 +121,6 @@ private:
   std::vector<double> world_vec_;
 };
 
-}  // namespace amcl
+}  // namespace badger_amcl
 
 #endif  // AMCL_SENSORS_POINT_CLOUD_SCANNER_H

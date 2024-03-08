@@ -36,6 +36,6 @@ public:
   virtual double scorePose(const Eigen::Vector3d& p) = 0;
 };
 
-}  // namespace amcl
+}  // namespace badger_amcl
 
 #endif  // AMCL_NODE_NODE_ND_H

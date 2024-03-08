@@ -150,18 +150,19 @@ Node::Node()
   default_cov_vals_[COVARIANCE_AA] = (M_PI / 12.0) * (M_PI / 12.0);
   loadPose();
 
-  if(odom_integrator_enabled_);
+  // TODO(anyone): Find out if this semicolon can be removed.
+  if (odom_integrator_enabled_);  // NOLINT
   {
     std::string odom_integrator_topic = "odom";
     odom_integrator_sub_ = nh_.subscribe(odom_integrator_topic, 20, &Node::integrateOdom, this);
     absolute_motion_pub_ = nh_.advertise<geometry_msgs::Pose2D>("amcl_absolute_motion", 20, false);
   }
 
-  if(map_type_ == 2)
+  if (map_type_ == 2)
   {
     node_ = std::make_shared<Node2D>(this, configuration_mutex_);
   }
-  if(map_type_ == 3)
+  if (map_type_ == 3)
   {
     node_ = std::make_shared<Node3D>(this, configuration_mutex_);
   }
@@ -305,11 +306,11 @@ bool Node::updatePf(const ros::Time& t, std::vector<bool>& scanners_update, int 
   if (getOdomPose(t, &pose))
   {
     Eigen::Vector3d delta;
-    if(odom_init_)
+    if (odom_init_)
     {
       computeDelta(pose, &delta);
       setScannersUpdateFlags(delta, scanners_update, force_update);
-      if(scanners_update.at(scanner_index))
+      if (scanners_update.at(scanner_index))
       {
         updateOdom(pose, delta);
       }
@@ -509,7 +510,7 @@ bool Node::loadPoseFromFile()
     xx = config["pose"]["covariance"][COVARIANCE_XX].as<double>();
     yy = config["pose"]["covariance"][COVARIANCE_YY].as<double>();
     aa = config["pose"]["covariance"][COVARIANCE_AA].as<double>();
-    if(config["header"]["on_exit"])
+    if (config["header"]["on_exit"])
       on_exit = config["header"]["on_exit"].as<bool>();
     else
       // assume pose was saved on exit if flag does not exist
@@ -520,10 +521,10 @@ bool Node::loadPoseFromFile()
     ROS_WARN_STREAM("Exception while loading pose from file. Failed to parse saved pose. " << e.what());
     return false;
   }
-  if (std::isnan(pose_x) or std::isnan(pose_y)
-      or std::isnan(orientation_x) or std::isnan(orientation_y)
-      or std::isnan(orientation_z) or std::isnan(orientation_w)
-      or std::isnan(xx) or std::isnan(yy) or std::isnan(aa))
+  if (std::isnan(pose_x) || std::isnan(pose_y)
+      || std::isnan(orientation_x) || std::isnan(orientation_y)
+      || std::isnan(orientation_z) || std::isnan(orientation_w)
+      || std::isnan(xx) || std::isnan(yy) || std::isnan(aa))
   {
     ROS_WARN("Failed to parse saved YAML pose. NAN value read from file.");
     return false;
@@ -537,7 +538,7 @@ bool Node::loadPoseFromFile()
   init_pose_[0] = pose_x;
   init_pose_[1] = pose_y;
   init_pose_[2] = yaw;
-  if(on_exit)
+  if (on_exit)
   {
     init_cov_[0] = xx;
     init_cov_[1] = yy;
@@ -556,7 +557,7 @@ YAML::Node Node::loadYamlFromFile()
 {
   YAML::Node node = YAML::LoadFile(saved_pose_filepath_);
   std::string key = node.begin()->first.as<std::string>();
-  if (key.compare("header") == 0 or key.compare("pose") == 0)
+  if (key.compare("header") == 0 || key.compare("pose") == 0)
   {
     ROS_DEBUG("YAML c++ style, returning node");
     return node;
@@ -670,13 +671,13 @@ void Node::savePoseToFile(const geometry_msgs::PoseWithCovarianceStamped& latest
 void Node::initFromNewMap(std::shared_ptr<Map> new_map, bool use_initial_pose)
 {
   map_ = new_map;
-  if(not use_initial_pose)
+  if (!use_initial_pose)
     return;
 
   // Create the particle filter
   uniform_pose_generator_fn_ = std::bind(&Node::uniformPoseGenerator, this);
   pf_ = std::make_shared<ParticleFilter>(min_particles_, max_particles_, alpha_slow_, alpha_fast_,
-                                         global_localization_convergence_threshold_,uniform_pose_generator_fn_);
+                                         global_localization_convergence_threshold_, uniform_pose_generator_fn_);
   pf_->setPopulationSizeParameters(pf_err_, pf_z_);
   pf_->setResampleModel(resample_model_type_);
 
@@ -685,9 +686,9 @@ void Node::initFromNewMap(std::shared_ptr<Map> new_map, bool use_initial_pose)
   pf_init_pose_mean[1] = init_pose_[1];
   pf_init_pose_mean[2] = init_pose_[2];
   Eigen::Matrix3d pf_init_pose_cov;
-  for(int i = 0; i < 3; i++)
+  for (int i = 0; i < 3; i++)
   {
-    for(int j = 0; j < 3; j++)
+    for (int j = 0; j < 3; j++)
     {
       pf_init_pose_cov(i, j) = 0.0;
     }
@@ -967,7 +968,7 @@ void Node::initialPoseReceived(const geometry_msgs::PoseWithCovarianceStampedCon
   std::lock_guard<std::mutex> cfl(configuration_mutex_);
   geometry_msgs::PoseWithCovarianceStamped msg(*msg_ptr);
   resolveFrameId(msg);
-  if(checkInitialPose(msg))
+  if (checkInitialPose(msg))
   {
     std::vector<double> cov_vals(36, 0.0);
     setCovarianceVals(msg, &cov_vals);
@@ -1045,9 +1046,10 @@ void Node::setScannersUpdateFlags(const Eigen::Vector3d& delta, std::vector<bool
     *force_update = false;
 
     // Set the scanner update flags
-    if (update)
+    if (update) {
       for (unsigned int i = 0; i < scanners_update.size(); i++)
         scanners_update.at(i) = true;
+    }
 }
 
 void Node::updateOdom(const Eigen::Vector3d& pose, const Eigen::Vector3d& delta)
@@ -1117,14 +1119,14 @@ bool Node::checkInitialPose(const geometry_msgs::PoseWithCovarianceStamped& msg)
   }
 
   geometry_msgs::Point position = msg.pose.pose.position;
-  if (std::isnan(position.x) or std::isnan(position.y) or std::isnan(position.z))
+  if (std::isnan(position.x) || std::isnan(position.y) || std::isnan(position.z))
   {
     ROS_WARN("Received initial pose with position value 'NAN'. Ignoring pose.");
     return false;
   }
 
-  if (std::isnan(msg.pose.pose.orientation.x) or std::isnan(msg.pose.pose.orientation.y) or
-      std::isnan(msg.pose.pose.orientation.z) or std::isnan(msg.pose.pose.orientation.w))
+  if (std::isnan(msg.pose.pose.orientation.x) || std::isnan(msg.pose.pose.orientation.y) ||
+      std::isnan(msg.pose.pose.orientation.z) || std::isnan(msg.pose.pose.orientation.w))
   {
     ROS_WARN("Received initial pose with orientation value 'NAN'. Ignoring pose.");
     return false;
@@ -1217,4 +1219,4 @@ std::string Node::getBaseFrameId()
   return base_frame_id_;
 }
 
-}  // namespace amcl
+}  // namespace badger_amcl

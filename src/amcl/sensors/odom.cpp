@@ -320,4 +320,4 @@ double Odom::angleDiff(double a, double b)
   return angles::shortest_angular_distance(b, a);
 }
 
-}  // namespace amcl
+}  // namespace badger_amcl

@@ -58,7 +58,7 @@ struct Index3 {
 class OctoMap : public Map
 {
 public:
-  OctoMap(double resolution);
+  explicit OctoMap(double resolution);
   OctoMap(double resolution, bool publish_distances_lut);
   virtual ~OctoMap() = default;
   virtual void initFromOctree(std::shared_ptr<octomap::OcTree> octree, double max_distance_to_object);
@@ -119,6 +119,6 @@ private:
   ros::Publisher distances_lut_pub_;
   bool publish_distances_lut_;
 };
-}  // namespace amcl
+}  // namespace badger_amcl
 
 #endif  // AMCL_MAP_OCTOMAP_H

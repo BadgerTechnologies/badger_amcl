@@ -145,9 +145,9 @@ TEST(TestBadgerAmcl, testOccupancyMapDistances)
     {
       unsigned int index = occupancy_map.computeCellIndex(x, y);
       badger_amcl::MapCellState state;
-      if (x == 1 and y > 2 and y < 12)
+      if (x == 1 && y > 2 && y < 12)
         state = badger_amcl::MapCellState::CELL_UNKNOWN;
-      else if (x > 4 and x < 14 and (y == 10 or y == 15))
+      else if (x > 4 && x < 14 && (y == 10 || y == 15))
         state = badger_amcl::MapCellState::CELL_OCCUPIED;
       else
         state = badger_amcl::MapCellState::CELL_FREE;
@@ -156,10 +156,10 @@ TEST(TestBadgerAmcl, testOccupancyMapDistances)
     }
   }
   EXPECT_TRUE(occupancy_map.isValid({0, 0}));
-  EXPECT_TRUE(not occupancy_map.isValid({-1, 5}));
+  EXPECT_TRUE(!occupancy_map.isValid({-1, 5}));
   EXPECT_TRUE(occupancy_map.isValid({99, 149}));
-  EXPECT_TRUE(not occupancy_map.isValid({100, 150}));
-  EXPECT_TRUE(not occupancy_map.isValid({149, 99}));
+  EXPECT_TRUE(!occupancy_map.isValid({100, 150}));
+  EXPECT_TRUE(!occupancy_map.isValid({149, 99}));
   occupancy_map.updateDistancesLUT(0.3);
   EXPECT_EQ(occupancy_map.getCellState(0, 0), badger_amcl::MapCellState::CELL_FREE);
   EXPECT_EQ(occupancy_map.getCellState(1, 3), badger_amcl::MapCellState::CELL_UNKNOWN);

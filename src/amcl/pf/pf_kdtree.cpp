@@ -195,7 +195,7 @@ void PFKDTree::clusterNode(PFKDTreeNode* node)
 
 bool PFKDTree::equals(int key_a[], int key_b[])
 {
-  return (key_a[0] == key_b[0]) and (key_a[1] == key_b[1]) and (key_a[2] == key_b[2]);
+  return (key_a[0] == key_b[0]) && (key_a[1] == key_b[1]) && (key_a[2] == key_b[2]);
 }
 
-}  // namspace amcl
+}  // namespace badger_amcl

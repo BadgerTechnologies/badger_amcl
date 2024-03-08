@@ -111,13 +111,13 @@ void OctoMap::convertWorldToMap(const std::vector<double>& world_coords, std::ve
 // returns true if all coordinates are within the represented map
 bool OctoMap::isPoseValid(const int i, const int j)
 {
-  return (i <= cropped_max_cells_[0] and i >= cropped_min_cells_[0]
-          and j <= cropped_max_cells_[1] and j >= cropped_min_cells_[1]);
+  return (i <= cropped_max_cells_[0] && i >= cropped_min_cells_[0]
+          && j <= cropped_max_cells_[1] && j >= cropped_min_cells_[1]);
 }
 
 bool OctoMap::isVoxelValid(const int i, const int j, const int k)
 {
-  return isPoseValid(i, j) and k <= cropped_max_cells_[2] and k >= cropped_min_cells_[2];
+  return isPoseValid(i, j) && k <= cropped_max_cells_[2] && k >= cropped_min_cells_[2];
 }
 
 double OctoMap::getMaxDistanceToObject()
@@ -229,7 +229,7 @@ void OctoMap::iterateObstacleCells(CellDataQueue& q)
       i = map_coords[0];
       j = map_coords[1];
       k = map_coords[2];
-      if(!isVoxelValid(i, j, k))
+      if (!isVoxelValid(i, j, k))
         continue;
       setDistanceToObject(i, j, k, 0.0);
       source.v[0] = i;
@@ -239,7 +239,7 @@ void OctoMap::iterateObstacleCells(CellDataQueue& q)
     }
   }
 
-  while(!ordering_queue.empty())
+  while (!ordering_queue.empty())
   {
     source = ordering_queue.top();
     ordering_queue.pop();
@@ -319,7 +319,7 @@ void OctoMap::setDistanceToObject(int i, int j, int k, double d)
   int k_shifted = k - cropped_min_cells_[2];
   uint32_t pose_index = makePoseIndex(i_shifted, j_shifted);
   uint32_t distances_lut_start_index = pose_indices_[pose_index];
-  if(distances_lut_start_index == 0)
+  if (distances_lut_start_index == 0)
   {
     distances_lut_start_index = distance_ratios_.size();
     pose_indices_[pose_index] = distances_lut_start_index;
@@ -337,7 +337,7 @@ double OctoMap::getDistanceToObject(int i, int j, int k)
 {
   // Checking if distances lut is created first will prevent checking validity while creating distances lut.
   // The distances lut container is assumed to not send invalid coordinates and checking every time is inefficient.
-  if(distances_lut_created_ and !isVoxelValid(i, j, k))
+  if (distances_lut_created_ && !isVoxelValid(i, j, k))
     return max_distance_to_object_;
   int i_shifted = i - cropped_min_cells_[0];
   int j_shifted = j - cropped_min_cells_[1];
@@ -365,14 +365,14 @@ void OctoMap::publishDistancesLUT()
   std::vector<double> world_coords(3);
   int count = 0;
   int max_count = 1000000;
-  for(int i = cropped_min_cells_[0]; i <= cropped_max_cells_[0]; i++)
+  for (int i = cropped_min_cells_[0]; i <= cropped_max_cells_[0]; i++)
   {
-    for(int j = cropped_min_cells_[1]; j <= cropped_max_cells_[1]; j++)
+    for (int j = cropped_min_cells_[1]; j <= cropped_max_cells_[1]; j++)
     {
-      for(int k = cropped_min_cells_[2]; k <= cropped_max_cells_[2]; k++)
+      for (int k = cropped_min_cells_[2]; k <= cropped_max_cells_[2]; k++)
       {
         double d = getDistanceToObject(i, j, k);
-        if(count < max_count and d < max_distance_to_object_)
+        if (count < max_count && d < max_distance_to_object_)
         {
           map_coords[0] = i;
           map_coords[1] = j;
@@ -394,4 +394,4 @@ void OctoMap::publishDistancesLUT()
   ROS_INFO_STREAM("Publishing cloud of size: " << cloud->points.size());
 }
 
-}  // namespace amcl
+}  // namespace badger_amcl
