@@ -1058,14 +1058,36 @@ void Node::updateOdom(const Eigen::Vector3d& pose, const Eigen::Vector3d& delta)
   // Modify the delta in the action data so the filter gets
   // updated correctly
   odata->delta = delta;
-  odata->absolute_motion = odom_integrator_absolute_motion_;
   if (odom_integrator_enabled_)
   {
+    double abs_trans = std::sqrt(odom_integrator_absolute_motion_[0] * odom_integrator_absolute_motion_[0]
+                                 + odom_integrator_absolute_motion_[1] * odom_integrator_absolute_motion_[1]);
+    double abs_rot = odom_integrator_absolute_motion_[2];
+    if (abs_trans >= 2 * d_thresh_ || abs_rot >= 2 * a_thresh_)
+    {
+      // There has been too much absolute motion since the last update.
+      // If the absolute motion were used, too much noise would be added.
+      // Just use the relative motion in such cases.
+      // This should only happen if the sensor data is coming in so slowly that
+      // enough absolute motion could accumulate to be twice the normal
+      // threshold, as otherwise the filter would have already been updated.
+      odata->absolute_motion = delta;
+    }
+    else
+    {
+      odata->absolute_motion = odom_integrator_absolute_motion_;
+    }
     geometry_msgs::Pose2D p;
     p.x = odata->absolute_motion[0];
     p.y = odata->absolute_motion[1];
     p.theta = odata->absolute_motion[2];
     absolute_motion_pub_.publish(p);
+  }
+  else
+  {
+    // Set absolute motion to the delta when disabled, in case the motion model
+    // is looking for it.
+    odata->absolute_motion = delta;
   }
 
   // Use the action data to update the filter
