@@ -45,7 +45,6 @@ struct PFSample
 
   // Weight for this pose
   double weight;
-
 };
 
 // Information for a cluster of samples
@@ -63,7 +62,6 @@ struct PFCluster
 
   // Workspace
   double m[4], c[2][2];
-
 };
 
 // Information for a set of samples
@@ -183,6 +181,6 @@ private:
   bool converged_;
 };
 
-}  // namespace amcl
+}  // namespace badger_amcl
 
 #endif  // AMCL_PF_PARTICLE_FILTER_H

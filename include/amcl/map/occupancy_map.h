@@ -54,7 +54,7 @@ public:
 class OccupancyMap : public Map
 {
 public:
-  OccupancyMap(double resolution);
+  explicit OccupancyMap(double resolution);
   virtual ~OccupancyMap() = default;
   // Convert from map index to world coords
   virtual void convertMapToWorld(const std::vector<int>& map_coords,
@@ -105,7 +105,7 @@ protected:
   {
     OccupancyMapCellData() = delete;
     OccupancyMap* occ_map;
-    OccupancyMapCellData(OccupancyMap* o_map) : occ_map(o_map) {}
+    explicit OccupancyMapCellData(OccupancyMap* o_map) : occ_map(o_map) {}
     int i, j;
     int src_i, src_j;
     inline bool operator<(const OccupancyMapCellData& b) const
@@ -121,6 +121,6 @@ private:
   std::vector<int> map_vec_;
   std::vector<double> world_vec_;
 };
-}  // namespace amcl
+}  // namespace badger_amcl
 
 #endif  // AMCL_MAP_OCCUPANCY_MAP_H

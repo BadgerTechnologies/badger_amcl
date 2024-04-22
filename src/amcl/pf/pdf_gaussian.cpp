@@ -126,4 +126,4 @@ void PDFGaussian::decompose(const Eigen::Matrix3d& m, Eigen::Matrix3d* r, Eigen:
   }
 }
 
-}  // namespace amcl
+}  // namespace badger_amcl

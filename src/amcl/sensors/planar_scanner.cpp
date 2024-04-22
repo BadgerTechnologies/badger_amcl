@@ -216,7 +216,7 @@ double PlanarScanner::calcBeamModel(std::shared_ptr<PlanarData> data,
       if (obs_range < data->range_max_)
         pz += z_rand_ * 1.0 / data->range_max_;
 
-      // TODO: outlier rejection for short readings
+      // TODO(anyone): outlier rejection for short readings
 
       ROS_ASSERT(pz <= 1.0);
       ROS_ASSERT(pz >= 0.0);
@@ -304,14 +304,14 @@ double PlanarScanner::calcLikelihoodFieldModel(std::shared_ptr<PlanarData> data,
       // Part 2: random measurements
       pz += z_rand_ * z_rand_mult;
 
-      // TODO: outlier rejection for short readings
+      // TODO(anyone): outlier rejection for short readings
 
       ROS_ASSERT(pz <= 1.0);
       ROS_ASSERT(pz >= 0.0);
       //      p *= pz;
       // here we have an ad-hoc weighting scheme for combining beam probs
       // works well, though...
-      // TODO: investigate schemes for combining beam probs
+      // TODO(anyone): investigate schemes for combining beam probs
       p += pz * pz * pz;
     }
 
@@ -461,7 +461,7 @@ double PlanarScanner::calcLikelihoodFieldModelProb(std::shared_ptr<PlanarData> d
       ROS_ASSERT(pz <= 1.0);
       ROS_ASSERT(pz >= 0.0);
 
-      // TODO: outlier rejection for short readings
+      // TODO(anyone): outlier rejection for short readings
 
       if (!do_beamskip)
       {
@@ -700,4 +700,4 @@ Eigen::Vector3d PlanarScanner::coordAdd(const Eigen::Vector3d& a, const Eigen::V
   return c;
 }
 
-}  // namespace amcl
+}  // namespace badger_amcl
