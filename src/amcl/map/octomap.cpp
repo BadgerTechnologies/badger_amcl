@@ -182,7 +182,14 @@ void OctoMap::updateDistancesLUT()
   ROS_INFO("Updating OctoMap Distances LUT");
   CellDataQueue q = CellDataQueue();
   pose_indices_.clear();
-  pose_indices_.resize(num_poses_, 0);
+  try{
+    pose_indices_.resize(num_poses_, 0);
+  }
+  catch (std::bad_alloc){
+    ROS_ERROR("Bad allocation hit when attempting to resize pose indices");
+    ROS_ERROR("Most likely an issue with the octomap. Check map files and restart service.");
+    return;
+  }
   pose_indices_.shrink_to_fit();
   distance_ratios_.clear();
   distance_ratios_.resize(num_z_column_indices_, std::numeric_limits<uint8_t>::max());
