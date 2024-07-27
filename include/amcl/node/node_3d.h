@@ -120,7 +120,7 @@ private:
   int resample_interval_;
   int resample_count_;
   bool first_occupancy_map_received_;
-  bool first_octomap_received_;
+  bool first_octomap_received_, new_octomap_received_;
   bool occupancy_bounds_received_;
   bool first_map_only_;
   bool wait_for_occupancy_map_;

@@ -106,6 +106,7 @@ Node3D::Node3D(Node* node, std::mutex& configuration_mutex)
   force_update_ = false;
   first_occupancy_map_received_ = false;
   first_octomap_received_ = false;
+  new_octomap_received_ = false;
   occupancy_bounds_received_ = false;
   octo_map_sub_ = nh_.subscribe("octomap", 1, &Node3D::octoMapMsgReceived, this);
   occupancy_map_sub_ = nh_.subscribe("map", 1, &Node3D::occupancyMapMsgReceived, this);
@@ -181,6 +182,7 @@ void Node3D::occupancyMapMsgReceived(const nav_msgs::OccupancyGridConstPtr& msg)
   if(not wait_for_occupancy_map_ or (first_map_only_ && first_occupancy_map_received_))
     return;
 
+  ROS_INFO("Received a %d X %d occupancy map @ %.3f m/pix\n", msg->info.width, msg->info.height, msg->info.resolution);
   first_occupancy_map_received_ = true;
   std::vector<int> size_vec;
   double resolution = (*msg).info.resolution / occupancy_map_scale_up_factor_;
@@ -189,10 +191,15 @@ void Node3D::occupancyMapMsgReceived(const nav_msgs::OccupancyGridConstPtr& msg)
   occupancy_map_min_ = {0.0, 0.0};
   occupancy_map_max_ = {size_vec[0] * resolution, size_vec[1] * resolution};
   occupancy_bounds_received_ = true;
-  if(first_octomap_received_)
+  if(new_octomap_received_)
   {
     map_->setMapBounds(occupancy_map_min_, occupancy_map_max_);
     updateFreeSpaceIndices();
+    new_octomap_received_ = false;
+  }
+  else
+  {
+    ROS_INFO("Waiting to receive a new OctoMap before updating OctoMap Distances LUT");
   }
 }
 
@@ -214,6 +221,7 @@ void Node3D::octoMapMsgReceived(const octomap_msgs::OctomapConstPtr& msg)
   frame_to_scanner_.clear();
   latest_scan_data_ = NULL;
   initFromNewMap();
+  new_octomap_received_ = true;
   first_octomap_received_ = true;
 }
 
@@ -239,7 +247,7 @@ void Node3D::initFromNewMap()
     ROS_INFO("Done initializing likelihood (gompertz) field model.");
   }
   scanner_.setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
-  node_->initFromNewMap(map_, not first_octomap_received_);
+  node_->initFromNewMap(map_, not new_octomap_received_);
   pf_ = node_->getPfPtr();
   // if we are using both maps as bounds
   // and the occupancy map has already arrived

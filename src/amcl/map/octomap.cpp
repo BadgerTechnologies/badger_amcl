@@ -178,6 +178,11 @@ void OctoMap::updateDistancesLUT()
     ROS_DEBUG("Failed to update distances lut, max distance to object is 0");
     return;
   }
+  if (octree_ == nullptr)
+  {
+    ROS_WARN("The octree_ pointer is null. Exiting updateDistancesLUT");
+    return;
+  }
 
   ROS_INFO("Updating OctoMap Distances LUT");
   CellDataQueue q = CellDataQueue();
