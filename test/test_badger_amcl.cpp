@@ -83,7 +83,7 @@ TEST(TestBadgerAmcl, testPfKdtree)
 
 TEST(TestBadgerAmcl, testOctoMapConversions)
 {
-  badger_amcl::OctoMap octomap(0.05, false);
+  badger_amcl::OctoMap octomap(0.05, "map", false);
   std::vector<int> rtn_vec_map;
   std::vector<double> rtn_vec_world;
   std::vector<int> map_coords_2d = {1, 2};

@@ -619,7 +619,7 @@ void Node2D::getMaxWeightPose(double* max_weight_rtn, Eigen::Vector3d* max_pose)
 bool Node2D::updatePose(const Eigen::Vector3d& max_pose, const ros::Time& stamp)
 {
   ROS_DEBUG("Max weight pose: %.3f %.3f %.3f", max_pose[0], max_pose[1], max_pose[2]);
-  node_->updatePose(max_pose, stamp);
+  node_->publishPose(max_pose, stamp);
   bool success = true;
   // subtracting base to odom from map to base and send map to odom instead
   tf2::Quaternion q;

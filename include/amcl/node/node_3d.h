@@ -57,7 +57,7 @@ public:
   // While this couples the Node class with the NodeND class, it is acceptable because the
   // Node class is designed to be coupled with a Map/Sensor combination, and the NodeND classes
   // are designed to be coupled with the Node class.
-  Node3D(Node* node, std::mutex& configuration_mutex);
+  Node3D(Node* node, std::mutex& configuration_mutex, std::string global_frame_id_);
   ~Node3D();
   void reconfigure(AMCLConfig& config) override;
   void globalLocalizationCallback() override;
@@ -97,6 +97,7 @@ private:
   std::unique_ptr<message_filters::Subscriber<sensor_msgs::PointCloud2>> cloud_sub_;
   std::unique_ptr<tf2_ros::MessageFilter<sensor_msgs::PointCloud2>> cloud_filter_;
   std::string cloud_topic_;
+  std::string global_frame_id_;
   std::map<std::string, int> frame_to_scanner_;
   std::mutex& configuration_mutex_;
   std::vector<std::shared_ptr<PointCloudScanner> > scanners_;

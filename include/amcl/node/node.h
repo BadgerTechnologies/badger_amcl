@@ -87,7 +87,7 @@ public:
   std::string getBaseFrameId();
   std::shared_ptr<ParticleFilter> getPfPtr();
   void publishParticleCloud();
-  void updatePose(const Eigen::Vector3d& max_hyp_mean, const ros::Time& stamp);
+  void publishPose(const Eigen::Vector3d& max_hyp_mean, const ros::Time& stamp);
   void updateOdomToMapTransform(const tf2::Transform& odom_to_map);
   bool updatePf(const ros::Time& t, std::vector<bool>& scanners_update, int scanner_index,
                 int* resample_count, bool* force_publication, bool* force_update);
@@ -116,7 +116,6 @@ private:
 
   void savePoseToFile(const geometry_msgs::PoseWithCovarianceStamped& latest_pose, bool save_on_exit);
   void loadPose();
-  void publishPose(const geometry_msgs::PoseWithCovarianceStamped& p);
   void applyInitialPose();
   bool loadPoseFromFile();
   YAML::Node loadYamlFromFile();
@@ -144,8 +143,6 @@ private:
   ros::Publisher pose_pub_;
   ros::Publisher absolute_motion_pub_;
   ros::Publisher particlecloud_pub_;
-  ros::Publisher alt_pose_pub_;
-  ros::Publisher alt_particlecloud_pub_;
   ros::Publisher map_odom_transform_pub_;
   ros::Subscriber initial_pose_sub_;
   ros::ServiceServer global_loc_srv_;
@@ -183,7 +180,7 @@ private:
   // parameter for what base to use
   std::string base_frame_id_;
   std::string global_frame_id_;
-  std::string global_alt_frame_id_;
+  std::string transform_frame_id_;
 
   ros::Duration transform_publish_period_;
   ros::Duration save_pose_to_file_period_;
