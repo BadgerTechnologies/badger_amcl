@@ -21,6 +21,7 @@
 #ifndef AMCL_PF_PF_KDTREE_H
 #define AMCL_PF_PF_KDTREE_H
 
+#include <array>
 #include <memory>
 #include <deque>
 
@@ -29,36 +30,45 @@
 namespace badger_amcl
 {
 
-struct PFKDTreeNode
-{
-  int depth;
-  int pivot_dim;
-  int key[3];
-  double value;
-  int cluster;
-  struct PFKDTreeNode* children[2];
-
-};
-
 class PFKDTree
 {
+
+private:
+  // Note: This code is tightly-coupled to a dimension_count of 3 (e.g. it
+  //   uses the type Eigen::Vector3d throughout). However, it is still useful
+  //   to have a name in some places to explain where the magic number "3"
+  //   is coming from, especially since this is named K-dimension tree.
+  static constexpr std::size_t dimension_count = 3;
+
 public:
+  using Key = std::array<int, dimension_count>;
+
   PFKDTree();
   void clearKDTree();
   void insertPose(const Eigen::Vector3d& pose, double value);
   void cluster();
   int getCluster(const Eigen::Vector3d& pose);
   int getLeafCount();
+  Key getKey(const Eigen::Vector3d& pose);
 
 private:
-  bool equals(int key_a[], int key_b[]);
-  PFKDTreeNode* insertNode(PFKDTreeNode* node, int key[], double value, int depth);
-  PFKDTreeNode* makeLeafNode(int key[], double value, int depth);
-  void traverseNode(PFKDTreeNode* node, int key[], double value, int depth);
-  PFKDTreeNode* findNode(PFKDTreeNode* node, int key[]);
+  struct PFKDTreeNode
+  {
+    int depth;
+    int pivot_dim;
+    Key key;
+    double value;
+    int cluster;
+    struct PFKDTreeNode* children[2];
+  };
+
+  PFKDTreeNode* insertNode(PFKDTreeNode* node, Key key, double value, int depth);
+  PFKDTreeNode* makeLeafNode(Key key, double value, int depth);
+  void traverseNode(PFKDTreeNode* node, Key key, double value, int depth);
+  PFKDTreeNode* findNode(PFKDTreeNode* node, Key key);
   void clusterNode(PFKDTreeNode* node);
 
-  double cell_size_[3];
+  double cell_size_[dimension_count];
   PFKDTreeNode* root_;
   std::deque<PFKDTreeNode> nodes_;
   int leaf_count_;
