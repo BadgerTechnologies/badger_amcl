@@ -189,10 +189,23 @@ void PFKDTree::clusterNode(PFKDTreeNode* node)
 
 PFKDTree::Key PFKDTree::getKey(const Eigen::Vector3d& pose)
 {
+  // Normalize the 3rd element of the pose which is the yaw angle to be in
+  // the range [0, 2*pi). This prevents the same angle (e.g. 270 and -90)
+  // from being clustered separately.
+  Eigen::Vector3d normalized_pose = pose;
+  while (normalized_pose[2] < 0)
+  {
+    normalized_pose[2] += 2 * M_PI;
+  }
+  while (normalized_pose[2] >= 2 * M_PI)
+  {
+    normalized_pose[2] -= 2 * M_PI;
+  }
+
   Key key;
   for (std::size_t idx = 0; idx < dimension_count; idx++)
   {
-    key[idx] = std::floor(pose[idx] / cell_size_[idx]);
+    key[idx] = std::floor(normalized_pose[idx] / cell_size_[idx]);
   }
   return key;
 }
