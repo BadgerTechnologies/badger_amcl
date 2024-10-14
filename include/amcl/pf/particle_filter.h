@@ -93,8 +93,11 @@ class ParticleFilter
 {
 public:
   // Create a new filter
-  ParticleFilter(int min_samples, int max_samples, double alpha_slow, double alpha_fast,
-                 double global_localization_convergence_threshold, std::function<Eigen::Vector3d()> random_pose_fn);
+  ParticleFilter(const Eigen::Vector3d& cluster_size,
+                 int min_samples, int max_samples,
+                 double alpha_slow, double alpha_fast,
+                 double global_localization_convergence_threshold,
+                 std::function<Eigen::Vector3d()> random_pose_fn);
 
   // Set the resample model
   void setResampleModel(PFResampleModelType resample_model);

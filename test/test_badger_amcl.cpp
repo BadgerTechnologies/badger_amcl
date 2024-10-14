@@ -50,7 +50,7 @@ TEST(TestBadgerAmcl, testPdfGaussian)
 
 TEST(TestBadgerAmcl, testPfKdtree)
 {
-  badger_amcl::PFKDTree pf_kdtree;
+  badger_amcl::PFKDTree pf_kdtree(Eigen::Vector3d(0.5, 0.5, 10 * M_PI / 180));
   EXPECT_EQ(pf_kdtree.getLeafCount(), 0);
   Eigen::Vector3d pose(1, 1, 1);
   double value = 0.0;
