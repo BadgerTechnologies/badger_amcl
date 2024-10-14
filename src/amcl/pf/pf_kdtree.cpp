@@ -30,11 +30,9 @@
 namespace badger_amcl
 {
 
-PFKDTree::PFKDTree()
+PFKDTree::PFKDTree(const Eigen::Vector3d& cell_size)
+    : cell_size_(cell_size)
 {
-  cell_size_[0] = 0.50;
-  cell_size_[1] = 0.50;
-  cell_size_[2] = (10 * M_PI / 180);
   root_ = NULL;
   leaf_count_ = 0;
 }

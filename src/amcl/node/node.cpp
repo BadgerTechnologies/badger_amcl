@@ -260,7 +260,11 @@ void Node::reconfigureCB(AMCLConfig& config, uint32_t level)
   tf_reverse_ = config.tf_reverse;
 
   uniform_pose_generator_fn_ = std::bind(&Node::uniformPoseGenerator, this);
-  pf_ = std::make_shared<ParticleFilter>(min_particles_, max_particles_, alpha_slow_, alpha_fast_,
+  particle_cluster_size_ = Eigen::Vector3d(
+      config.particle_cluster_size_x, config.particle_cluster_size_y, config.particle_cluster_size_yaw);
+  pf_ = std::make_shared<ParticleFilter>(particle_cluster_size_,
+                                         min_particles_, max_particles_,
+                                         alpha_slow_, alpha_fast_,
                                          global_localization_convergence_threshold_, uniform_pose_generator_fn_);
   pf_err_ = config.kld_err;
   pf_z_ = config.kld_z;
@@ -675,7 +679,9 @@ void Node::initFromNewMap(std::shared_ptr<Map> new_map, bool use_initial_pose)
 
   // Create the particle filter
   uniform_pose_generator_fn_ = std::bind(&Node::uniformPoseGenerator, this);
-  pf_ = std::make_shared<ParticleFilter>(min_particles_, max_particles_, alpha_slow_, alpha_fast_,
+  pf_ = std::make_shared<ParticleFilter>(particle_cluster_size_,
+                                         min_particles_, max_particles_,
+                                         alpha_slow_, alpha_fast_,
                                          global_localization_convergence_threshold_,uniform_pose_generator_fn_);
   pf_->setPopulationSizeParameters(pf_err_, pf_z_);
   pf_->setResampleModel(resample_model_type_);

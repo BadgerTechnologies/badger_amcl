@@ -43,7 +43,7 @@ private:
 public:
   using Key = std::array<int, dimension_count>;
 
-  PFKDTree();
+  PFKDTree(const Eigen::Vector3d& cell_size);
   void clearKDTree();
   void insertPose(const Eigen::Vector3d& pose, double value);
   void cluster();
@@ -68,7 +68,7 @@ private:
   PFKDTreeNode* findNode(PFKDTreeNode* node, Key key);
   void clusterNode(PFKDTreeNode* node);
 
-  double cell_size_[dimension_count];
+  Eigen::Vector3d cell_size_;
   PFKDTreeNode* root_;
   std::deque<PFKDTreeNode> nodes_;
   int leaf_count_;

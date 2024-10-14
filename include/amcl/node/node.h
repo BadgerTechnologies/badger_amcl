@@ -196,6 +196,7 @@ private:
   Eigen::Vector3d pf_odom_pose_;
   double d_thresh_, a_thresh_;
   PFResampleModelType resample_model_type_;
+  Eigen::Vector3d particle_cluster_size_;
   int min_particles_, max_particles_;
   double global_localization_convergence_threshold_;
   std::shared_ptr<PoseHypothesis> initial_pose_hyp_;

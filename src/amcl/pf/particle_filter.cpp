@@ -35,7 +35,9 @@ namespace badger_amcl
 {
 
 // Create a new filter
-ParticleFilter::ParticleFilter(int min_samples, int max_samples, double alpha_slow, double alpha_fast,
+ParticleFilter::ParticleFilter(const Eigen::Vector3d& cluster_size,
+                               int min_samples, int max_samples,
+                               double alpha_slow, double alpha_fast,
                                double global_localization_convergence_threshold,
                                std::function<Eigen::Vector3d()> random_pose_fn)
 {
@@ -78,7 +80,7 @@ ParticleFilter::ParticleFilter(int min_samples, int max_samples, double alpha_sl
       sample->weight = 1.0 / max_samples_;
     }
 
-    set->kdtree = std::make_shared<PFKDTree>();
+    set->kdtree = std::make_shared<PFKDTree>(cluster_size);
 
     set->cluster_count = 0;
     set->cluster_max_count = max_samples_;
