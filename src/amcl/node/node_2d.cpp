@@ -310,7 +310,7 @@ double Node2D::scorePose(const Eigen::Vector3d& p)
     fake_sample_set_->samples = { fake_sample_ };
     fake_sample_set_->converged = 0;
     scanner_.applyModelToSampleSet(latest_scan_data_, fake_sample_set_);
-    score = fake_sample_.weight;
+    score = fake_sample_set_->samples[0].weight;
   }
   return score;
 }
