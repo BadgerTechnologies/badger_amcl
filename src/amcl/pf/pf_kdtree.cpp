@@ -30,11 +30,9 @@
 namespace badger_amcl
 {
 
-PFKDTree::PFKDTree()
+PFKDTree::PFKDTree(const Eigen::Vector3d& cell_size)
+    : cell_size_(cell_size)
 {
-  cell_size_[0] = 0.50;
-  cell_size_[1] = 0.50;
-  cell_size_[2] = (10 * M_PI / 180);
   root_ = NULL;
   leaf_count_ = 0;
 }
@@ -48,10 +46,7 @@ void PFKDTree::clearKDTree()
 
 void PFKDTree::insertPose(const Eigen::Vector3d& pose, double value)
 {
-  int key[3];
-  key[0] = std::floor(pose[0] / cell_size_[0]);
-  key[1] = std::floor(pose[1] / cell_size_[1]);
-  key[2] = std::floor(pose[2] / cell_size_[2]);
+  Key key = getKey(pose);
   root_ = insertNode(root_, key, value, 0);
 }
 
@@ -78,11 +73,8 @@ void PFKDTree::cluster()
 // Determine the cluster label for the given pose
 int PFKDTree::getCluster(const Eigen::Vector3d& pose)
 {
-  int key[3];
+  Key key = getKey(pose);
   PFKDTreeNode* node;
-  key[0] = std::floor(pose[0] / cell_size_[0]);
-  key[1] = std::floor(pose[1] / cell_size_[1]);
-  key[2] = std::floor(pose[2] / cell_size_[2]);
   node = findNode(root_, key);
   if (node == NULL)
     return -1;
@@ -94,7 +86,7 @@ int PFKDTree::getLeafCount()
   return leaf_count_;
 }
 
-PFKDTreeNode* PFKDTree::insertNode(PFKDTreeNode* node, int key[], double value, int depth)
+PFKDTree::PFKDTreeNode* PFKDTree::insertNode(PFKDTreeNode* node, Key key, double value, int depth)
 {
   if (node == NULL)
   {
@@ -102,7 +94,7 @@ PFKDTreeNode* PFKDTree::insertNode(PFKDTreeNode* node, int key[], double value, 
   }
   else
   {
-    if (equals(key, node->key))
+    if (key == node->key)
     {
       node->value += value;
     }
@@ -114,13 +106,12 @@ PFKDTreeNode* PFKDTree::insertNode(PFKDTreeNode* node, int key[], double value, 
   return node;
 }
 
-PFKDTreeNode* PFKDTree::makeLeafNode(int key[], double value, int depth)
+PFKDTree::PFKDTreeNode* PFKDTree::makeLeafNode(Key key, double value, int depth)
 {
   nodes_.push_back(PFKDTreeNode());
   PFKDTreeNode* node = &nodes_.back();
   node->depth = depth;
-  for (int i = 0; i < 3; i++)
-    node->key[i] = key[i];
+  node->key = key;
   node->value = value;
   node->pivot_dim = -1;
   node->cluster = -1;
@@ -128,12 +119,12 @@ PFKDTreeNode* PFKDTree::makeLeafNode(int key[], double value, int depth)
   return node;
 }
 
-void PFKDTree::traverseNode(PFKDTreeNode* node, int key[], double value, int depth)
+void PFKDTree::traverseNode(PFKDTreeNode* node, Key key, double value, int depth)
 {
   if (node->pivot_dim == -1)
   {
     int split, max_split = 0;
-    for (int i = 0; i < 3; i++)
+    for (int i = 0; i < dimension_count; i++)
     {
       split = std::abs(key[i] - node->key[i]);
       if (split > max_split)
@@ -149,13 +140,13 @@ void PFKDTree::traverseNode(PFKDTreeNode* node, int key[], double value, int dep
   node->children[child] = insertNode(node->children[child], key, value, depth+1);
 }
 
-PFKDTreeNode* PFKDTree::findNode(PFKDTreeNode* node, int key[])
+PFKDTree::PFKDTreeNode* PFKDTree::findNode(PFKDTreeNode* node, Key key)
 {
   if (node == NULL)
   {
     return NULL;
   }
-  else if (equals(key, node->key))
+  else if (key == node->key)
   {
     return node;
   }
@@ -169,16 +160,17 @@ PFKDTreeNode* PFKDTree::findNode(PFKDTreeNode* node, int key[])
 void PFKDTree::clusterNode(PFKDTreeNode* node)
 {
   int i;
-  int next_key[3];
+  Key next_key;
   PFKDTreeNode* next_node;
 
+  // Note: This code is tightly-coupled to a dimension_count of 3.
   for (i = 0; i < 3 * 3 * 3; i++)
   {
     next_key[0] = node->key[0] + (i / 9) - 1;
     next_key[1] = node->key[1] + ((i % 9) / 3) - 1;
     next_key[2] = node->key[2] + ((i % 9) % 3) - 1;
 
-    if (equals(node->key, next_key))
+    if (node->key == next_key)
       continue;
     next_node = findNode(root_, next_key);
     if (next_node == NULL)
@@ -193,9 +185,27 @@ void PFKDTree::clusterNode(PFKDTreeNode* node)
   }
 }
 
-bool PFKDTree::equals(int key_a[], int key_b[])
+PFKDTree::Key PFKDTree::getKey(const Eigen::Vector3d& pose)
 {
-  return (key_a[0] == key_b[0]) and (key_a[1] == key_b[1]) and (key_a[2] == key_b[2]);
+  // Normalize the 3rd element of the pose which is the yaw angle to be in
+  // the range [0, 2*pi). This prevents the same angle (e.g. 270 and -90)
+  // from being clustered separately.
+  Eigen::Vector3d normalized_pose = pose;
+  while (normalized_pose[2] < 0)
+  {
+    normalized_pose[2] += 2 * M_PI;
+  }
+  while (normalized_pose[2] >= 2 * M_PI)
+  {
+    normalized_pose[2] -= 2 * M_PI;
+  }
+
+  Key key;
+  for (std::size_t idx = 0; idx < dimension_count; idx++)
+  {
+    key[idx] = std::floor(normalized_pose[idx] / cell_size_[idx]);
+  }
+  return key;
 }
 
 }  // namspace amcl
