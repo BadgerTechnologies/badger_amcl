@@ -82,30 +82,14 @@ Node::Node()
   const std::string default_filepath = "badger_amcl_saved_pose.yaml";
   private_nh_.param("saved_pose_filepath", saved_pose_filepath_, default_filepath);
 
-  std::string model_type_str;
-  private_nh_.param("odom_model_type", model_type_str, std::string("diff"));
-  if (model_type_str == "diff")
-    odom_model_type_ = ODOM_MODEL_DIFF;
-  else if (model_type_str == "omni")
-    odom_model_type_ = ODOM_MODEL_OMNI;
-  else if (model_type_str == "diff-corrected")
-    odom_model_type_ = ODOM_MODEL_DIFF_CORRECTED;
-  else if (model_type_str == "omni-corrected")
-    odom_model_type_ = ODOM_MODEL_OMNI_CORRECTED;
-  else if (model_type_str == "gaussian")
-    odom_model_type_ = ODOM_MODEL_GAUSSIAN;
-  else
-  {
-    ROS_WARN_STREAM("Unknown odom model type \"" << model_type_str << "\"; defaulting to diff model");
-    odom_model_type_ = ODOM_MODEL_DIFF;
-  }
-
   private_nh_.param("update_min_d", d_thresh_, 0.2);
   private_nh_.param("update_min_a", a_thresh_, M_PI / 6.0);
   private_nh_.param("odom_frame_id", odom_frame_id_, std::string("odom"));
   private_nh_.param("base_frame_id", base_frame_id_, std::string("base_link"));
   private_nh_.param("global_frame_id", global_frame_id_, std::string("map"));
   private_nh_.param("transform_frame_id", transform_frame_id_, std::string("map"));
+
+  std::string model_type_str;
   private_nh_.param("resample_model_type", model_type_str, std::string("multinomial"));
   if (model_type_str == "multinomial")
     resample_model_type_ = PF_RESAMPLE_MULTINOMIAL;
@@ -223,17 +207,6 @@ void Node::reconfigureCB(AMCLConfig& config, uint32_t level)
   alpha4_ = config.odom_alpha4;
   alpha5_ = config.odom_alpha5;
 
-  if (config.odom_model_type == "diff")
-    odom_model_type_ = ODOM_MODEL_DIFF;
-  else if (config.odom_model_type == "omni")
-    odom_model_type_ = ODOM_MODEL_OMNI;
-  else if (config.odom_model_type == "diff-corrected")
-    odom_model_type_ = ODOM_MODEL_DIFF_CORRECTED;
-  else if (config.odom_model_type == "omni-corrected")
-    odom_model_type_ = ODOM_MODEL_OMNI_CORRECTED;
-  else if (config.odom_model_type == "gaussian")
-    odom_model_type_ = ODOM_MODEL_GAUSSIAN;
-
   if (config.min_particles > config.max_particles)
   {
     ROS_WARN("You've set min_particles to be greater than max particles, "
@@ -275,11 +248,8 @@ void Node::reconfigureCB(AMCLConfig& config, uint32_t level)
   pf_init_pose_cov(1, 1) = last_published_pose_->pose.covariance[COVARIANCE_YY];
   pf_init_pose_cov(2, 2) = last_published_pose_->pose.covariance[COVARIANCE_AA];
   pf_->initWithGaussian(pf_init_pose_mean, pf_init_pose_cov);
-  odom_init_ = false;
-
-  // Instantiate the sensor objects
-  // Odometry
-  odom_.setModel(odom_model_type_, alpha1_, alpha2_, alpha3_, alpha4_, alpha5_);
+  odom_initialized_ = false;
+  odom_.initModel(alpha1_, alpha2_, alpha3_, alpha4_, alpha5_);
   odom_frame_id_ = config.odom_frame_id;
   base_frame_id_ = config.base_frame_id;
   global_frame_id_ = config.global_frame_id;
@@ -304,7 +274,7 @@ bool Node::updatePf(const ros::Time& t, std::vector<bool>& scanners_update, int 
   if (getOdomPose(t, &pose))
   {
     Eigen::Vector3d delta;
-    if(odom_init_)
+    if(odom_initialized_)
     {
       computeDelta(pose, &delta);
       setScannersUpdateFlags(delta, scanners_update, force_update);
@@ -681,11 +651,8 @@ void Node::initFromNewMap(std::shared_ptr<Map> new_map, bool use_initial_pose)
   pf_init_pose_cov(1, 1) = init_cov_[1];
   pf_init_pose_cov(2, 2) = init_cov_[2];
   pf_->initWithGaussian(pf_init_pose_mean, pf_init_pose_cov);
-  odom_init_ = false;
-
-  // Instantiate the sensor objects
-  // Odometry
-  odom_.setModel(odom_model_type_, alpha1_, alpha2_, alpha3_, alpha4_, alpha5_);
+  odom_initialized_ = false;
+  odom_.initModel(alpha1_, alpha2_, alpha3_, alpha4_, alpha5_);
 
   tf2::Transform pose;
   std::vector<double> cov_vals(36, 0.0);
@@ -696,11 +663,6 @@ void Node::initFromNewMap(std::shared_ptr<Map> new_map, bool use_initial_pose)
 void Node::updateFreeSpaceIndices(std::vector<std::pair<int, int>> fsi)
 {
   free_space_indices_ = fsi;
-}
-
-void Node::initOdomIntegrator()
-{
-  odom_integrator_ready_ = false;
 }
 
 void Node::resetOdomIntegrator()
@@ -863,7 +825,7 @@ bool Node::globalLocalizationCallback(std_srvs::Empty::Request& req, std_srvs::E
   pf_->setDecayRates(global_localization_alpha_slow_, global_localization_alpha_fast_);
   node_->globalLocalizationCallback();
   pf_->initWithPoseFn(uniform_pose_generator_fn_);
-  odom_init_ = false;
+  odom_initialized_ = false;
   return true;
 }
 
@@ -980,7 +942,7 @@ void Node::applyInitialPose()
   if (initial_pose_hyp_ != NULL && map_ != NULL)
   {
     pf_->initWithGaussian(initial_pose_hyp_->mean, initial_pose_hyp_->covariance);
-    odom_init_ = false;
+    odom_initialized_ = false;
 
     initial_pose_hyp_ = NULL;
   }
@@ -1087,13 +1049,13 @@ void Node::initOdom(const Eigen::Vector3d& pose, std::vector<bool>& scanners_upd
   // Pose at last filter update
   pf_odom_pose_ = pose;
   // Filter is now initialized
-  odom_init_ = true;
+  odom_initialized_ = true;
   // Should update sensor data
   for (unsigned int i = 0; i < scanners_update.size(); i++)
     scanners_update.at(i) = true;
   *force_publication = true;
   *resample_count = 0;
-  initOdomIntegrator();
+  odom_integrator_ready_ = false;
 }
 
 void Node::resolveFrameId(geometry_msgs::PoseWithCovarianceStamped& msg)
