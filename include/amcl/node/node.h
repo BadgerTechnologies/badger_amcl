@@ -81,7 +81,6 @@ public:
   Node();
   void initFromNewMap(std::shared_ptr<Map> new_map, bool use_init_pose);
   void updateFreeSpaceIndices(std::vector<std::pair<int, int>> fsi);
-  void initOdomIntegrator();
   bool getOdomPose(const ros::Time& t, Eigen::Vector3d* map_pose);
   std::string getOdomFrameId();
   std::string getBaseFrameId();
@@ -176,7 +175,6 @@ private:
   bool odom_integrator_ready_;
   Eigen::Vector3d odom_integrator_last_pose_;
   Eigen::Vector3d odom_integrator_absolute_motion_;
-  OdomModelType odom_model_type_;
 
   // parameter for what base to use
   std::string base_frame_id_;
@@ -191,7 +189,7 @@ private:
   // Particle filter
   std::shared_ptr<ParticleFilter> pf_;
   double pf_err_, pf_z_;
-  bool odom_init_;
+  bool odom_initialized_;
   Eigen::Vector3d pf_odom_pose_;
   double d_thresh_, a_thresh_;
   PFResampleModelType resample_model_type_;
