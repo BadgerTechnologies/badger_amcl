@@ -576,7 +576,7 @@ bool Node2D::resamplePose(const ros::Time& stamp)
   getMaxWeightPose(&max_weight, &max_pose);
   bool success = true;
   if(max_weight > 0.0)
-    success = node_->updatePose(max_pose, stamp);
+    success = node_->updateAndPublishPose(max_pose, stamp);
   else
   {
     ROS_ERROR("No pose!");

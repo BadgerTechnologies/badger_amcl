@@ -58,8 +58,8 @@ struct Index3 {
 class OctoMap : public Map
 {
 public:
-  OctoMap(double resolution);
-  OctoMap(double resolution, bool publish_distances_lut);
+  OctoMap(double resolution, std::string global_frame_id);
+  OctoMap(double resolution, std::string global_frame_id, bool publish_distances_lut);
   virtual ~OctoMap() = default;
   virtual void initFromOctree(std::shared_ptr<octomap::OcTree> octree, double max_distance_to_object);
   // Convert from map index to world coords
@@ -118,6 +118,7 @@ private:
   ros::NodeHandle nh_;
   ros::Publisher distances_lut_pub_;
   bool publish_distances_lut_;
+  std::string global_frame_id_;
 };
 }  // namespace amcl
 

@@ -44,12 +44,13 @@
 namespace badger_amcl
 {
 
-Node3D::Node3D(Node* node, std::mutex& configuration_mutex)
+Node3D::Node3D(Node* node, std::mutex& configuration_mutex, std::string global_frame_id)
     : node_(node),
       configuration_mutex_(configuration_mutex),
       private_nh_("~"),
       resample_count_(0),
-      tf_listener_(tf_buffer_)
+      tf_listener_(tf_buffer_),
+      global_frame_id_(global_frame_id)
 {
   map_ = nullptr;
   octree_ = nullptr;
@@ -284,7 +285,7 @@ std::shared_ptr<OctoMap> Node3D::convertMap(const octomap_msgs::Octomap& map_msg
     octree_ = std::shared_ptr<octomap::OcTree>(dynamic_cast<octomap::OcTree*>(absoctree));
   }
   double resolution = map_msg.resolution;
-  std::shared_ptr<OctoMap> octomap = std::make_shared<OctoMap>(resolution);
+  std::shared_ptr<OctoMap> octomap = std::make_shared<OctoMap>(resolution, global_frame_id_);
   ROS_ASSERT(octomap);
   octomap->initFromOctree(octree_, max_distance_to_object_);
   octree_.reset();
@@ -507,7 +508,7 @@ bool Node3D::resamplePose(const ros::Time& stamp)
   getMaxWeightPose(&max_weight, &max_pose);
   bool success = true;
   if(max_weight > 0.0)
-    success = node_->updatePose(max_pose, stamp);
+    success = node_->updateAndPublishPose(max_pose, stamp);
   else
   {
     ROS_ERROR("No pose!");

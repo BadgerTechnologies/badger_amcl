@@ -105,7 +105,7 @@ Node::Node()
   private_nh_.param("odom_frame_id", odom_frame_id_, std::string("odom"));
   private_nh_.param("base_frame_id", base_frame_id_, std::string("base_link"));
   private_nh_.param("global_frame_id", global_frame_id_, std::string("map"));
-  private_nh_.param("global_alt_frame_id", global_alt_frame_id_, std::string(""));
+  private_nh_.param("transform_frame_id", transform_frame_id_, std::string("map"));
   private_nh_.param("resample_model_type", model_type_str, std::string("multinomial"));
   if (model_type_str == "multinomial")
     resample_model_type_ = PF_RESAMPLE_MULTINOMIAL;
@@ -134,13 +134,6 @@ Node::Node()
 
   pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("amcl_pose", 2, true);
   particlecloud_pub_ = nh_.advertise<geometry_msgs::PoseArray>("particlecloud", 2, true);
-  if (global_alt_frame_id_.size() > 0)
-  {
-    alt_pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("amcl_pose_in_" + global_alt_frame_id_,
-                                                                            2, true);
-    alt_particlecloud_pub_ = nh_.advertise<geometry_msgs::PoseArray>("particlecloud_in_" + global_alt_frame_id_,
-                                                                     2, true);
-  }
   map_odom_transform_pub_ = nh_.advertise<nav_msgs::Odometry>("amcl_map_odom_transform", 1);
   global_loc_srv_ = nh_.advertiseService("global_localization", &Node::globalLocalizationCallback, this);
 
@@ -163,7 +156,7 @@ Node::Node()
   }
   if(map_type_ == 3)
   {
-    node_ = std::make_shared<Node3D>(this, configuration_mutex_);
+    node_ = std::make_shared<Node3D>(this, configuration_mutex_, global_frame_id_);
   }
 
   dynamic_reconfigure::Server<AMCLConfig>::CallbackType cb = std::bind(&Node::reconfigureCB, this,
@@ -290,6 +283,7 @@ void Node::reconfigureCB(AMCLConfig& config, uint32_t level)
   odom_frame_id_ = config.odom_frame_id;
   base_frame_id_ = config.base_frame_id;
   global_frame_id_ = config.global_frame_id;
+  transform_frame_id_ = config.transform_frame_id;
   node_->reconfigure(config);
   save_pose_ = config.save_pose;
   saved_pose_filepath_ = config.saved_pose_filepath;
@@ -353,15 +347,9 @@ void Node::publishParticleCloud()
                cloud_msg.poses[i]);
   }
   particlecloud_pub_.publish(cloud_msg);
-  if (global_alt_frame_id_.size() > 0)
-  {
-    geometry_msgs::PoseArray alt_cloud_msg(cloud_msg);
-    alt_cloud_msg.header.frame_id = global_alt_frame_id_;
-    alt_particlecloud_pub_.publish(alt_cloud_msg);
-  }
 }
 
-bool Node::updatePose(const Eigen::Vector3d& max_pose, const ros::Time& stamp)
+bool Node::updateAndPublishPose(const Eigen::Vector3d& max_pose, const ros::Time& stamp)
 {
   // It may be that the first map has yet to be received, if so, there will be
   // no paticle filter constructed yet. Fail to update the pose if there is no map.
@@ -396,7 +384,7 @@ bool Node::updatePose(const Eigen::Vector3d& max_pose, const ros::Time& stamp)
   // Report the overall filter covariance, rather than the
   // covariance for the highest-weight cluster
   p->pose.covariance[COVARIANCE_AA] = set->cov(2, 2);
-  publishPose(*p);
+  pose_pub_.publish(*p);
   {
     std::lock_guard<std::mutex> lpl(latest_pose_mutex_);
     last_published_pose_ = p;
@@ -435,17 +423,6 @@ bool Node::updatePose(const Eigen::Vector3d& max_pose, const ros::Time& stamp)
     latest_tf_valid_ = true;
   }
   return success;
-}
-
-void Node::publishPose(const geometry_msgs::PoseWithCovarianceStamped& p)
-{
-  pose_pub_.publish(p);
-  if (global_alt_frame_id_.size() > 0)
-  {
-    geometry_msgs::PoseWithCovarianceStamped alt_p(p);
-    alt_p.header.frame_id = global_alt_frame_id_;
-    alt_pose_pub_.publish(alt_p);
-  }
 }
 
 void Node::attemptSavePose(bool exiting)
@@ -631,7 +608,7 @@ void Node::savePoseToFile(const geometry_msgs::PoseWithCovarianceStamped& latest
 
   YAML::Node header_node;
   header_node["stamp"] = stamp_node;
-  header_node["frame_id"] = "map";
+  header_node["frame_id"] = global_frame_id_;
   header_node["on_exit"] = save_on_exit;
 
   YAML::Node pose_pose_position_node;
@@ -902,11 +879,11 @@ void Node::publishTransform(const ros::TimerEvent& event)
     if (tf_reverse_)
     {
       odom_to_map_msg_stamped.header.frame_id = odom_frame_id_;
-      odom_to_map_msg_stamped.child_frame_id = global_frame_id_;
+      odom_to_map_msg_stamped.child_frame_id = transform_frame_id_;
     }
     else
     {
-      odom_to_map_msg_stamped.header.frame_id = global_frame_id_;
+      odom_to_map_msg_stamped.header.frame_id = transform_frame_id_;
       odom_to_map_msg_stamped.child_frame_id = odom_frame_id_;
       tf_transform = tf_transform.inverse();
     }
@@ -940,7 +917,7 @@ bool Node::getLatestTf(tf2::Transform* latest_tf)
     // initial pose. The below updatePose will succeed after the first map has
     // been received and the TF for odom to base frame has been received.
     Eigen::Vector3d init_pose(init_pose_[0], init_pose_[1], init_pose_[2]);
-    updatePose(init_pose, ros::Time::now());
+    updateAndPublishPose(init_pose, ros::Time::now());
   }
   if (latest_tf_valid_)
   {
@@ -1124,7 +1101,7 @@ void Node::resolveFrameId(geometry_msgs::PoseWithCovarianceStamped& msg)
   // Rewrite to our global frame if received in the alt frame.
   // This allows us to run with multiple localizers using tf_reverse and pose them all at once.
   // And it is much cheaper to rewrite here than to run a separate topic tool transformer.
-  if (msg.header.frame_id == global_alt_frame_id_)
+  if (msg.header.frame_id == transform_frame_id_)
   {
     msg.header.frame_id = global_frame_id_;
   }
