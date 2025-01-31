@@ -75,21 +75,6 @@ Node2D::Node2D(Node* node, std::mutex& configuration_mutex)
   private_nh_.param("global_localization_planar_non_free_space_factor",
                     global_localization_non_free_space_factor_, 1.0);
 
-  std::string model_type_str;
-  private_nh_.param("laser_model_type", model_type_str, std::string("likelihood_field"));
-  if (model_type_str == "beam")
-    model_type_ = PLANAR_MODEL_BEAM;
-  else if (model_type_str == "likelihood_field")
-    model_type_ = PLANAR_MODEL_LIKELIHOOD_FIELD;
-  else if (model_type_str == "likelihood_field_prob")
-    model_type_ = PLANAR_MODEL_LIKELIHOOD_FIELD_PROB;
-  else if (model_type_str == "likelihood_field_gompertz")
-    model_type_ = PLANAR_MODEL_LIKELIHOOD_FIELD_GOMPERTZ;
-  else
-  {
-    ROS_WARN_STREAM("Unknown planar model type \"" << model_type_str << "\"; defaulting to likelihood_field model");
-    model_type_ = PLANAR_MODEL_LIKELIHOOD_FIELD;
-  }
   private_nh_.param("map_scale_up_factor", map_scale_up_factor_, 1);
   // Prevent nonsense and crashes due to wacky values
   if (map_scale_up_factor_ < 1)
@@ -147,45 +132,15 @@ void Node2D::reconfigure(AMCLConfig& config)
   gompertz_input_scale_ = config.laser_gompertz_input_scale;
   gompertz_output_shift_ = config.laser_gompertz_output_shift;
   max_beams_ = config.laser_max_beams;
-  if (config.laser_model_type == "beam")
-    model_type_ = PLANAR_MODEL_BEAM;
-  else if (config.laser_model_type == "likelihood_field")
-    model_type_ = PLANAR_MODEL_LIKELIHOOD_FIELD;
-  else if (config.laser_model_type == "likelihood_field_prob")
-    model_type_ = PLANAR_MODEL_LIKELIHOOD_FIELD_PROB;
-  else if (config.laser_model_type == "likelihood_field_gompertz")
-    model_type_ = PLANAR_MODEL_LIKELIHOOD_FIELD_GOMPERTZ;
-  scanner_.init(max_beams_, map_);
-  if (model_type_ == PLANAR_MODEL_BEAM)
-    scanner_.setModelBeam(z_hit_, z_short_, z_max_, z_rand_, sigma_hit_, lambda_short_);
-  else if (model_type_ == PLANAR_MODEL_LIKELIHOOD_FIELD_PROB)
-  {
-    ROS_INFO("Initializing likelihood field model; this can take some time on large maps...");
-    scanner_.setModelLikelihoodFieldProb(z_hit_, z_rand_, sigma_hit_, sensor_likelihood_max_dist_,
-                                         do_beamskip_, beam_skip_distance_, beam_skip_threshold_,
-                                         beam_skip_error_threshold_);
-    ROS_INFO("Done initializing likelihood field model with probabilities.");
-  }
-  else if (model_type_ == PLANAR_MODEL_LIKELIHOOD_FIELD)
-  {
-    ROS_INFO("Initializing likelihood field model; this can take some time on large maps...");
-    scanner_.setModelLikelihoodField(z_hit_, z_rand_, sigma_hit_, sensor_likelihood_max_dist_);
-    ROS_INFO("Done initializing likelihood field model.");
-  }
-  else if (model_type_ == PLANAR_MODEL_LIKELIHOOD_FIELD_GOMPERTZ)
-  {
-    ROS_INFO("Initializing likelihood field (gompertz) model; this can take some time on large maps...");
-    scanner_.setModelLikelihoodFieldGompertz(
-        z_hit_, z_rand_, sigma_hit_, sensor_likelihood_max_dist_, gompertz_a_, gompertz_b_,
-        gompertz_c_, gompertz_input_shift_, gompertz_input_scale_, gompertz_output_shift_);
-    ROS_INFO("Gompertz key points by total planar scan match: 0.0: %f, 0.25: %f, 0.5: %f, 0.75: %f, 1.0: %f",
-             scanner_.applyGompertz(z_rand_),
-             scanner_.applyGompertz(z_rand_ + z_hit_ * .25),
-             scanner_.applyGompertz(z_rand_ + z_hit_ * .5),
-             scanner_.applyGompertz(z_rand_ + z_hit_ * .75),
-             scanner_.applyGompertz(z_rand_ + z_hit_));
-    ROS_INFO("Done initializing likelihood (gompertz) field model.");
-  }
+  scanner_.init(
+      max_beams_, map_, z_hit_, z_rand_, sigma_hit_, sensor_likelihood_max_dist_, gompertz_a_, gompertz_b_,
+      gompertz_c_, gompertz_input_shift_, gompertz_input_scale_, gompertz_output_shift_);
+  ROS_INFO("Gompertz key points by total planar scan match: 0.0: %f, 0.25: %f, 0.5: %f, 0.75: %f, 1.0: %f",
+           scanner_.applyGompertz(z_rand_),
+           scanner_.applyGompertz(z_rand_ + z_hit_ * .25),
+           scanner_.applyGompertz(z_rand_ + z_hit_ * .5),
+           scanner_.applyGompertz(z_rand_ + z_hit_ * .75),
+           scanner_.applyGompertz(z_rand_ + z_hit_));
   scanner_.setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
 
   scan_filter_.reset();
@@ -222,37 +177,15 @@ void Node2D::mapMsgReceived(const nav_msgs::OccupancyGridConstPtr& msg)
 
 void Node2D::initFromNewMap()
 {
-  scanner_.init(max_beams_, map_);
-  if (model_type_ == PLANAR_MODEL_BEAM)
-    scanner_.setModelBeam(z_hit_, z_short_, z_max_, z_rand_, sigma_hit_, lambda_short_);
-  else if (model_type_ == PLANAR_MODEL_LIKELIHOOD_FIELD_PROB)
-  {
-    ROS_INFO("Initializing likelihood field model; this can take some time on large maps...");
-    scanner_.setModelLikelihoodFieldProb(z_hit_, z_rand_, sigma_hit_, sensor_likelihood_max_dist_,
-                                         do_beamskip_, beam_skip_distance_, beam_skip_threshold_,
-                                         beam_skip_error_threshold_);
-    ROS_INFO("Done initializing likelihood field model.");
-  }
-  else if (model_type_ == PLANAR_MODEL_LIKELIHOOD_FIELD_GOMPERTZ)
-  {
-    ROS_INFO("Initializing likelihood field (gompertz) model; this can take some time on large maps...");
-    scanner_.setModelLikelihoodFieldGompertz(
-        z_hit_, z_rand_, sigma_hit_, sensor_likelihood_max_dist_, gompertz_a_, gompertz_b_,
-        gompertz_c_, gompertz_input_shift_, gompertz_input_scale_, gompertz_output_shift_);
-    ROS_INFO("Gompertz key points by total planar scan match: 0.0: %f, 0.25: %f, 0.5: %f, 0.75: %f, 1.0: %f",
-             scanner_.applyGompertz(z_rand_),
-             scanner_.applyGompertz(z_rand_ + z_hit_ * .25),
-             scanner_.applyGompertz(z_rand_ + z_hit_ * .5),
-             scanner_.applyGompertz(z_rand_ + z_hit_ * .75),
-             scanner_.applyGompertz(z_rand_ + z_hit_));
-    ROS_INFO("Done initializing likelihood (gompertz) field model.");
-  }
-  else
-  {
-    ROS_INFO("Initializing likelihood field model; this can take some time on large maps...");
-    scanner_.setModelLikelihoodField(z_hit_, z_rand_, sigma_hit_, sensor_likelihood_max_dist_);
-    ROS_INFO("Done initializing likelihood field model.");
-  }
+  scanner_.init(
+      max_beams_, map_, z_hit_, z_rand_, sigma_hit_, sensor_likelihood_max_dist_, gompertz_a_, gompertz_b_,
+      gompertz_c_, gompertz_input_shift_, gompertz_input_scale_, gompertz_output_shift_);
+  ROS_INFO("Gompertz key points by total planar scan match: 0.0: %f, 0.25: %f, 0.5: %f, 0.75: %f, 1.0: %f",
+           scanner_.applyGompertz(z_rand_),
+           scanner_.applyGompertz(z_rand_ + z_hit_ * .25),
+           scanner_.applyGompertz(z_rand_ + z_hit_ * .5),
+           scanner_.applyGompertz(z_rand_ + z_hit_ * .75),
+           scanner_.applyGompertz(z_rand_ + z_hit_));
   scanner_.setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
   node_->initFromNewMap(map_, not first_map_received_);
   pf_ = node_->getPfPtr();

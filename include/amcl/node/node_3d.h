@@ -104,7 +104,6 @@ private:
   std::vector<double> occupancy_map_min_, occupancy_map_max_;
   std::vector<bool> scanners_update_;
   PFSample fake_sample_;
-  PointCloudModelType model_type_;
   PointCloudScanner scanner_;
   Node* node_;
   ros::NodeHandle nh_;

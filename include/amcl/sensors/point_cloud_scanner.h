@@ -36,12 +36,6 @@
 namespace badger_amcl
 {
 
-enum PointCloudModelType
-{
-  POINT_CLOUD_MODEL,
-  POINT_CLOUD_MODEL_GOMPERTZ,
-};
-
 class PointCloudData : public SensorData
 {
 public:
@@ -56,11 +50,11 @@ public:
   PointCloudScanner();
   ~PointCloudScanner() = default;
 
-  void init(int max_beams, std::shared_ptr<OctoMap> map);
-
-  void setPointCloudModel(double z_hit, double z_rand, double sigma_hit);
-  void setPointCloudModelGompertz(double z_hit, double z_rand, double sigma_hit, double gompertz_a, double gompertz_b,
-                                  double gompertz_c, double input_shift, double input_scale, double output_shift);
+  void init(
+      int max_beams, std::shared_ptr<OctoMap> map,
+      double z_hit, double z_rand, double sigma_hit,
+      double gompertz_a, double gompertz_b, double gompertz_c,
+      double input_shift, double input_scale, double output_shift);
 
   // Update the filter based on the sensor model.  Returns true if the
   // filter has been updated.
@@ -80,14 +74,12 @@ public:
 
 private:
   // Determine the probability for the given pose
-  double calcPointCloudModel(std::shared_ptr<PointCloudData> data, std::shared_ptr<PFSampleSet> set);
   double calcPointCloudModelGompertz(std::shared_ptr<PointCloudData> data, std::shared_ptr<PFSampleSet> set);
   double recalcWeight(std::shared_ptr<PFSampleSet> set);
   void getMapCloud(std::shared_ptr<PointCloudData> data, const Eigen::Vector3d& pose,
                    pcl::PointCloud<pcl::PointXYZ>& map_cloud);
 
   std::shared_ptr<OctoMap> map_;
-  PointCloudModelType model_type_;
 
   // Parameters for applying Gompertz function to sample weights
   double gompertz_a_;

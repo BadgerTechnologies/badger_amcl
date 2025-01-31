@@ -76,22 +76,6 @@ Node3D::Node3D(Node* node, std::mutex& configuration_mutex, std::string global_f
   private_nh_.param("global_localization_scanner_off_map_factor", global_localization_off_map_factor_, 1.0);
   private_nh_.param("global_localization_scanner_non_free_space_factor",
                     global_localization_non_free_space_factor_, 1.0);
-  std::string model_type_str;
-  private_nh_.param("laser_model_type", model_type_str, std::string("likelihood_field_gompertz"));
-  if (model_type_str == "likelihood_field")
-  {
-    model_type_ = POINT_CLOUD_MODEL;
-  }
-  else if (model_type_str == "likelihood_field_gompertz")
-  {
-    model_type_ = POINT_CLOUD_MODEL_GOMPERTZ;
-  }
-  else
-  {
-    ROS_WARN_STREAM("Unknown point cloud scanner model type \"" << model_type_str
-                    << "\"; defaulting to point cloud scanner model");
-    model_type_ = POINT_CLOUD_MODEL;
-  }
   private_nh_.param("map_scale_up_factor", occupancy_map_scale_up_factor_, 1);
 
   cloud_topic_ = "cloud";
@@ -134,35 +118,16 @@ void Node3D::reconfigure(AMCLConfig& config)
   non_free_space_radius_ = config.laser_non_free_space_radius;
   global_localization_off_map_factor_ = config.global_localization_laser_off_map_factor;
   global_localization_non_free_space_factor_ = config.global_localization_laser_non_free_space_factor;
-  if (config.laser_model_type == "likelihood_field")
-  {
-    model_type_ = POINT_CLOUD_MODEL;
-  }
-  else if (config.laser_model_type == "likelihood_field_gompertz")
-  {
-    model_type_ = POINT_CLOUD_MODEL_GOMPERTZ;
-  }
-  scanner_.init(max_beams_, map_);
-  if (model_type_ == POINT_CLOUD_MODEL)
-  {
-    ROS_WARN("Setting point cloud model type from reconfigure 3d");
-    scanner_.setPointCloudModel(z_hit_, z_rand_, sigma_hit_);
-  }
-  else if (model_type_ == POINT_CLOUD_MODEL_GOMPERTZ)
-  {
-    ROS_INFO("Initializing likelihood field (gompertz) model; this can take some time on large maps...");
-    scanner_.setPointCloudModelGompertz(
-        z_hit_, z_rand_, sigma_hit_, gompertz_a_, gompertz_b_, gompertz_c_,
-        gompertz_input_shift_, gompertz_input_scale_, gompertz_output_shift_);
-    ROS_INFO("Gompertz key points by total planar scan match: "
-             "0.0: %f, 0.25: %f, 0.5: %f, 0.75: %f, 1.0: %f",
-             scanner_.applyGompertz(z_rand_),
-             scanner_.applyGompertz(z_rand_ + z_hit_ * .25),
-             scanner_.applyGompertz(z_rand_ + z_hit_ * .5),
-             scanner_.applyGompertz(z_rand_ + z_hit_ * .75),
-             scanner_.applyGompertz(z_rand_ + z_hit_));
-    ROS_INFO("Done initializing likelihood (gompertz) field model.");
-  }
+  scanner_.init(
+      max_beams_, map_, z_hit_, z_rand_, sigma_hit_, gompertz_a_, gompertz_b_, gompertz_c_,
+      gompertz_input_shift_, gompertz_input_scale_, gompertz_output_shift_);
+  ROS_INFO("Gompertz key points by total planar scan match: "
+           "0.0: %f, 0.25: %f, 0.5: %f, 0.75: %f, 1.0: %f",
+           scanner_.applyGompertz(z_rand_),
+           scanner_.applyGompertz(z_rand_ + z_hit_ * .25),
+           scanner_.applyGompertz(z_rand_ + z_hit_ * .5),
+           scanner_.applyGompertz(z_rand_ + z_hit_ * .75),
+           scanner_.applyGompertz(z_rand_ + z_hit_));
 
   scanner_.setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
 
@@ -228,25 +193,16 @@ void Node3D::octoMapMsgReceived(const octomap_msgs::OctomapConstPtr& msg)
 
 void Node3D::initFromNewMap()
 {
-  scanner_.init(max_beams_, map_);
-  if (model_type_ == POINT_CLOUD_MODEL)
-  {
-    scanner_.setPointCloudModel(z_hit_, z_rand_, sigma_hit_);
-  }
-  else if (model_type_ == POINT_CLOUD_MODEL_GOMPERTZ)
-  {
-    ROS_INFO("Initializing likelihood field (gompertz) model; this can take some time on large maps...");
-    scanner_.setPointCloudModelGompertz(z_hit_, z_rand_, sigma_hit_, gompertz_a_, gompertz_b_, gompertz_c_,
-                                        gompertz_input_shift_, gompertz_input_scale_, gompertz_output_shift_);
-    ROS_INFO("Gompertz key points by total planar scan match: "
-             "0.0: %f, 0.25: %f, 0.5: %f, 0.75: %f, 1.0: %f",
-             scanner_.applyGompertz(z_rand_),
-             scanner_.applyGompertz(z_rand_ + z_hit_ * .25),
-             scanner_.applyGompertz(z_rand_ + z_hit_ * .5),
-             scanner_.applyGompertz(z_rand_ + z_hit_ * .75),
-             scanner_.applyGompertz(z_rand_ + z_hit_));
-    ROS_INFO("Done initializing likelihood (gompertz) field model.");
-  }
+  scanner_.init(
+      max_beams_, map_, z_hit_, z_rand_, sigma_hit_, gompertz_a_, gompertz_b_, gompertz_c_,
+      gompertz_input_shift_, gompertz_input_scale_, gompertz_output_shift_);
+  ROS_INFO("Gompertz key points by total planar scan match: "
+           "0.0: %f, 0.25: %f, 0.5: %f, 0.75: %f, 1.0: %f",
+           scanner_.applyGompertz(z_rand_),
+           scanner_.applyGompertz(z_rand_ + z_hit_ * .25),
+           scanner_.applyGompertz(z_rand_ + z_hit_ * .5),
+           scanner_.applyGompertz(z_rand_ + z_hit_ * .75),
+           scanner_.applyGompertz(z_rand_ + z_hit_));
   scanner_.setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
   node_->initFromNewMap(map_, not new_octomap_received_);
   pf_ = node_->getPfPtr();
