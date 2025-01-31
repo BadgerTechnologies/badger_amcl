@@ -87,7 +87,7 @@ public:
   std::string getBaseFrameId();
   std::shared_ptr<ParticleFilter> getPfPtr();
   void publishParticleCloud();
-  bool updatePose(const Eigen::Vector3d& max_pose, const ros::Time& stamp);
+  bool updateAndPublishPose(const Eigen::Vector3d& max_pose, const ros::Time& stamp);
   bool updatePf(const ros::Time& t, std::vector<bool>& scanners_update, int scanner_index,
                 int* resample_count, bool* force_publication, bool* force_update);
   void setPfDecayRateNormal();
@@ -115,7 +115,6 @@ private:
 
   void savePoseToFile(const geometry_msgs::PoseWithCovarianceStamped& latest_pose, bool save_on_exit);
   void loadPose();
-  void publishPose(const geometry_msgs::PoseWithCovarianceStamped& p);
   void applyInitialPose();
   bool loadPoseFromFile();
   YAML::Node loadYamlFromFile();
@@ -182,7 +181,7 @@ private:
   // parameter for what base to use
   std::string base_frame_id_;
   std::string global_frame_id_;
-  std::string global_alt_frame_id_;
+  std::string transform_frame_id_;
 
   ros::Duration transform_publish_period_;
   ros::Duration save_pose_to_file_period_;

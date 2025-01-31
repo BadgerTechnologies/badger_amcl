@@ -34,13 +34,14 @@
 namespace badger_amcl
 {
 
-OctoMap::OctoMap(double resolution)
-    : OctoMap(resolution, false) {}
+OctoMap::OctoMap(double resolution, std::string global_frame_id)
+    : OctoMap(resolution, global_frame_id, false) {}
 
-OctoMap::OctoMap(double resolution, bool publish_distances_lut)
+OctoMap::OctoMap(double resolution, std::string global_frame_id, bool publish_distances_lut)
     : Map(resolution),
       publish_distances_lut_(publish_distances_lut),
-      cdm_(resolution, 0.0)
+      cdm_(resolution, 0.0),
+      global_frame_id_(global_frame_id)
 {
   cropped_min_cells_ = std::vector<int>(3);
   cropped_max_cells_ = std::vector<int>(3);
@@ -363,7 +364,7 @@ void OctoMap::publishDistancesLUT()
 {
   using PointCloud = pcl::PointCloud<pcl::PointXYZI>;
   PointCloud::Ptr cloud(new PointCloud);
-  cloud->header.frame_id = "map";
+  cloud->header.frame_id = global_frame_id_;
   cloud->height = 1;
   pcl::PointXYZI p;
   std::vector<int> map_coords(3);
