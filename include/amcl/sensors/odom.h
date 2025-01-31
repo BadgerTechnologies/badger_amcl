@@ -71,7 +71,6 @@ public:
   virtual bool updateAction(std::shared_ptr<ParticleFilter> pf, std::shared_ptr<SensorData> data);
 
 private:
-  double normalize(double z);
   double angleDiff(double a, double b);
   // Model type
   OdomModelType model_type_;

@@ -310,11 +310,6 @@ bool Odom::updateAction(std::shared_ptr<ParticleFilter> pf, std::shared_ptr<Sens
   return true;
 }
 
-double Odom::normalize(double z)
-{
-  return angles::normalize_angle(z);
-}
-
 double Odom::angleDiff(double a, double b)
 {
   return angles::shortest_angular_distance(b, a);
