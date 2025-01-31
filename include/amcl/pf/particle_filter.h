@@ -31,12 +31,6 @@
 namespace badger_amcl
 {
 
-enum PFResampleModelType
-{
-  PF_RESAMPLE_MULTINOMIAL,
-  PF_RESAMPLE_SYSTEMATIC,
-};
-
 // Information for a single sample
 struct PFSample
 {
@@ -99,9 +93,6 @@ public:
                  double global_localization_convergence_threshold,
                  std::function<Eigen::Vector3d()> random_pose_fn);
 
-  // Set the resample model
-  void setResampleModel(PFResampleModelType resample_model);
-
   // Initialize the filter using a guassian to generate initial poses
   void initWithGaussian(const Eigen::Vector3d& mean, const Eigen::Matrix3d& cov);
 
@@ -138,7 +129,6 @@ private:
   int resampleLimit(int k);
 
   double resampleSystematic(double w_diff);
-  double resampleMultinomial(double w_diff);
 
   // sets the current set and pf converged values to false
   void initConverged();
@@ -156,8 +146,6 @@ private:
   void addSampleStatsToSet(const PFSample* sample, double* weight, double* m, double* c);
   void computeSetStats(double weight, const double m[], const double c[],
                        std::shared_ptr<PFSampleSet> set);
-
-  PFResampleModelType resample_model_;
 
   // This min and max number of samples
   int min_samples_, max_samples_;

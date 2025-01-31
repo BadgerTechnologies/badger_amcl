@@ -89,18 +89,6 @@ Node::Node()
   private_nh_.param("global_frame_id", global_frame_id_, std::string("map"));
   private_nh_.param("transform_frame_id", transform_frame_id_, std::string("map"));
 
-  std::string model_type_str;
-  private_nh_.param("resample_model_type", model_type_str, std::string("multinomial"));
-  if (model_type_str == "multinomial")
-    resample_model_type_ = PF_RESAMPLE_MULTINOMIAL;
-  else if (model_type_str == "systematic")
-    resample_model_type_ = PF_RESAMPLE_SYSTEMATIC;
-  else
-  {
-    ROS_WARN_STREAM("Unknown resample model type \"" << model_type_str << "\"; defaulting to multinomial model");
-    resample_model_type_ = PF_RESAMPLE_MULTINOMIAL;
-  }
-
   double transform_tolerance_val;
   private_nh_.param("transform_tolerance", transform_tolerance_val, 0.1);
   private_nh_.param("recovery_alpha_slow", alpha_slow_, 0.001);
@@ -185,17 +173,6 @@ void Node::reconfigureCB(AMCLConfig& config, uint32_t level)
   d_thresh_ = config.update_min_d;
   a_thresh_ = config.update_min_a;
 
-  if (config.resample_model_type == "multinomial")
-    resample_model_type_ = PF_RESAMPLE_MULTINOMIAL;
-  else if (config.resample_model_type == "systematic")
-    resample_model_type_ = PF_RESAMPLE_SYSTEMATIC;
-  else
-  {
-    ROS_WARN_STREAM("Unknown resample model type \"" << config.resample_model_type
-                    << "\"; defaulting to multinomial model");
-    resample_model_type_ = PF_RESAMPLE_MULTINOMIAL;
-  }
-
   transform_publish_period_ = ros::Duration(1.0 / config.transform_publish_rate);
   save_pose_to_file_period_ = ros::Duration(1.0 / config.save_pose_to_file_rate);
 
@@ -236,7 +213,6 @@ void Node::reconfigureCB(AMCLConfig& config, uint32_t level)
   pf_err_ = config.kld_err;
   pf_z_ = config.kld_z;
   pf_->setPopulationSizeParameters(pf_err_, pf_z_);
-  pf_->setResampleModel(resample_model_type_);
 
   // Initialize the filter
   Eigen::Vector3d pf_init_pose_mean;
@@ -633,7 +609,6 @@ void Node::initFromNewMap(std::shared_ptr<Map> new_map, bool use_initial_pose)
                                          global_localization_convergence_threshold_,
                                          uniform_pose_generator_fn_);
   pf_->setPopulationSizeParameters(pf_err_, pf_z_);
-  pf_->setResampleModel(resample_model_type_);
 
   Eigen::Vector3d pf_init_pose_mean;
   pf_init_pose_mean[0] = init_pose_[0];
