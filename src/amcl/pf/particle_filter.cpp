@@ -45,7 +45,6 @@ ParticleFilter::ParticleFilter(const Eigen::Vector3d& cluster_size,
   std::shared_ptr<PFSampleSet> set;
   PFSample* sample;
 
-  resample_model_ = PF_RESAMPLE_MULTINOMIAL;
   random_pose_fn_ = random_pose_fn;
 
   min_samples_ = min_samples;
@@ -97,11 +96,6 @@ ParticleFilter::ParticleFilter(const Eigen::Vector3d& cluster_size,
   alpha_fast_ = alpha_fast;
 
   initConverged();
-}
-
-void ParticleFilter::setResampleModel(PFResampleModelType resample_model)
-{
-  resample_model_ = resample_model;
 }
 
 // Initialize the filter using a guassian
@@ -355,72 +349,6 @@ double ParticleFilter::resampleSystematic(double w_diff)
   return total;
 }
 
-double ParticleFilter::resampleMultinomial(double w_diff)
-{
-  int i;
-  double total;
-  std::shared_ptr<PFSampleSet> set_a, set_b;
-  PFSample *sample_a, *sample_b;
-
-  // double count_inv;
-  std::vector<double> c;
-
-  set_a = sets_[current_set_];
-  set_b = sets_[(current_set_ + 1) % 2];
-
-  // Build up cumulative probability table for resampling.
-  // TODO: Replace this with a more efficient procedure
-  // (e.g., http://www.network-theory.co.uk/docs/gslref/GeneralDiscreteDistributions.html)
-  c = std::vector<double>(set_a->sample_count + 1);
-  c[0] = 0.0;
-  for (i = 0; i < set_a->sample_count; i++)
-    c[i + 1] = c[i] + set_a->samples[i].weight;
-
-  // Draw samples from set a to create set b.
-  total = 0;
-  set_b->sample_count = 0;
-
-  while (set_b->sample_count < max_samples_)
-  {
-    sample_b = &(set_b->samples[set_b->sample_count++]);
-
-    if (drand48() < w_diff)
-    {
-      sample_b->pose = random_pose_fn_();
-    }
-    else
-    {
-      // Naive discrete event sampler
-      double r;
-      r = drand48();
-      for (i = 0; i < set_a->sample_count; i++)
-      {
-        if ((c[i] <= r) && (r < c[i + 1]))
-          break;
-      }
-      ROS_ASSERT(i < set_a->sample_count);
-
-      sample_a = &(set_a->samples[i]);
-
-      ROS_ASSERT(sample_a->weight > 0);
-
-      // Add sample to list
-      sample_b->pose = sample_a->pose;
-    }
-
-    sample_b->weight = 1.0;
-    total += sample_b->weight;
-
-    // Add sample to histogram
-    set_b->kdtree->insertPose(sample_b->pose, sample_b->weight);
-
-    // See if we have enough samples yet
-    if (set_b->sample_count > resampleLimit(set_b->kdtree->getLeafCount()))
-      break;
-  }
-  return total;
-}
-
 // Resample the distribution
 void ParticleFilter::updateResample()
 {
@@ -441,16 +369,7 @@ void ParticleFilter::updateResample()
   if (w_diff < 0.0)
     w_diff = 0.0;
 
-  switch (resample_model_)
-  {
-    case PF_RESAMPLE_MULTINOMIAL:
-    default:
-      total = resampleMultinomial(w_diff);
-      break;
-    case PF_RESAMPLE_SYSTEMATIC:
-      total = resampleSystematic(w_diff);
-      break;
-  }
+  total = resampleSystematic(w_diff);
 
   // Reset averages, to avoid spiraling off into complete randomness.
   if (w_diff > 0.0)
