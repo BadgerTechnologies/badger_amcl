@@ -44,25 +44,14 @@ PointCloudScanner::PointCloudScanner() : Sensor()
   world_vec_.resize(3);
 }
 
-void PointCloudScanner::init(int max_beams, std::shared_ptr<OctoMap> map)
+void PointCloudScanner::init(
+    int max_beams, std::shared_ptr<OctoMap> map,
+    double z_hit, double z_rand, double sigma_hit,
+    double gompertz_a, double gompertz_b, double gompertz_c,
+    double input_shift, double input_scale, double output_shift)
 {
   max_beams_ = max_beams;
   map_ = map;
-}
-
-void PointCloudScanner::setPointCloudModel(double z_hit, double z_rand, double sigma_hit)
-{
-  model_type_ = POINT_CLOUD_MODEL;
-  z_hit_ = z_hit;
-  z_rand_ = z_rand;
-  sigma_hit_ = sigma_hit;
-}
-
-void PointCloudScanner::setPointCloudModelGompertz(double z_hit, double z_rand, double sigma_hit, double gompertz_a,
-                                                   double gompertz_b, double gompertz_c, double input_shift,
-                                                   double input_scale, double output_shift)
-{
-  model_type_ = POINT_CLOUD_MODEL_GOMPERTZ;
   z_hit_ = z_hit;
   z_rand_ = z_rand;
   sigma_hit_ = sigma_hit;
@@ -109,59 +98,12 @@ double PointCloudScanner::applyModelToSampleSet(std::shared_ptr<SensorData> data
   if (max_beams_ < 2)
     return 0.0;
 
-  double rv = 0.0;
-
-  if (model_type_ == POINT_CLOUD_MODEL)
-  {
-    rv = calcPointCloudModel(std::dynamic_pointer_cast<PointCloudData>(data), set);
-  }
-  else if (model_type_ == POINT_CLOUD_MODEL_GOMPERTZ)
-  {
-    rv = calcPointCloudModelGompertz(std::dynamic_pointer_cast<PointCloudData>(data), set);
-  }
+  double total_weight = calcPointCloudModelGompertz(std::dynamic_pointer_cast<PointCloudData>(data), set);
 
   // Apply any configured correction factors from map
-  if (rv > 0.0)
+  if (total_weight > 0.0)
   {
-    rv = recalcWeight(set);
-  }
-  return rv;
-}
-
-// Determine the probability for the given pose
-double PointCloudScanner::calcPointCloudModel(std::shared_ptr<PointCloudData> data,
-                                              std::shared_ptr<PFSampleSet> set)
-{
-  double total_weight = 0.0, p, z, pz;
-  PFSample* sample;
-  Eigen::Vector3d pose;
-
-  double z_hit_denom = 2 * sigma_hit_ * sigma_hit_;
-  double z_rand_mult = 1.0 / map_->getMaxDistanceToObject();
-
-  for (int sample_index = 0; sample_index < set->sample_count; sample_index++)
-  {
-    sample = &(set->samples[sample_index]);
-    pose = sample->pose;
-    p = 1.0;
-    pcl::PointCloud<pcl::PointXYZ>::iterator it;
-    pcl::PointCloud<pcl::PointXYZ> map_cloud;
-    getMapCloud(data, pose, map_cloud);
-    for (it = map_cloud.begin(); it != map_cloud.end(); ++it)
-    {
-      world_vec_[0] = it->x;
-      world_vec_[1] = it->y;
-      world_vec_[2] = it->z;
-      map_->convertWorldToMap(world_vec_, &map_vec_);
-      z = map_->getDistanceToObject(map_vec_[0], map_vec_[1], map_vec_[2]);
-      pz = z_hit_ * std::exp(-(z * z) / z_hit_denom);
-      pz += z_rand_ * z_rand_mult;
-      ROS_ASSERT(pz <= 1.0);
-      ROS_ASSERT(pz >= 0.0);
-      p += pz * pz * pz;
-    }
-    sample->weight *= p;
-    total_weight += sample->weight;
+    total_weight = recalcWeight(set);
   }
   return total_weight;
 }

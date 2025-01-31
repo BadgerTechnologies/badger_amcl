@@ -33,14 +33,6 @@
 namespace badger_amcl
 {
 
-enum PlanarModelType
-{
-  PLANAR_MODEL_BEAM,
-  PLANAR_MODEL_LIKELIHOOD_FIELD,
-  PLANAR_MODEL_LIKELIHOOD_FIELD_PROB,
-  PLANAR_MODEL_LIKELIHOOD_FIELD_GOMPERTZ,
-};
-
 // Planar sensor data
 class PlanarData : public SensorData
 {
@@ -59,20 +51,11 @@ class PlanarScanner : public Sensor
 public:
   PlanarScanner();
 
-  void init(int max_beams, std::shared_ptr<OccupancyMap> map);
-
-  void setModelBeam(double z_hit, double z_short, double z_max, double z_rand, double sigma_hit, double labda_short);
-
-  void setModelLikelihoodField(double z_hit, double z_rand, double sigma_hit, double max_distance_to_object);
-
-  // a more probabilistically correct model - also with the option to do beam skipping
-  void setModelLikelihoodFieldProb(double z_hit, double z_rand, double sigma_hit, double max_distance_to_object,
-                                   bool do_beamskip, double beam_skip_distance, double beam_skip_threshold,
-                                   double beam_skip_error_threshold);
-
-  void setModelLikelihoodFieldGompertz(double z_hit, double z_rand, double sigma_hit, double max_distance_to_object,
-                                       double gompertz_a, double gompertz_b, double gompertz_c, double input_shift,
-                                       double input_scale, double output_shift);
+  void init(
+      int max_beams, std::shared_ptr<OccupancyMap> map,
+      double z_hit, double z_rand, double sigma_hit, double max_distance_to_object,
+      double gompertz_a, double gompertz_b, double gompertz_c,
+      double input_shift, double input_scale, double output_shift);
 
   // Set factors related to a poses position on the map.
   // off_map_factor: factor to multiply a sample weight by when map out of bounds.
@@ -96,15 +79,6 @@ public:
   double applyGompertz(double p);
 
 private:
-  // Determine the probability for the given pose
-  double calcBeamModel(std::shared_ptr<PlanarData> data, std::shared_ptr<PFSampleSet> set);
-
-  // Determine the probability for the given pose
-  double calcLikelihoodFieldModel(std::shared_ptr<PlanarData> data, std::shared_ptr<PFSampleSet> set);
-
-  // Determine the probability for the given pose - more probablistic model
-  double calcLikelihoodFieldModelProb(std::shared_ptr<PlanarData> data, std::shared_ptr<PFSampleSet> set);
-
   // Determine the probability for the given pose and apply a Gompertz function
   double calcLikelihoodFieldModelGompertz(std::shared_ptr<PlanarData> data, std::shared_ptr<PFSampleSet> set);
 
@@ -112,8 +86,6 @@ private:
   void clearTempData(int max_samples, int max_obs);
 
   Eigen::Vector3d coordAdd(const Eigen::Vector3d& a, const Eigen::Vector3d& b);
-
-  PlanarModelType model_type_;
 
   // The occupancy map
   std::shared_ptr<OccupancyMap> map_;

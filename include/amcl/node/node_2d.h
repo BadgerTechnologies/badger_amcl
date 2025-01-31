@@ -98,7 +98,6 @@ private:
   std::shared_ptr<ParticleFilter> pf_;
   PFSample fake_sample_;
   PlanarScanner scanner_;
-  PlanarModelType model_type_;
   ros::NodeHandle nh_;
   ros::NodeHandle private_nh_;
   ros::Subscriber map_sub_;
