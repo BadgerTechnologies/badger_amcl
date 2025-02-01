@@ -140,6 +140,7 @@ void Node3D::reconfigure(AMCLConfig& config)
 
   cloud_filter_->registerCallback(std::bind(&Node3D::scanReceived, this, std::placeholders::_1));
   pf_ = node_->getPfPtr();
+  publish_distances_lut_ = config.publish_distances_lut;
 }
 
 void Node3D::occupancyMapMsgReceived(const nav_msgs::OccupancyGridConstPtr& msg)
@@ -241,7 +242,8 @@ std::shared_ptr<OctoMap> Node3D::convertMap(const octomap_msgs::Octomap& map_msg
     octree_ = std::shared_ptr<octomap::OcTree>(dynamic_cast<octomap::OcTree*>(absoctree));
   }
   double resolution = map_msg.resolution;
-  std::shared_ptr<OctoMap> octomap = std::make_shared<OctoMap>(resolution, global_frame_id_);
+  std::shared_ptr<OctoMap> octomap = std::make_shared<OctoMap>(
+      resolution, global_frame_id_, publish_distances_lut_);
   ROS_ASSERT(octomap);
   octomap->initFromOctree(octree_, max_distance_to_object_);
   octree_.reset();
