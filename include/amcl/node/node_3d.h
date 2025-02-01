@@ -137,6 +137,7 @@ private:
   double non_free_space_factor_;
   double non_free_space_radius_;
   double z_hit_, z_short_, z_max_, z_rand_, sigma_hit_, lambda_short_;
+  bool publish_distances_lut_;
   double global_localization_off_map_factor_;
   double global_localization_non_free_space_factor_;
   bool global_localization_active_;

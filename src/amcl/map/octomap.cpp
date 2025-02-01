@@ -370,7 +370,6 @@ void OctoMap::publishDistancesLUT()
   std::vector<int> map_coords(3);
   std::vector<double> world_coords(3);
   int count = 0;
-  int max_count = 1000000;
   for(int i = cropped_min_cells_[0]; i <= cropped_max_cells_[0]; i++)
   {
     for(int j = cropped_min_cells_[1]; j <= cropped_max_cells_[1]; j++)
@@ -378,7 +377,7 @@ void OctoMap::publishDistancesLUT()
       for(int k = cropped_min_cells_[2]; k <= cropped_max_cells_[2]; k++)
       {
         double d = getDistanceToObject(i, j, k);
-        if(count < max_count and d < max_distance_to_object_)
+        if(d < max_distance_to_object_)
         {
           map_coords[0] = i;
           map_coords[1] = j;
