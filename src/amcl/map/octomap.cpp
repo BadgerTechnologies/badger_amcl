@@ -60,15 +60,15 @@ void OctoMap::initFromOctree(std::shared_ptr<octomap::OcTree> octree, double max
   octree_->getMetricMin(min_x, min_y, min_z);
   octree_->getMetricMax(max_x, max_y, max_z);
   // crop values here if required
-  std::vector<double> map_vec(3);
-  map_vec[0] = min_x;
-  map_vec[1] = min_y;
-  map_vec[2] = min_z;
-  convertWorldToMap(map_vec, &cropped_min_cells_);
-  map_vec[0] = max_x;
-  map_vec[1] = max_y;
-  map_vec[2] = max_z;
-  convertWorldToMap(map_vec, &cropped_max_cells_);
+  std::vector<double> point(3);
+  point[0] = min_x;
+  point[1] = min_y;
+  point[2] = min_z;
+  rasterize(point, &cropped_min_cells_);
+  point[0] = max_x;
+  point[1] = max_y;
+  point[2] = max_z;
+  rasterize(point, &cropped_max_cells_);
   map_cells_width_ = cropped_max_cells_[0] - cropped_min_cells_[0] + 1;
   num_poses_ = map_cells_width_ * (cropped_max_cells_[1] - cropped_min_cells_[1] + 1);
   num_z_column_indices_ = cropped_max_cells_[2] - cropped_min_cells_[2] + 1;
@@ -80,32 +80,32 @@ void OctoMap::getMinMaxCells(std::vector<int>* min_cells, std::vector<int>* max_
   (*max_cells) = cropped_max_cells_;
 }
 
-// converts map voxel coordinates to global coordinates in meters
-void OctoMap::convertMapToWorld(const std::vector<int>& map_coords, std::vector<double>* world_coords)
+// converts voxel indices to point in map frame
+void OctoMap::unrasterize(const std::vector<int>& voxel, std::vector<double>* point)
 {
   std::vector<double> return_vals;
-  int i = map_coords[0];
-  int j = map_coords[1];
-  (*world_coords)[0] = i * resolution_;
-  (*world_coords)[1] = j * resolution_;
-  if (map_coords.size() > 2)
+  int i = voxel[0];
+  int j = voxel[1];
+  (*point)[0] = i * resolution_;
+  (*point)[1] = j * resolution_;
+  if (voxel.size() > 2)
   {
-    int k = map_coords[2];
-    (*world_coords)[2] = k * resolution_;
+    int k = voxel[2];
+    (*point)[2] = k * resolution_;
   }
 }
 
-// converts global coordinates in meters to map voxel coordinates
-void OctoMap::convertWorldToMap(const std::vector<double>& world_coords, std::vector<int>* map_coords)
+// converts point in map frame to voxel indices
+void OctoMap::rasterize(const std::vector<double>& point, std::vector<int>* voxel)
 {
-  double x = world_coords[0];
-  double y = world_coords[1];
-  (*map_coords)[0] = std::floor(x / resolution_ + 0.5);
-  (*map_coords)[1] = std::floor(y / resolution_ + 0.5);
-  if (world_coords.size() > 2)
+  double x = point[0];
+  double y = point[1];
+  (*voxel)[0] = std::floor(x / resolution_ + 0.5);
+  (*voxel)[1] = std::floor(y / resolution_ + 0.5);
+  if (point.size() > 2)
   {
-    double z = world_coords[2];
-    (*map_coords)[2] = std::floor(z / resolution_ + 0.5);
+    double z = point[2];
+    (*voxel)[2] = std::floor(z / resolution_ + 0.5);
   }
 }
 
@@ -137,8 +137,8 @@ void OctoMap::setMapBounds(const std::vector<double>& map_min, const std::vector
     map_min_local[i] -= max_distance_to_object_;
     map_max_local[i] += max_distance_to_object_;
   }
-  convertWorldToMap(map_min_local, &cells_min);
-  convertWorldToMap(map_max_local, &cells_max);
+  rasterize(map_min_local, &cells_min);
+  rasterize(map_max_local, &cells_max);
   for (int i = 0; i < cells_min.size(); i++)
   {
     cropped_min_cells_[i] = std::max(cropped_min_cells_[i], cells_min[i]);
@@ -216,8 +216,8 @@ void OctoMap::iterateObstacleCells(CellDataQueue& q)
 {
   // Enqueue all the obstacle cells
   OctoMapCellData cell = OctoMapCellData();
-  std::vector<double> world_coords(3);
-  std::vector<int> map_coords(3);
+  std::vector<double> point(3);
+  std::vector<int> voxel(3);
 
   std::priority_queue<Index3> ordering_queue;
   Index3 source;
@@ -228,13 +228,13 @@ void OctoMap::iterateObstacleCells(CellDataQueue& q)
     if (octree_->isNodeOccupied(*it))
     {
       int i, j, k;
-      world_coords[0] = it.getX();
-      world_coords[1] = it.getY();
-      world_coords[2] = it.getZ();
-      convertWorldToMap(world_coords, &map_coords);
-      i = map_coords[0];
-      j = map_coords[1];
-      k = map_coords[2];
+      point[0] = it.getX();
+      point[1] = it.getY();
+      point[2] = it.getZ();
+      rasterize(point, &voxel);
+      i = voxel[0];
+      j = voxel[1];
+      k = voxel[2];
       if(!isVoxelValid(i, j, k))
         continue;
       setDistanceToObject(i, j, k, 0.0);
@@ -367,8 +367,8 @@ void OctoMap::publishDistancesLUT()
   cloud->header.frame_id = global_frame_id_;
   cloud->height = 1;
   pcl::PointXYZI p;
-  std::vector<int> map_coords(3);
-  std::vector<double> world_coords(3);
+  std::vector<int> voxel(3);
+  std::vector<double> point(3);
   int count = 0;
   for(int i = cropped_min_cells_[0]; i <= cropped_max_cells_[0]; i++)
   {
@@ -379,13 +379,13 @@ void OctoMap::publishDistancesLUT()
         double d = getDistanceToObject(i, j, k);
         if(d < max_distance_to_object_)
         {
-          map_coords[0] = i;
-          map_coords[1] = j;
-          map_coords[2] = k;
-          convertMapToWorld(map_coords, &world_coords);
-          p.x = world_coords[0];
-          p.y = world_coords[1];
-          p.z = world_coords[2];
+          voxel[0] = i;
+          voxel[1] = j;
+          voxel[2] = k;
+          unrasterize(voxel, &point);
+          p.x = point[0];
+          p.y = point[1];
+          p.z = point[2];
           p.intensity = d;
           cloud->points.push_back(p);
           count++;

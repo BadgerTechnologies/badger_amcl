@@ -74,10 +74,10 @@ public:
 
 private:
   // Determine the probability for the given pose
-  double calcPointCloudModelGompertz(std::shared_ptr<PointCloudData> data, std::shared_ptr<PFSampleSet> set);
+  double calcPointCloudModelGompertz(std::shared_ptr<PointCloudData> cloud, std::shared_ptr<PFSampleSet> set);
   double applyOffMapFactor(std::shared_ptr<PFSampleSet> set);
-  void getMapCloud(std::shared_ptr<PointCloudData> data, const Eigen::Vector3d& pose,
-                   pcl::PointCloud<pcl::PointXYZ>& map_cloud);
+  void getPoseCloud(std::shared_ptr<PointCloudData> cloud, const Eigen::Vector3d& pose,
+                    pcl::PointCloud<pcl::PointXYZ>& pose_cloud);
 
   std::shared_ptr<OctoMap> map_;
 
@@ -107,8 +107,8 @@ private:
   // Vector to store converted map coordinates.
   // Making this a class variable reduces the number of
   // times we need to create an instance of this vector.
-  std::vector<int> map_vec_;
-  std::vector<double> world_vec_;
+  std::vector<int> voxel_;
+  std::vector<double> point_;
 };
 
 }  // namespace amcl
