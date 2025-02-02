@@ -56,14 +56,12 @@ class OccupancyMap : public Map
 public:
   OccupancyMap(double resolution);
   virtual ~OccupancyMap() = default;
-  // Convert from map index to world coords
-  virtual void convertMapToWorld(const std::vector<int>& map_coords,
-                                 std::vector<double>* world_coords);
-  // Convert from world coords to map coords
-  virtual void convertWorldToMap(const std::vector<double>& world_coords,
-                                 std::vector<int>* map_coords);
+  // Convert from indices to point in map frame
+  virtual void unrasterize(const std::vector<int>& pixel, std::vector<double>* point);
+  // Convert from point in map frame to indices
+  virtual void rasterize(const std::vector<double>& point, std::vector<int>* pixel);
   // Test to see if the given map coords lie within the absolute map bounds.
-  virtual bool isValid(const std::vector<int>& coords);
+  virtual bool isValid(const std::vector<int>& pixel);
   virtual void setOrigin(const pcl::PointXYZ& origin);
   virtual std::vector<int> getSize();
   virtual void setSize(std::vector<int> size_vec);
@@ -118,8 +116,8 @@ private:
   inline void setDistanceToObject(int i, int j, float d);
   inline void updateNode(int i, int j, const OccupancyMapCellData& current_cell,
                          std::priority_queue<OccupancyMapCellData>& q, std::vector<bool>& marked);
-  std::vector<int> map_vec_;
-  std::vector<double> world_vec_;
+  std::vector<int> pixel_;
+  std::vector<double> point_;
 };
 }  // namespace amcl
 

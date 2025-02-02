@@ -62,12 +62,10 @@ public:
   OctoMap(double resolution, std::string global_frame_id, bool publish_distances_lut);
   virtual ~OctoMap() = default;
   virtual void initFromOctree(std::shared_ptr<octomap::OcTree> octree, double max_distance_to_object);
-  // Convert from map index to world coords
-  virtual void convertMapToWorld(const std::vector<int>& map_coords,
-                                 std::vector<double>* world_coords);
-  // Convert from world coords to map coords
-  virtual void convertWorldToMap(const std::vector<double>& world_coords,
-                                 std::vector<int>* map_coords);
+  // Convert from voxel indices to point in map frame
+  virtual void unrasterize(const std::vector<int>& voxel, std::vector<double>* point);
+  // Convert from point in frame to voxel indices
+  virtual void rasterize(const std::vector<double>& point, std::vector<int>* voxel);
   // Test to see if the given map coords lie within the absolute map bounds.
   virtual bool isPoseValid(const int i, const int j);
   virtual bool isVoxelValid(const int i, const int j, const int k);

@@ -40,8 +40,8 @@ PointCloudScanner::PointCloudScanner() : Sensor()
   non_free_space_factor_ = 1.0;
   non_free_space_radius_ = 0.0;
 
-  map_vec_.resize(3);
-  world_vec_.resize(3);
+  voxel_.resize(3);
+  point_.resize(3);
 }
 
 void PointCloudScanner::init(
@@ -108,7 +108,7 @@ double PointCloudScanner::applyModelToSampleSet(std::shared_ptr<SensorData> data
   return total_weight;
 }
 
-double PointCloudScanner::calcPointCloudModelGompertz(std::shared_ptr<PointCloudData> data,
+double PointCloudScanner::calcPointCloudModelGompertz(std::shared_ptr<PointCloudData> cloud,
                                                       std::shared_ptr<PFSampleSet> set)
 {
   double total_weight = 0.0, p, z, pz, sum_pz;
@@ -120,17 +120,17 @@ double PointCloudScanner::calcPointCloudModelGompertz(std::shared_ptr<PointCloud
     sample = &(set->samples[sample_index]);
     pose = sample->pose;
     pcl::PointCloud<pcl::PointXYZ>::iterator it;
-    pcl::PointCloud<pcl::PointXYZ> map_cloud;
-    getMapCloud(data, pose, map_cloud);
+    pcl::PointCloud<pcl::PointXYZ> pose_cloud;
+    getPoseCloud(cloud, pose, pose_cloud);
     sum_pz = 0;
     int count = 0;
-    for (it = map_cloud.begin(); it != map_cloud.end(); ++it)
+    for (it = pose_cloud.begin(); it != pose_cloud.end(); ++it)
     {
-      world_vec_[0] = it->x;
-      world_vec_[1] = it->y;
-      world_vec_[2] = it->z;
-      map_->convertWorldToMap(world_vec_, &map_vec_);
-      z = map_->getDistanceToObject(map_vec_[0], map_vec_[1], map_vec_[2]);
+      point_[0] = it->x;
+      point_[1] = it->y;
+      point_[2] = it->z;
+      map_->rasterize(point_, &voxel_);
+      z = map_->getDistanceToObject(voxel_[0], voxel_[1], voxel_[2]);
       pz = z_hit_ * std::exp(-(z * z) / z_hit_denom);
       pz += z_rand_;
       sum_pz += pz;
@@ -156,12 +156,12 @@ double PointCloudScanner::applyOffMapFactor(std::shared_ptr<PFSampleSet> set)
     pose = sample->pose;
 
     // Convert to map grid coords.
-    world_vec_[0] = pose[0];
-    world_vec_[1] = pose[1];
-    map_->convertWorldToMap(world_vec_, &map_vec_);
+    point_[0] = pose[0];
+    point_[1] = pose[1];
+    map_->rasterize(point_, &voxel_);
 
     // Apply off map factor
-    if (!map_->isPoseValid(map_vec_[0], map_vec_[1]))
+    if (!map_->isPoseValid(voxel_[0], voxel_[1]))
     {
       sample->weight *= off_map_factor_;
     }
@@ -170,23 +170,23 @@ double PointCloudScanner::applyOffMapFactor(std::shared_ptr<PFSampleSet> set)
   return total_weight;
 }
 
-void PointCloudScanner::getMapCloud(std::shared_ptr<PointCloudData> data, const Eigen::Vector3d& pose,
-                                    pcl::PointCloud<pcl::PointXYZ>& map_cloud)
+void PointCloudScanner::getPoseCloud(std::shared_ptr<PointCloudData> cloud, const Eigen::Vector3d& pose,
+                                     pcl::PointCloud<pcl::PointXYZ>& pose_cloud)
 {
   tf2::Vector3 footprint_to_map_origin(pose[0], pose[1], 0.0);
   tf2::Quaternion footprint_to_map_q;
   footprint_to_map_q.setRPY(0.0, 0.0, pose[2]);
   tf2::Transform footprint_to_map_tf(footprint_to_map_q, footprint_to_map_origin);
   tf2::Transform t = footprint_to_map_tf * point_cloud_scanner_to_footprint_tf_;
-  tf2::Stamped<tf2::Transform> t_s(t, ros::Time::now(), data->frame_id_);
+  tf2::Stamped<tf2::Transform> t_s(t, ros::Time::now(), cloud->frame_id_);
   geometry_msgs::TransformStamped tf_msg = tf2::toMsg(t_s);
   pcl::PCLPointCloud2 pcl2;
-  pcl::toPCLPointCloud2(data->points_, pcl2);
+  pcl::toPCLPointCloud2(cloud->points_, pcl2);
   sensor_msgs::PointCloud2 in_msg, out_msg;
   pcl_conversions::fromPCL(pcl2, in_msg);
   tf2::doTransform(in_msg, out_msg, tf_msg);
   pcl_conversions::toPCL(out_msg, pcl2);
-  pcl::fromPCLPointCloud2(pcl2, map_cloud);
+  pcl::fromPCLPointCloud2(pcl2, pose_cloud);
 }
 
 double PointCloudScanner::applyGompertz(double p)

@@ -90,8 +90,8 @@ TEST(TestBadgerAmcl, testOctoMapConversions)
   std::vector<double> world_coords_2d = {.05, .1};
   rtn_vec_world.resize(2);
   rtn_vec_map.resize(2);
-  octomap.convertMapToWorld(map_coords_2d, &rtn_vec_world);
-  octomap.convertWorldToMap(world_coords_2d, &rtn_vec_map);
+  octomap.unrasterize(map_coords_2d, &rtn_vec_world);
+  octomap.rasterize(world_coords_2d, &rtn_vec_map);
   for (int i = 0; i < world_coords_2d.size(); i++)
   {
     EXPECT_DOUBLE_EQ(world_coords_2d[i], rtn_vec_world[i]);
@@ -101,8 +101,8 @@ TEST(TestBadgerAmcl, testOctoMapConversions)
   std::vector<double> world_coords_3d {.15, .25, -.05};
   rtn_vec_world.resize(3);
   rtn_vec_map.resize(3);
-  octomap.convertMapToWorld(map_coords_3d, &rtn_vec_world);
-  octomap.convertWorldToMap(world_coords_3d, &rtn_vec_map);
+  octomap.unrasterize(map_coords_3d, &rtn_vec_world);
+  octomap.rasterize(world_coords_3d, &rtn_vec_map);
   for (int i = 0; i < world_coords_3d.size(); i++)
   {
     EXPECT_DOUBLE_EQ(world_coords_3d[i], rtn_vec_world[i]);
@@ -119,8 +119,8 @@ TEST(TestBadgerAmcl, testOccupancyMapConversions)
   std::vector<double> world_coords = {.05, .1};
   rtn_vec_world.resize(2);
   rtn_vec_map.resize(2);
-  occupancy_map.convertMapToWorld(map_coords, &rtn_vec_world);
-  occupancy_map.convertWorldToMap(world_coords, &rtn_vec_map);
+  occupancy_map.unrasterize(map_coords, &rtn_vec_world);
+  occupancy_map.rasterize(world_coords, &rtn_vec_map);
   for (int i = 0; i < world_coords.size(); i++)
   {
     EXPECT_DOUBLE_EQ(world_coords[i], rtn_vec_world[i]);
