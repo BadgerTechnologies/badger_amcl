@@ -35,10 +35,10 @@ public:
   Map(double resolution);
   virtual ~Map() = default;
 
-  // Convert from map index to world coords
-  virtual void convertMapToWorld(const std::vector<int>& map_coords, std::vector<double>* world_coords) = 0;
-  // Convert from world coords to map coords
-  virtual void convertWorldToMap(const std::vector<double>& world_coords, std::vector<int>* map_coords) = 0;
+  // Convert from indices to point in map frame
+  virtual void unrasterize(const std::vector<int>& indices, std::vector<double>* point) = 0;
+  // Convert from point in map frame to indices
+  virtual void rasterize(const std::vector<double>& point, std::vector<int>* indices) = 0;
 
   virtual bool isDistancesLUTCreated();
   virtual pcl::PointXYZ getOrigin();

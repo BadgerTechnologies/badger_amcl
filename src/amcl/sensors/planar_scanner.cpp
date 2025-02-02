@@ -42,8 +42,8 @@ PlanarScanner::PlanarScanner()
   off_map_factor_ = 1.0;
   non_free_space_factor_ = 1.0;
   non_free_space_radius_ = 0.0;
-  map_vec_.resize(2);
-  world_vec_.resize(2);
+  pixel_.resize(2);
+  point_.resize(2);
 }
 
 void PlanarScanner::init(int max_beams, std::shared_ptr<OccupancyMap> map,
@@ -169,15 +169,15 @@ double PlanarScanner::calcLikelihoodFieldModelGompertz(std::shared_ptr<PlanarDat
       hit[1] = pose[1] + obs_range * std::sin(pose[2] + obs_bearing);
 
       // Convert to map grid coords.
-      world_vec_[0] = hit[0];
-      world_vec_[1] = hit[1];
-      map_->convertWorldToMap(world_vec_, &map_vec_);
+      point_[0] = hit[0];
+      point_[1] = hit[1];
+      map_->rasterize(point_, &pixel_);
       // Part 1: Get distance from the hit to closest obstacle.
       // Off-map penalized as max distance
-      if (!map_->isValid(map_vec_))
+      if (!map_->isValid(pixel_))
         z = map_->getMaxDistanceToObject();
       else
-        z = map_->getDistanceToObject(map_vec_[0], map_vec_[1]);
+        z = map_->getDistanceToObject(pixel_[0], pixel_[1]);
       // Gaussian model
       pz += z_hit_ * std::exp(-(z * z) / z_hit_denom);
       // Part 2: random measurements
@@ -227,27 +227,27 @@ double PlanarScanner::applyOffMapFactor(std::shared_ptr<PFSampleSet> set)
     pose = sample->pose;
 
     // Convert to map grid coords.
-    world_vec_[0] = pose[0];
-    world_vec_[1] = pose[1];
-    map_->convertWorldToMap(world_vec_, &map_vec_);
+    point_[0] = pose[0];
+    point_[1] = pose[1];
+    map_->rasterize(point_, &pixel_);
 
     // Apply off map factor
-    if (!map_->isValid(map_vec_))
+    if (!map_->isValid(pixel_))
     {
       sample->weight *= off_map_factor_;
     }
     // Apply non free space factor
-    else if (map_->getCellState(map_vec_[0], map_vec_[1]) != MapCellState::CELL_FREE)
+    else if (map_->getCellState(pixel_[0], pixel_[1]) != MapCellState::CELL_FREE)
     {
       sample->weight *= non_free_space_factor_;
     }
     // Interpolate non free space factor based on radius
     else
     {
-      double distance = map_->getDistanceToObject(map_vec_[0], map_vec_[1]);
+      double distance = map_->getDistanceToObject(pixel_[0], pixel_[1]);
       if (distance < non_free_space_radius_)
       {
-        double delta_d = map_->getDistanceToObject(map_vec_[0], map_vec_[1]) / non_free_space_radius_;
+        double delta_d = map_->getDistanceToObject(pixel_[0], pixel_[1]) / non_free_space_radius_;
         double f = non_free_space_factor_;
         f += delta_d * (1.0 - non_free_space_factor_);
         sample->weight *= f;
