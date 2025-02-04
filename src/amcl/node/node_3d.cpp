@@ -73,6 +73,7 @@ Node3D::Node3D(Node* node, std::mutex& configuration_mutex, std::string global_f
   private_nh_.param("laser_gompertz_input_shift", gompertz_input_shift_, 0.0);
   private_nh_.param("laser_gompertz_input_scale", gompertz_input_scale_, 1.0);
   private_nh_.param("laser_gompertz_output_shift", gompertz_output_shift_, 0.0);
+  private_nh_.param("num_best_fit_particles", num_best_fit_particles_, 100);
   private_nh_.param("global_localization_scanner_off_map_factor", global_localization_off_map_factor_, 1.0);
   private_nh_.param("global_localization_scanner_non_free_space_factor",
                     global_localization_non_free_space_factor_, 1.0);
@@ -117,9 +118,10 @@ void Node3D::reconfigure(AMCLConfig& config)
   non_free_space_radius_ = config.laser_non_free_space_radius;
   global_localization_off_map_factor_ = config.global_localization_laser_off_map_factor;
   global_localization_non_free_space_factor_ = config.global_localization_laser_non_free_space_factor;
+  num_best_fit_particles_ = config.num_best_fit_particles;
   scanner_.init(
-      max_beams_, map_, z_hit_, z_rand_, sigma_hit_, gompertz_a_, gompertz_b_, gompertz_c_,
-      gompertz_input_shift_, gompertz_input_scale_, gompertz_output_shift_);
+      max_beams_, map_, global_frame_id_, z_hit_, z_rand_, sigma_hit_, gompertz_a_, gompertz_b_, gompertz_c_,
+      gompertz_input_shift_, gompertz_input_scale_, gompertz_output_shift_, num_best_fit_particles_);
   ROS_INFO("Gompertz key points by total planar scan match: "
            "0.0: %f, 0.25: %f, 0.5: %f, 0.75: %f, 1.0: %f",
            scanner_.applyGompertz(z_rand_),
@@ -194,8 +196,8 @@ void Node3D::octoMapMsgReceived(const octomap_msgs::OctomapConstPtr& msg)
 void Node3D::initFromNewMap()
 {
   scanner_.init(
-      max_beams_, map_, z_hit_, z_rand_, sigma_hit_, gompertz_a_, gompertz_b_, gompertz_c_,
-      gompertz_input_shift_, gompertz_input_scale_, gompertz_output_shift_);
+      max_beams_, map_, global_frame_id_, z_hit_, z_rand_, sigma_hit_, gompertz_a_, gompertz_b_, gompertz_c_,
+      gompertz_input_shift_, gompertz_input_scale_, gompertz_output_shift_, num_best_fit_particles_);
   ROS_INFO("Gompertz key points by total planar scan match: "
            "0.0: %f, 0.25: %f, 0.5: %f, 0.75: %f, 1.0: %f",
            scanner_.applyGompertz(z_rand_),

@@ -22,7 +22,9 @@
 #include <cmath>
 #include <functional>
 
+#include <geometry_msgs/PoseArray.h>
 #include <pcl_conversions/pcl_conversions.h>
+#include <pcl_ros/point_cloud.h>
 #include <pcl_ros/transforms.h>
 #include <ros/assert.h>
 #include <tf/exceptions.h>
@@ -45,13 +47,15 @@ PointCloudScanner::PointCloudScanner() : Sensor()
 }
 
 void PointCloudScanner::init(
-    int max_beams, std::shared_ptr<OctoMap> map,
+    int max_beams, std::shared_ptr<OctoMap> map, std::string global_frame_id,
     double z_hit, double z_rand, double sigma_hit,
     double gompertz_a, double gompertz_b, double gompertz_c,
-    double input_shift, double input_scale, double output_shift)
+    double input_shift, double input_scale, double output_shift,
+    int num_best_fit_particles)
 {
   max_beams_ = max_beams;
   map_ = map;
+  global_frame_id_ = global_frame_id;
   z_hit_ = z_hit;
   z_rand_ = z_rand;
   sigma_hit_ = sigma_hit;
@@ -61,6 +65,7 @@ void PointCloudScanner::init(
   input_shift_ = input_shift;
   input_scale_ = input_scale;
   output_shift_ = output_shift;
+  num_best_fit_particles_ = num_best_fit_particles;
 }
 
 void PointCloudScanner::setMapFactors(double off_map_factor, double non_free_space_factor,
@@ -111,16 +116,19 @@ double PointCloudScanner::applyModelToSampleSet(std::shared_ptr<SensorData> data
 double PointCloudScanner::calcPointCloudModelGompertz(std::shared_ptr<PointCloudData> cloud,
                                                       std::shared_ptr<PFSampleSet> set)
 {
+  using PointCloud = pcl::PointCloud<pcl::PointXYZ>;
+  using PValueIndex = std::pair<double, int>; // value, index
   double total_weight = 0.0, p, z, pz, sum_pz;
   PFSample* sample;
   Eigen::Vector3d pose;
   double z_hit_denom = 2 * sigma_hit_ * sigma_hit_;
+  PointCloud::iterator it;
+  PointCloud pose_cloud;
+  std::vector<PValueIndex> p_values;
   for (int sample_index = 0; sample_index < set->sample_count; sample_index++)
   {
     sample = &(set->samples[sample_index]);
     pose = sample->pose;
-    pcl::PointCloud<pcl::PointXYZ>::iterator it;
-    pcl::PointCloud<pcl::PointXYZ> pose_cloud;
     getPoseCloud(cloud, pose, pose_cloud);
     sum_pz = 0;
     int count = 0;
@@ -137,10 +145,38 @@ double PointCloudScanner::calcPointCloudModelGompertz(std::shared_ptr<PointCloud
       count++;
     }
     p = sum_pz / count;
+    p_values.push_back(PValueIndex(p, sample_index));
     p = applyGompertz(p);
     sample->weight *= p;
     total_weight += sample->weight;
   }
+  std::sort(p_values.begin(), p_values.end(), [] (const PValueIndex &a, const PValueIndex &b)
+                                                  {return a.first > b.first;});
+  best_fit_cloud_pub_ = nh_.advertise<PointCloud>("best_fit_cloud", 1);
+  sample = &(set->samples[p_values.front().second]);
+  pose = sample->pose;
+  getPoseCloud(cloud, pose, pose_cloud);
+  PointCloud::Ptr pub_cloud(new PointCloud);
+  pub_cloud->header.frame_id = global_frame_id_;
+  pub_cloud->height = pose_cloud.height;
+  pub_cloud->width = pose_cloud.width;
+  pub_cloud->points = pose_cloud.points;
+  pcl_conversions::toPCL(ros::Time::now(), pub_cloud->header.stamp);
+  best_fit_cloud_pub_.publish(*pub_cloud);
+  best_fit_particles_pub_ = nh_.advertise<geometry_msgs::PoseArray>("best_fit_particles", 1);
+  geometry_msgs::PoseArray best_fit_particles_msg;
+  best_fit_particles_msg.header.stamp = ros::Time::now();
+  best_fit_particles_msg.header.frame_id = global_frame_id_;
+  best_fit_particles_msg.poses.resize(num_best_fit_particles_);
+  tf2::Quaternion q;
+  for (int i = 0; i < num_best_fit_particles_; i++)
+  {
+    sample = &(set->samples[p_values[i].second]);
+    q.setRPY(0.0, 0.0, sample->pose[2]);
+    tf2::toMsg(tf2::Transform(q, tf2::Vector3(sample->pose[0], sample->pose[1], 0)),
+               best_fit_particles_msg.poses[i]);
+  }
+  best_fit_particles_pub_.publish(best_fit_particles_msg);
   return total_weight;
 }
 
