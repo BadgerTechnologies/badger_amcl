@@ -25,6 +25,8 @@
 #include <Eigen/Dense>
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
+#include <ros/node_handle.h>
+#include <ros/publisher.h>
 #include <tf2/transform_datatypes.h>
 #include <tf2/LinearMath/Transform.h>
 #include <tf2_ros/transform_broadcaster.h>
@@ -35,6 +37,9 @@
 
 namespace badger_amcl
 {
+
+using PointCloud = pcl::PointCloud<pcl::PointXYZ>;
+using PValueIndex = std::pair<double, int>; // value, index
 
 class PointCloudData : public SensorData
 {
@@ -51,10 +56,11 @@ public:
   ~PointCloudScanner() = default;
 
   void init(
-      int max_beams, std::shared_ptr<OctoMap> map,
+      int max_beams, std::shared_ptr<OctoMap> map, std::string global_frame_id,
       double z_hit, double z_rand, double sigma_hit,
       double gompertz_a, double gompertz_b, double gompertz_c,
-      double input_shift, double input_scale, double output_shift);
+      double input_shift, double input_scale, double output_shift,
+      int num_best_num_particles);
 
   // Update the filter based on the sensor model.  Returns true if the
   // filter has been updated.
@@ -80,6 +86,7 @@ private:
                     pcl::PointCloud<pcl::PointXYZ>& pose_cloud);
 
   std::shared_ptr<OctoMap> map_;
+  std::string global_frame_id_;
 
   // Parameters for applying Gompertz function to sample weights
   double gompertz_a_;
@@ -101,6 +108,7 @@ private:
   double sigma_hit_;
   // Max beams to consider
   int max_beams_;
+  int num_best_fit_particles_;
 
   tf2::Transform point_cloud_scanner_to_footprint_tf_;
 
@@ -109,6 +117,9 @@ private:
   // times we need to create an instance of this vector.
   std::vector<int> voxel_;
   std::vector<double> point_;
+
+  ros::NodeHandle nh_;
+  ros::Publisher best_fit_cloud_pub_, best_fit_particles_pub_;
 };
 
 }  // namespace amcl
