@@ -104,7 +104,7 @@ double PlanarScanner::applyModelToSampleSet(std::shared_ptr<SensorData> data,
   // Apply the any configured correction factors from map
   if (total_weight > 0.0)
   {
-    total_weight = recalcWeight(set);
+    total_weight = applyOffMapFactor(set);
   }
   return total_weight;
 }
@@ -216,9 +216,9 @@ double PlanarScanner::applyGompertz(double p)
   return p;
 }
 
-double PlanarScanner::recalcWeight(std::shared_ptr<PFSampleSet> set)
+double PlanarScanner::applyOffMapFactor(std::shared_ptr<PFSampleSet> set)
 {
-  double rv = 0.0;
+  double total_weight = 0.0;
   PFSample* sample;
   Eigen::Vector3d pose;
   for (int j = 0; j < set->sample_count; j++)
@@ -253,9 +253,9 @@ double PlanarScanner::recalcWeight(std::shared_ptr<PFSampleSet> set)
         sample->weight *= f;
       }
     }
-    rv += sample->weight;
+    total_weight += sample->weight;
   }
-  return rv;
+  return total_weight;
 }
 
 void PlanarScanner::clearTempData(int new_max_samples, int new_max_obs)

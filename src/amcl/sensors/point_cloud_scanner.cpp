@@ -103,7 +103,7 @@ double PointCloudScanner::applyModelToSampleSet(std::shared_ptr<SensorData> data
   // Apply any configured correction factors from map
   if (total_weight > 0.0)
   {
-    total_weight = recalcWeight(set);
+    total_weight = applyOffMapFactor(set);
   }
   return total_weight;
 }
@@ -144,11 +144,11 @@ double PointCloudScanner::calcPointCloudModelGompertz(std::shared_ptr<PointCloud
   return total_weight;
 }
 
-double PointCloudScanner::recalcWeight(std::shared_ptr<PFSampleSet> set)
+double PointCloudScanner::applyOffMapFactor(std::shared_ptr<PFSampleSet> set)
 {
   PFSample* sample;
   Eigen::Vector3d pose;
-  double rv = 0.0;
+  double total_weight = 0.0;
   int j;
   for (j = 0; j < set->sample_count; j++)
   {
@@ -165,9 +165,9 @@ double PointCloudScanner::recalcWeight(std::shared_ptr<PFSampleSet> set)
     {
       sample->weight *= off_map_factor_;
     }
-    rv += sample->weight;
+    total_weight += sample->weight;
   }
-  return rv;
+  return total_weight;
 }
 
 void PointCloudScanner::getMapCloud(std::shared_ptr<PointCloudData> data, const Eigen::Vector3d& pose,
