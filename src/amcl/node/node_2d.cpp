@@ -284,25 +284,20 @@ void Node2D::scanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan)
   if(scanner_index >= 0)
   {
     bool force_publication = false, resampled = false, success;
-    success = updateNodePf(stamp, scanner_index, &force_publication);
+    node_->updatePf(stamp, scanners_update_, scanner_index,
+                    &resample_count_, &force_publication, &force_update_);
     if(scanners_update_.at(scanner_index))
-      success = success and updateScanner(planar_scan, scanner_index, &resampled);
+      updateScanner(planar_scan, scanner_index, &resampled);
     if(force_publication or resampled)
-      success = success and resamplePose(stamp);
+      publishPose(stamp);
   }
 }
 
-bool Node2D::updateNodePf(const ros::Time& stamp, int scanner_index, bool* force_publication)
-{
-  return node_->updatePf(stamp, scanners_update_, scanner_index, &resample_count_, force_publication, &force_update_);
-}
-
-bool Node2D::updateScanner(const sensor_msgs::LaserScanConstPtr& planar_scan,
+void Node2D::updateScanner(const sensor_msgs::LaserScanConstPtr& planar_scan,
                            int scanner_index, bool* resampled)
 {
   initLatestScanData(planar_scan, scanner_index);
   double angle_min, angle_increment;
-  bool success = true;
   if(getAngleStats(planar_scan, &angle_min, &angle_increment))
   {
     ROS_DEBUG("Planar scanner %d angles in base frame: min: %.3f inc: %.3f", scanner_index, angle_min, angle_increment);
@@ -317,11 +312,6 @@ bool Node2D::updateScanner(const sensor_msgs::LaserScanConstPtr& planar_scan,
     if(!force_update_)
        node_->publishParticleCloud();
   }
-  else
-  {
-    success = false;
-  }
-  return success;
 }
 
 bool Node2D::isMapInitialized()
@@ -502,20 +492,18 @@ void Node2D::resampleParticles()
   }
 }
 
-bool Node2D::resamplePose(const ros::Time& stamp)
+void Node2D::publishPose(const ros::Time& stamp)
 {
   double max_weight = 0.0;
   Eigen::Vector3d max_pose;
   getMaxWeightPose(&max_weight, &max_pose);
   bool success = true;
   if(max_weight > 0.0)
-    success = node_->updateAndPublishPose(max_pose, stamp);
+    node_->publishPose(max_pose, stamp);
   else
   {
     ROS_ERROR("No pose!");
-    success = false;
   }
-  return success;
 }
 
 void Node2D::getMaxWeightPose(double* max_weight, Eigen::Vector3d* max_pose)
