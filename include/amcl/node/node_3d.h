@@ -72,8 +72,6 @@ private:
   bool initFrameToScanner(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan, int* scanner_index);
   bool updatePf(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan, int scanner_index, bool* resampled);
   bool resamplePf(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan);
-  void makePointCloudFromScan(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan,
-                              pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud);
   void updateFreeSpaceIndices();
   void updateLatestScanData(const pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud, int scanner_index);
   void updateScanner(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan, int scanner_index, bool* resampled);
