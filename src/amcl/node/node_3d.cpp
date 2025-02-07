@@ -317,7 +317,9 @@ void Node3D::updateScanner(const sensor_msgs::PointCloud2ConstPtr& point_cloud_s
 {
   initLatestScanData(point_cloud_scan, scanner_index);
   pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud(new pcl::PointCloud<pcl::PointXYZ>);
-  makePointCloudFromScan(point_cloud_scan, point_cloud);
+  pcl::PCLPointCloud2 pc2;
+  pcl_conversions::toPCL(*point_cloud_scan, pc2);
+  pcl::fromPCLPointCloud2(pc2, *point_cloud);
   updateLatestScanData(point_cloud, scanner_index);
   scanners_[scanner_index]->updateSensor(pf_, std::dynamic_pointer_cast<SensorData>(
                                                 latest_scan_data_));
@@ -421,14 +423,6 @@ void Node3D::initLatestScanData(const sensor_msgs::PointCloud2ConstPtr& point_cl
 {
   latest_scan_data_ = std::make_shared<PointCloudData>();
   latest_scan_data_->frame_id_ = point_cloud_scan->header.frame_id;
-}
-
-void Node3D::makePointCloudFromScan(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan,
-                                    pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud)
-{
-  pcl::PCLPointCloud2 pc2;
-  pcl_conversions::toPCL(*point_cloud_scan, pc2);
-  pcl::fromPCLPointCloud2(pc2, *point_cloud);
 }
 
 void Node3D::updateLatestScanData(const pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud, int scanner_index)
