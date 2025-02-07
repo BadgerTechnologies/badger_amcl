@@ -242,7 +242,7 @@ void Node::setPfDecayRateNormal()
   pf_->setDecayRates(alpha_slow_, alpha_fast_);
 }
 
-bool Node::updatePf(const ros::Time& t, std::vector<bool>& scanners_update, int scanner_index,
+void Node::updatePf(const ros::Time& t, std::vector<bool>& scanners_update, int scanner_index,
                     int* resample_count, bool* force_publication, bool* force_update)
 {
   // Where the robot was when this scan was taken
@@ -267,9 +267,7 @@ bool Node::updatePf(const ros::Time& t, std::vector<bool>& scanners_update, int 
   else
   {
     ROS_ERROR("Couldn't determine robot's pose associated with scan");
-    return false;
   }
-  return true;
 }
 
 std::shared_ptr<ParticleFilter> Node::getPfPtr()
@@ -295,14 +293,14 @@ void Node::publishParticleCloud()
   particlecloud_pub_.publish(cloud_msg);
 }
 
-bool Node::updateAndPublishPose(const Eigen::Vector3d& max_pose, const ros::Time& stamp)
+void Node::publishPose(const Eigen::Vector3d& max_pose, const ros::Time& stamp)
 {
   // It may be that the first map has yet to be received, if so, there will be
   // no paticle filter constructed yet. Fail to update the pose if there is no map.
   if (!pf_)
   {
     ROS_INFO_DELAYED_THROTTLE(5.0, "Unable to update pose until first map received...");
-    return false;
+    return;
   }
   ROS_DEBUG("Update pose: %.3f %.3f %.3f", max_pose[0], max_pose[1], max_pose[2]);
   std::shared_ptr<geometry_msgs::PoseWithCovarianceStamped> p = (
@@ -368,7 +366,6 @@ bool Node::updateAndPublishPose(const Eigen::Vector3d& max_pose, const ros::Time
     latest_tf_ = odom_to_map_transform;
     latest_tf_valid_ = true;
   }
-  return success;
 }
 
 void Node::attemptSavePose(bool exiting)
@@ -854,7 +851,7 @@ bool Node::getLatestTf(tf2::Transform* latest_tf)
     // initial pose. The below updatePose will succeed after the first map has
     // been received and the TF for odom to base frame has been received.
     Eigen::Vector3d init_pose(init_pose_[0], init_pose_[1], init_pose_[2]);
-    updateAndPublishPose(init_pose, ros::Time::now());
+    publishPose(init_pose, ros::Time::now());
   }
   if (latest_tf_valid_)
   {

@@ -86,8 +86,8 @@ public:
   std::string getBaseFrameId();
   std::shared_ptr<ParticleFilter> getPfPtr();
   void publishParticleCloud();
-  bool updateAndPublishPose(const Eigen::Vector3d& max_pose, const ros::Time& stamp);
-  bool updatePf(const ros::Time& t, std::vector<bool>& scanners_update, int scanner_index,
+  void publishPose(const Eigen::Vector3d& max_pose, const ros::Time& stamp);
+  void updatePf(const ros::Time& t, std::vector<bool>& scanners_update, int scanner_index,
                 int* resample_count, bool* force_publication, bool* force_update);
   void setPfDecayRateNormal();
   void attemptSavePose(bool exiting);
