@@ -192,7 +192,7 @@ private:
   Eigen::Vector3d pf_odom_pose_;
   double d_thresh_, a_thresh_;
   Eigen::Vector3d particle_cluster_size_;
-  int min_particles_, max_particles_;
+  int min_particles_, max_particles_, pose_estimate_max_particles_;
   double global_localization_convergence_threshold_;
   std::shared_ptr<PoseHypothesis> initial_pose_hyp_;
   double init_pose_[3];
