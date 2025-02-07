@@ -23,6 +23,8 @@
 
 #include <memory>
 #include <vector>
+#include <ros/node_handle.h>
+#include <ros/publisher.h>
 
 #include <Eigen/Dense>
 
@@ -87,7 +89,7 @@ class ParticleFilter
 {
 public:
   // Create a new filter
-  ParticleFilter(const Eigen::Vector3d& cluster_size,
+  ParticleFilter(const Eigen::Vector3d& cluster_size, std::string global_frame_id,
                  int min_particles, int max_particles, int pose_estimate_max_particles,
                  double alpha_slow, double alpha_fast,
                  double global_localization_convergence_threshold,
@@ -147,6 +149,8 @@ private:
   void computeSetStats(double weight, const double m[], const double c[],
                        std::shared_ptr<PFSampleSet> set);
 
+  std::string global_frame_id_;
+
   // This min and max number of samples
   int min_particles_, max_particles_;
 
@@ -175,6 +179,9 @@ private:
   std::vector<std::shared_ptr<PFSampleSet>> sets_;
 
   bool converged_;
+
+  ros::NodeHandle nh_;
+  ros::Publisher cluster_particles_pub_;
 };
 
 }  // namespace amcl
