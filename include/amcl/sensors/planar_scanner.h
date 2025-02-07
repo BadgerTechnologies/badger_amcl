@@ -82,7 +82,7 @@ private:
   // Determine the probability for the given pose and apply a Gompertz function
   double calcLikelihoodFieldModelGompertz(std::shared_ptr<PlanarData> data, std::shared_ptr<PFSampleSet> set);
 
-  double recalcWeight(std::shared_ptr<PFSampleSet> set);
+  double applyOffMapFactor(std::shared_ptr<PFSampleSet> set);
   void clearTempData(int max_samples, int max_obs);
 
   Eigen::Vector3d coordAdd(const Eigen::Vector3d& a, const Eigen::Vector3d& b);
