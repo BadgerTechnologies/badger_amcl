@@ -36,7 +36,7 @@ namespace badger_amcl
 
 // Create a new filter
 ParticleFilter::ParticleFilter(const Eigen::Vector3d& cluster_size,
-                               int min_particles, int max_particles,
+                               int min_particles, int max_particles, int pose_estimate_max_particles,
                                double alpha_slow, double alpha_fast,
                                double global_localization_convergence_threshold,
                                std::function<Eigen::Vector3d()> random_pose_fn)
@@ -49,6 +49,7 @@ ParticleFilter::ParticleFilter(const Eigen::Vector3d& cluster_size,
 
   min_particles_ = min_particles;
   max_particles_ = max_particles;
+  pose_estimate_max_particles_ = pose_estimate_max_particles;
 
   global_localization_convergence_threshold_ = global_localization_convergence_threshold;
   // Control parameters for the population size calculation.  [err] is
@@ -439,15 +440,14 @@ void ParticleFilter::computeClusterStatsForSet()
     int cidx = getClusterIndexOfSampleInSet(set, sample);
     if(cidx >= 0)
     {
-      addSampleStatsToCluster(sample, &(set->clusters[cidx]));
+      set->clusters[cidx].samples.push_back(sample);
       addSampleStatsToSet(sample, &weight, m, c);
     }
   }
 
-  // Normalize
   for (int i = 0; i < set->cluster_count; i++)
   {
-    normalizeCluster(&(set->clusters[i]));
+    computeClusterStats(&(set->clusters[i]));
   }
 
   computeSetStats(weight, m, c, set);
@@ -455,7 +455,6 @@ void ParticleFilter::computeClusterStatsForSet()
 
 void ParticleFilter::initCluster(PFCluster* cluster)
 {
-  cluster->count = 0;
   cluster->weight = 0;
   cluster->mean = Eigen::Vector3d();
   cluster->cov = Eigen::Matrix3d();
@@ -467,8 +466,35 @@ void ParticleFilter::initCluster(PFCluster* cluster)
       cluster->c[j][k] = 0.0;
 }
 
-void ParticleFilter::normalizeCluster(PFCluster* cluster)
+void ParticleFilter::computeClusterStats(PFCluster* cluster)
 {
+  std::sort(cluster->samples.begin(), cluster->samples.end(),
+           [] (const PFSample* a, const PFSample* b)
+               {return a->weight > b->weight;});
+
+  if (cluster->samples.size() > pose_estimate_max_particles_)
+    cluster->samples.resize(pose_estimate_max_particles_);
+  double sample_weight;
+  for (PFSample* sample : cluster->samples)
+  {
+    sample_weight = sample->weight;
+    cluster->weight += sample_weight;
+    // Compute mean
+    cluster->m[0] += sample_weight * sample->pose[0];
+    cluster->m[1] += sample_weight * sample->pose[1];
+    cluster->m[2] += sample_weight * std::cos(sample->pose[2]);
+    cluster->m[3] += sample_weight * std::sin(sample->pose[2]);
+
+    // Compute covariance in linear components
+    for (int j = 0; j < 2; j++)
+    {
+      for (int k = 0; k < 2; k++)
+      {
+        cluster->c[j][k] += sample_weight * sample->pose[j] * sample->pose[k];
+      }
+    }
+  }
+
   cluster->mean[0] = cluster->m[0] / cluster->weight;
   cluster->mean[1] = cluster->m[1] / cluster->weight;
   cluster->mean[2] = std::atan2(cluster->m[3], cluster->m[2]);
@@ -492,27 +518,6 @@ int ParticleFilter::getClusterIndexOfSampleInSet(std::shared_ptr<PFSampleSet> se
   if (cidx + 1 > set->cluster_count)
     set->cluster_count = cidx + 1;
   return cidx;
-}
-
-void ParticleFilter::addSampleStatsToCluster(const PFSample* sample, PFCluster* cluster)
-{
-  cluster->count += 1;
-  cluster->weight += sample->weight;
-
-  // Compute mean
-  cluster->m[0] += sample->weight * sample->pose[0];
-  cluster->m[1] += sample->weight * sample->pose[1];
-  cluster->m[2] += sample->weight * std::cos(sample->pose[2]);
-  cluster->m[3] += sample->weight * std::sin(sample->pose[2]);
-
-  // Compute covariance in linear components
-  for (int j = 0; j < 2; j++)
-  {
-    for (int k = 0; k < 2; k++)
-    {
-      cluster->c[j][k] += sample->weight * sample->pose[j] * sample->pose[k];
-    }
-  }
 }
 
 void ParticleFilter::addSampleStatsToSet(const PFSample* sample, double* weight, double* m, double* c)
