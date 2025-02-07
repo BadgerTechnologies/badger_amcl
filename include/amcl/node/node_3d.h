@@ -64,19 +64,17 @@ public:
   double scorePose(const Eigen::Vector3d& p) override;
 private:
   void scanReceived(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan);
-  bool updateNodePf(const ros::Time& stamp, int scanner_index, bool* force_publication);
   void occupancyMapMsgReceived(const nav_msgs::OccupancyGridConstPtr& msg);
   void octoMapMsgReceived(const octomap_msgs::OctomapConstPtr& msg);
   void initFromNewMap();
   std::shared_ptr<OctoMap> convertMap(const octomap_msgs::Octomap& map_msg);
   bool initFrameToScanner(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan, int* scanner_index);
-  bool updatePf(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan, int scanner_index, bool* resampled);
   bool resamplePf(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan);
   void updateFreeSpaceIndices();
   void updateLatestScanData(const pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud, int scanner_index);
   void updateScanner(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan, int scanner_index, bool* resampled);
   void resampleParticles();
-  bool resamplePose(const ros::Time& stamp);
+  void publishPose(const ros::Time& stamp);
   void getMaxWeightPose(double* max_weight, Eigen::Vector3d* max_pose);
   bool updatePose(const Eigen::Vector3d& max_hyp_mean, const ros::Time& stamp);
   bool isMapInitialized();

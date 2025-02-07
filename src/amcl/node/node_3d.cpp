@@ -297,19 +297,14 @@ void Node3D::scanReceived(const sensor_msgs::PointCloud2ConstPtr& point_cloud_sc
   int scanner_index = getFrameToScannerIndex(point_cloud_scan->header.frame_id);
   if(scanner_index >= 0)
   {
-    bool force_publication = false, resampled = false, success;
-    success = updateNodePf(stamp, scanner_index, &force_publication);
+    bool force_publication = false, resampled = false;
+    node_->updatePf(stamp, scanners_update_, scanner_index,
+                    &resample_count_, &force_publication, &force_update_);
     if(scanners_update_.at(scanner_index))
       updateScanner(point_cloud_scan, scanner_index, &resampled);
     if(force_publication or resampled)
-      success = success and resamplePose(stamp);
+      publishPose(stamp);
   }
-}
-
-bool Node3D::updateNodePf(const ros::Time& stamp, int scanner_index, bool* force_publication)
-{
-  return node_->updatePf(stamp, scanners_update_, scanner_index, &resample_count_,
-                         force_publication, &force_update_);
 }
 
 void Node3D::updateScanner(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan,
@@ -453,20 +448,17 @@ void Node3D::resampleParticles()
   }
 }
 
-bool Node3D::resamplePose(const ros::Time& stamp)
+void Node3D::publishPose(const ros::Time& stamp)
 {
   double max_weight = 0.0;
   Eigen::Vector3d max_pose;
   getMaxWeightPose(&max_weight, &max_pose);
-  bool success = true;
   if(max_weight > 0.0)
-    success = node_->updateAndPublishPose(max_pose, stamp);
+    node_->publishPose(max_pose, stamp);
   else
   {
     ROS_ERROR("No pose!");
-    success = false;
   }
-  return success;
 }
 
 void Node3D::getMaxWeightPose(double* max_weight, Eigen::Vector3d* max_pose)

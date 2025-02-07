@@ -62,11 +62,10 @@ public:
   double scorePose(const Eigen::Vector3d& p) override;
 private:
   void scanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan);
-  bool updateNodePf(const ros::Time& stamp, int scanner_index, bool* force_publication);
-  bool updateScanner(const sensor_msgs::LaserScanConstPtr& planar_scan, int scanner_index, bool* resampled);
+  void updateScanner(const sensor_msgs::LaserScanConstPtr& planar_scan, int scanner_index, bool* resampled);
   void updateFreeSpaceIndices();
   void resampleParticles();
-  bool resamplePose(const ros::Time& stamp);
+  void publishPose(const ros::Time& stamp);
   void getMaxWeightPose(double* max_weight, Eigen::Vector3d* max_pose);
   bool updatePose(const Eigen::Vector3d& max_pose, const ros::Time& stamp);
   bool isMapInitialized();
@@ -81,7 +80,6 @@ private:
   void initLatestScanData(const sensor_msgs::LaserScanConstPtr& planar_scan, int scanner_index);
   bool getAngleStats(const sensor_msgs::LaserScanConstPtr& planar_scan, double* angle_min, double* angle_increment);
   void updateLatestScanData(const sensor_msgs::LaserScanConstPtr& planar_scan, double angle_min, double angle_increment);
-  bool updatePf(const sensor_msgs::LaserScanConstPtr& planar_scan, int scanner_index, bool* resampled);
   bool resamplePf(const sensor_msgs::LaserScanConstPtr& planar_scan);
 
   Node* node_;
