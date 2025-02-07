@@ -45,8 +45,8 @@ struct PFSample
 // Information for a cluster of samples
 struct PFCluster
 {
-  // Number of samples
-  int count;
+  // The samples in the cluster
+  std::vector<PFSample*> samples;
 
   // Total weight of samples in this cluster
   double weight;
@@ -88,7 +88,7 @@ class ParticleFilter
 public:
   // Create a new filter
   ParticleFilter(const Eigen::Vector3d& cluster_size,
-                 int min_particles, int max_particles,
+                 int min_particles, int max_particles, int pose_estimate_max_particles,
                  double alpha_slow, double alpha_fast,
                  double global_localization_convergence_threshold,
                  std::function<Eigen::Vector3d()> random_pose_fn);
@@ -141,15 +141,17 @@ private:
   void updateConverged();
 
   void initCluster(PFCluster* cluster);
-  void normalizeCluster(PFCluster* cluster);
+  void computeClusterStats(PFCluster* cluster);
   int getClusterIndexOfSampleInSet(std::shared_ptr<PFSampleSet> set, PFSample* sample);
-  void addSampleStatsToCluster(const PFSample*, PFCluster* cluster);
   void addSampleStatsToSet(const PFSample* sample, double* weight, double* m, double* c);
   void computeSetStats(double weight, const double m[], const double c[],
                        std::shared_ptr<PFSampleSet> set);
 
   // This min and max number of samples
   int min_particles_, max_particles_;
+
+  // Number of particles to use when finding the pose estimation
+  int pose_estimate_max_particles_;
 
   // Running averages, slow and fast, of likelihood
   double w_slow_, w_fast_;

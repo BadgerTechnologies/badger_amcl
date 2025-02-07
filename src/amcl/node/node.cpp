@@ -68,6 +68,7 @@ Node::Node()
 
   private_nh_.param("min_particles", min_particles_, 100);
   private_nh_.param("max_particles", max_particles_, 5000);
+  private_nh_.param("pose_estimate_max_particles", pose_estimate_max_particles_, 100);
   private_nh_.param("kld_err", pf_err_, 0.01);
   private_nh_.param("kld_z", pf_z_, 0.99);
   private_nh_.param("odom_integrator_enabled", odom_integrator_enabled_, true);
@@ -206,7 +207,7 @@ void Node::reconfigureCB(AMCLConfig& config, uint32_t level)
   particle_cluster_size_ = Eigen::Vector3d(
       config.particle_cluster_size_x, config.particle_cluster_size_y, config.particle_cluster_size_yaw);
   pf_ = std::make_shared<ParticleFilter>(particle_cluster_size_,
-                                         min_particles_, max_particles_,
+                                         min_particles_, max_particles_, pose_estimate_max_particles_,
                                          alpha_slow_, alpha_fast_,
                                          global_localization_convergence_threshold_,
                                          uniform_pose_generator_fn_);
@@ -603,7 +604,7 @@ void Node::initFromNewMap(std::shared_ptr<Map> new_map, bool use_initial_pose)
   // Create the particle filter
   uniform_pose_generator_fn_ = std::bind(&Node::uniformPoseGenerator, this);
   pf_ = std::make_shared<ParticleFilter>(particle_cluster_size_,
-                                         min_particles_, max_particles_,
+                                         min_particles_, max_particles_, pose_estimate_max_particles_,
                                          alpha_slow_, alpha_fast_,
                                          global_localization_convergence_threshold_,
                                          uniform_pose_generator_fn_);
