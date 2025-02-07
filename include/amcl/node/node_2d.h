@@ -67,7 +67,7 @@ private:
   void updateFreeSpaceIndices();
   void resampleParticles();
   bool resamplePose(const ros::Time& stamp);
-  void getMaxWeightPose(double* max_weight_rtn, Eigen::Vector3d* max_pose);
+  void getMaxWeightPose(double* max_weight, Eigen::Vector3d* max_pose);
   bool updatePose(const Eigen::Vector3d& max_pose, const ros::Time& stamp);
   bool isMapInitialized();
   void deactivateGlobalLocalizationParams();

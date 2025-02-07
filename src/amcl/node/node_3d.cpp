@@ -469,35 +469,30 @@ bool Node3D::resamplePose(const ros::Time& stamp)
   return success;
 }
 
-void Node3D::getMaxWeightPose(double* max_weight_rtn, Eigen::Vector3d* max_pose)
+void Node3D::getMaxWeightPose(double* max_weight, Eigen::Vector3d* max_pose)
 {
+  *max_weight = 0;
   // Read out the current hypotheses
-  double max_weight = 0.0;
-  int max_weight_hyp = -1;
   int cluster_count = pf_->getCurrentSet()->cluster_count;
-  std::vector<PoseHypothesis> hyps;
-  hyps.resize(cluster_count);
-  for (int hyp_count = 0; hyp_count < cluster_count; hyp_count++)
+  double cluster_weight;
+  Eigen::Vector3d cluster_pose;
+  for (int cluster_index = 0; cluster_index < cluster_count; cluster_index++)
   {
-    double weight;
-    Eigen::Vector3d pose_mean;
-    if (!pf_->getClusterStats(hyp_count, &weight, &pose_mean))
+    if (!pf_->getClusterStats(cluster_index, &cluster_weight, &cluster_pose))
     {
-      ROS_ERROR_STREAM("Couldn't get stats on cluster " << hyp_count);
+      // pf_->getClusterStats() should never return false. If it does
+      // then all subsequent calls should also fail so publish
+      // an error message and break out of the loop.
+      ROS_ERROR_STREAM("Couldn't get stats on cluster " << cluster_index);
       break;
     }
 
-    hyps[hyp_count].weight = weight;
-    hyps[hyp_count].mean = pose_mean;
-
-    if (hyps[hyp_count].weight > max_weight)
+    if (cluster_weight > *max_weight)
     {
-      max_weight = hyps[hyp_count].weight;
-      max_weight_hyp = hyp_count;
+      *max_weight = cluster_weight;
+      *max_pose = cluster_pose;
     }
   }
-  *max_weight_rtn = max_weight;
-  *max_pose = hyps[max_weight_hyp].mean;
 }
 
 void Node3D::checkScanReceived(const ros::TimerEvent& event)
