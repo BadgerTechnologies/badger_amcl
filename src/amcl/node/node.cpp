@@ -243,7 +243,7 @@ void Node::setPfDecayRateNormal()
 }
 
 void Node::updatePf(const ros::Time& t, std::vector<bool>& scanners_update, int scanner_index,
-                    int* resample_count, bool* force_publication, bool* force_update)
+                    int* resample_count, bool* force_publication)
 {
   // Where the robot was when this scan was taken
   Eigen::Vector3d pose;
@@ -253,7 +253,7 @@ void Node::updatePf(const ros::Time& t, std::vector<bool>& scanners_update, int 
     if(odom_initialized_)
     {
       computeDelta(pose, &delta);
-      setScannersUpdateFlags(delta, scanners_update, force_update);
+      setScannersUpdateFlags(delta, scanners_update);
       if(scanners_update.at(scanner_index))
       {
         updateOdom(pose, delta);
@@ -943,7 +943,7 @@ void Node::computeDelta(const Eigen::Vector3d& pose, Eigen::Vector3d* delta)
   (*delta)(2) = angles::shortest_angular_distance(pf_odom_pose_[2], pose[2]);
 }
 
-void Node::setScannersUpdateFlags(const Eigen::Vector3d& delta, std::vector<bool>& scanners_update, bool* force_update)
+void Node::setScannersUpdateFlags(const Eigen::Vector3d& delta, std::vector<bool>& scanners_update)
 {
     // See if we should update the filter
     bool update;
@@ -960,8 +960,6 @@ void Node::setScannersUpdateFlags(const Eigen::Vector3d& delta, std::vector<bool
                          || std::fabs(delta[1]) > d_thresh_
                          || std::fabs(delta[2]) > a_thresh_;
     }
-    update = update || *force_update;
-    *force_update = false;
 
     // Set the scanner update flags
     if (update)
