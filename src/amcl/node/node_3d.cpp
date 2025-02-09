@@ -314,8 +314,8 @@ void Node3D::updateScanner(const sensor_msgs::PointCloud2ConstPtr& point_cloud_s
   pcl_conversions::toPCL(*point_cloud_scan, pc2);
   pcl::fromPCLPointCloud2(pc2, *point_cloud);
   updateLatestScanData(point_cloud, scanner_index);
-  scanners_[scanner_index]->updateSensor(pf_, std::dynamic_pointer_cast<SensorData>(
-                                                latest_scan_data_));
+  scanners_[scanner_index]->updateSensor(
+      pf_, std::dynamic_pointer_cast<SensorData>(latest_scan_data_));
   scanners_update_.at(scanner_index) = false;
   if(!(++resample_count_ % resample_interval_))
   {
