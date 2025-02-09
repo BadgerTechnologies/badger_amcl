@@ -94,7 +94,6 @@ Node2D::Node2D(Node* node, std::mutex& configuration_mutex)
   check_scanner_timer_ = nh_.createTimer(check_scanner_interval_, std::bind(&Node2D::checkScanReceived, this,
                                                                             std::placeholders::_1));
 
-  force_update_ = false;
   first_map_received_ = false;
   map_sub_ = nh_.subscribe("map", 1, &Node2D::mapMsgReceived, this);
 }
@@ -284,8 +283,7 @@ void Node2D::scanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan)
   if(scanner_index >= 0)
   {
     bool force_publication = false, resampled = false, success;
-    node_->updatePf(stamp, scanners_update_, scanner_index,
-                    &resample_count_, &force_publication, &force_update_);
+    node_->updatePf(stamp, scanners_update_, scanner_index, &resample_count_, &force_publication);
     if(scanners_update_.at(scanner_index))
       updateScanner(planar_scan, scanner_index, &resampled);
     if(force_publication or resampled)
@@ -309,8 +307,7 @@ void Node2D::updateScanner(const sensor_msgs::LaserScanConstPtr& planar_scan,
       resampleParticles();
       *resampled = true;
     }
-    if(!force_update_)
-       node_->publishParticleCloud();
+    node_->publishParticleCloud();
   }
 }
 

@@ -88,7 +88,7 @@ public:
   void publishParticleCloud();
   void publishPose(const Eigen::Vector3d& max_pose, const ros::Time& stamp);
   void updatePf(const ros::Time& t, std::vector<bool>& scanners_update, int scanner_index,
-                int* resample_count, bool* force_publication, bool* force_update);
+                int* resample_count, bool* force_publication);
   void setPfDecayRateNormal();
   void attemptSavePose(bool exiting);
 
@@ -129,7 +129,7 @@ private:
 
   // Update PF helper functions
   void computeDelta(const Eigen::Vector3d& pose, Eigen::Vector3d* delta);
-  void setScannersUpdateFlags(const Eigen::Vector3d& delta, std::vector<bool>& scanners_update, bool* force_update);
+  void setScannersUpdateFlags(const Eigen::Vector3d& delta, std::vector<bool>& scanners_update);
   void updateOdom(const Eigen::Vector3d& pose, const Eigen::Vector3d& delta);
   void initOdom(const Eigen::Vector3d& pose, std::vector<bool>& scanners_update,
                 int* resample_count, bool* force_publication);
