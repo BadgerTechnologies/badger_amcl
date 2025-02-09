@@ -88,7 +88,6 @@ Node3D::Node3D(Node* node, std::mutex& configuration_mutex, std::string global_f
   scanner_check_interval_ = ros::Duration(15.0);
   check_scanner_timer_ = nh_.createTimer(scanner_check_interval_, std::bind(&Node3D::checkScanReceived, this,
                                                                             std::placeholders::_1));
-  force_update_ = false;
   first_occupancy_map_received_ = false;
   first_octomap_received_ = false;
   new_octomap_received_ = false;
@@ -298,8 +297,7 @@ void Node3D::scanReceived(const sensor_msgs::PointCloud2ConstPtr& point_cloud_sc
   if(scanner_index >= 0)
   {
     bool force_publication = false, resampled = false;
-    node_->updatePf(stamp, scanners_update_, scanner_index,
-                    &resample_count_, &force_publication, &force_update_);
+    node_->updatePf(stamp, scanners_update_, scanner_index, &resample_count_, &force_publication);
     if(scanners_update_.at(scanner_index))
       updateScanner(point_cloud_scan, scanner_index, &resampled);
     if(force_publication or resampled)
@@ -324,8 +322,7 @@ void Node3D::updateScanner(const sensor_msgs::PointCloud2ConstPtr& point_cloud_s
     resampleParticles();
     *resampled = true;
   }
-  if(!force_update_)
-    node_->publishParticleCloud();
+  node_->publishParticleCloud();
 }
 
 bool Node3D::isMapInitialized()

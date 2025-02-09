@@ -120,7 +120,6 @@ private:
   bool occupancy_bounds_received_;
   bool first_map_only_;
   bool wait_for_occupancy_map_;
-  bool force_update_;  // used to temporarily let amcl update samples even when no motion occurs...
   double scanner_height_;
   double gompertz_a_;
   double gompertz_b_;

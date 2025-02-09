@@ -111,7 +111,6 @@ private:
   bool first_map_received_;
   bool first_map_only_;
   bool do_beamskip_;
-  bool force_update_;  // used to temporarily let amcl update samples even when no motion occurs...
   double beam_skip_distance_, beam_skip_threshold_, beam_skip_error_threshold_;
   double gompertz_a_;
   double gompertz_b_;
