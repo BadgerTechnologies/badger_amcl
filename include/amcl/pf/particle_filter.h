@@ -88,7 +88,7 @@ class ParticleFilter
 public:
   // Create a new filter
   ParticleFilter(const Eigen::Vector3d& cluster_size,
-                 int min_samples, int max_samples,
+                 int min_particles, int max_particles,
                  double alpha_slow, double alpha_fast,
                  double global_localization_convergence_threshold,
                  std::function<Eigen::Vector3d()> random_pose_fn);
@@ -107,7 +107,7 @@ public:
   // Resample the distribution
   void updateResample();
 
-  // Compute the statistics for a particular cluster.  Returns false if
+  // Get the statistics for a particular cluster.  Returns false if
   // there is no such cluster.
   bool getClusterStats(int cluster, double* weight, Eigen::Vector3d* mean);
 
@@ -148,7 +148,7 @@ private:
                        std::shared_ptr<PFSampleSet> set);
 
   // This min and max number of samples
-  int min_samples_, max_samples_;
+  int min_particles_, max_particles_;
 
   // Running averages, slow and fast, of likelihood
   double w_slow_, w_fast_;

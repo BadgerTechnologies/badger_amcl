@@ -36,7 +36,7 @@ namespace badger_amcl
 
 // Create a new filter
 ParticleFilter::ParticleFilter(const Eigen::Vector3d& cluster_size,
-                               int min_samples, int max_samples,
+                               int min_particles, int max_particles,
                                double alpha_slow, double alpha_fast,
                                double global_localization_convergence_threshold,
                                std::function<Eigen::Vector3d()> random_pose_fn)
@@ -47,8 +47,8 @@ ParticleFilter::ParticleFilter(const Eigen::Vector3d& cluster_size,
 
   random_pose_fn_ = random_pose_fn;
 
-  min_samples_ = min_samples;
-  max_samples_ = max_samples;
+  min_particles_ = min_particles;
+  max_particles_ = max_particles;
 
   global_localization_convergence_threshold_ = global_localization_convergence_threshold;
   // Control parameters for the population size calculation.  [err] is
@@ -67,8 +67,8 @@ ParticleFilter::ParticleFilter(const Eigen::Vector3d& cluster_size,
   {
     set = sets_[j];
 
-    set->sample_count = max_samples_;
-    set->samples = std::vector<PFSample>(max_samples);
+    set->sample_count = max_particles_;
+    set->samples = std::vector<PFSample>(max_particles);
 
     for (i = 0; i < set->sample_count; i++)
     {
@@ -76,13 +76,13 @@ ParticleFilter::ParticleFilter(const Eigen::Vector3d& cluster_size,
       sample->pose[0] = 0.0;
       sample->pose[1] = 0.0;
       sample->pose[2] = 0.0;
-      sample->weight = 1.0 / max_samples_;
+      sample->weight = 1.0 / max_particles_;
     }
 
     set->kdtree = std::make_shared<PFKDTree>(cluster_size);
 
     set->cluster_count = 0;
-    set->cluster_max_count = max_samples_;
+    set->cluster_max_count = max_particles_;
     set->clusters = std::vector<PFCluster>(set->cluster_max_count);
 
     set->mean = Eigen::Vector3d();
@@ -107,13 +107,13 @@ void ParticleFilter::initWithGaussian(const Eigen::Vector3d& mean, const Eigen::
   set = sets_[current_set_];
   // Create the kd tree for adaptive sampling
   set->kdtree->clearKDTree();
-  set->sample_count = max_samples_;
+  set->sample_count = max_particles_;
   PDFGaussian pdf(mean, cov);
   // Compute the new sample poses
   for (i = 0; i < set->sample_count; i++)
   {
     sample = &(set->samples[i]);
-    sample->weight = 1.0 / max_samples_;
+    sample->weight = 1.0 / max_particles_;
     sample->pose = pdf.sample();
 
     // Add sample to histogram
@@ -139,13 +139,13 @@ void ParticleFilter::initWithPoseFn(std::function<Eigen::Vector3d()> pose_fn)
 
   // Create the kd tree for adaptive sampling
   set->kdtree->clearKDTree();
-  set->sample_count = max_samples_;
+  set->sample_count = max_particles_;
 
   // Compute the new sample poses
   for (i = 0; i < set->sample_count; i++)
   {
     sample = &(set->samples[i]);
-    sample->weight = 1.0 / max_samples_;
+    sample->weight = 1.0 / max_particles_;
     sample->pose = pose_fn();
     // Add sample to histogram
     set->kdtree->insertPose(sample->pose, sample->weight);
@@ -292,9 +292,9 @@ double ParticleFilter::resampleSystematic(double w_diff)
   if (w_diff > 0.0)
   {
     new_count *= (1.0 + w_diff);
-    if (new_count > max_samples_)
+    if (new_count > max_particles_)
     {
-      new_count = max_samples_;
+      new_count = max_particles_;
     }
   }
   set_b->sample_count = new_count;
@@ -399,7 +399,7 @@ int ParticleFilter::resampleLimit(int k)
   int n;
 
   if (k <= 1)
-    return max_samples_;
+    return max_particles_;
 
   kd = static_cast<double>(k);
   a = 1;
@@ -409,15 +409,10 @@ int ParticleFilter::resampleLimit(int k)
 
   n = static_cast<int>(std::ceil((k - 1) / (2 * pop_err_) * x * x * x));
 
-  if (n < min_samples_)
-    return min_samples_;
-  if (n > max_samples_)
-    return max_samples_;
-
-  if (n < min_samples_)
-    return min_samples_;
-  if (n > max_samples_)
-    return max_samples_;
+  if (n < min_particles_)
+    return min_particles_;
+  if (n > max_particles_)
+    return max_particles_;
 
   return n;
 }
