@@ -261,7 +261,9 @@ void Node::updatePf(const ros::Time& t, std::vector<bool>& scanners_update, int 
     }
     else
     {
-      initOdom(pose, scanners_update, resample_count, force_publication);
+      initOdom(pose, scanners_update);
+      *force_publication = true;
+      *resample_count = 0;
     }
   }
   else
@@ -1013,8 +1015,7 @@ void Node::updateOdom(const Eigen::Vector3d& pose, const Eigen::Vector3d& delta)
   pf_odom_pose_ = pose;
 }
 
-void Node::initOdom(const Eigen::Vector3d& pose, std::vector<bool>& scanners_update,
-                    int* resample_count, bool* force_publication)
+void Node::initOdom(const Eigen::Vector3d& pose, std::vector<bool>& scanners_update)
 {
   // Pose at last filter update
   pf_odom_pose_ = pose;
@@ -1023,8 +1024,6 @@ void Node::initOdom(const Eigen::Vector3d& pose, std::vector<bool>& scanners_upd
   // Should update sensor data
   for (unsigned int i = 0; i < scanners_update.size(); i++)
     scanners_update.at(i) = true;
-  *force_publication = true;
-  *resample_count = 0;
   odom_integrator_ready_ = false;
 }
 

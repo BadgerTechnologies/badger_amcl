@@ -131,8 +131,7 @@ private:
   void computeDelta(const Eigen::Vector3d& pose, Eigen::Vector3d* delta);
   void setScannersUpdateFlags(const Eigen::Vector3d& delta, std::vector<bool>& scanners_update);
   void updateOdom(const Eigen::Vector3d& pose, const Eigen::Vector3d& delta);
-  void initOdom(const Eigen::Vector3d& pose, std::vector<bool>& scanners_update,
-                int* resample_count, bool* force_publication);
+  void initOdom(const Eigen::Vector3d& pose, std::vector<bool>& scanners_update);
 
   std::function<Eigen::Vector3d()> uniform_pose_generator_fn_;
 
