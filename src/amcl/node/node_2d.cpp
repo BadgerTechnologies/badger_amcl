@@ -282,17 +282,15 @@ void Node2D::scanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan)
   int scanner_index = getFrameToScannerIndex(planar_scan->header.frame_id);
   if(scanner_index >= 0)
   {
-    bool force_publication = false, resampled = false, success;
-    node_->updatePf(stamp, scanners_update_, scanner_index, &resample_count_, &force_publication);
+    bool force_pose_pub = false;
+    node_->updatePf(stamp, scanners_update_, scanner_index, &resample_count_, &force_pose_pub);
     if(scanners_update_.at(scanner_index))
-      updateScanner(planar_scan, scanner_index, &resampled);
-    if(force_publication or resampled)
-      publishPose(stamp);
+      updateScanner(planar_scan, scanner_index, force_pose_pub, stamp);
   }
 }
 
 void Node2D::updateScanner(const sensor_msgs::LaserScanConstPtr& planar_scan,
-                           int scanner_index, bool* resampled)
+                           int scanner_index, bool force_pose_pub, const ros::Time& stamp)
 {
   initLatestScanData(planar_scan, scanner_index);
   double angle_min, angle_increment;
@@ -302,12 +300,18 @@ void Node2D::updateScanner(const sensor_msgs::LaserScanConstPtr& planar_scan,
     updateLatestScanData(planar_scan, angle_min, angle_increment);
     scanners_[scanner_index]->updateSensor(pf_, std::dynamic_pointer_cast<SensorData>(latest_scan_data_));
     scanners_update_.at(scanner_index) = false;
+    pf_->computeClusterStatsForSet();
+    node_->publishParticleCloud();
     if(!(++resample_count_ % resample_interval_))
     {
+      // Publish pose before resampling
+      publishPose(stamp);
       resampleParticles();
-      *resampled = true;
     }
-    node_->publishParticleCloud();
+    else if (force_pose_pub)
+    {
+      publishPose(stamp);
+    }
   }
 }
 
@@ -498,9 +502,7 @@ void Node2D::publishPose(const ros::Time& stamp)
   if(max_weight > 0.0)
     node_->publishPose(max_pose, stamp);
   else
-  {
     ROS_ERROR("No pose!");
-  }
 }
 
 void Node2D::getMaxWeightPose(double* max_weight, Eigen::Vector3d* max_pose)

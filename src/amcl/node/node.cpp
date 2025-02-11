@@ -243,7 +243,7 @@ void Node::setPfDecayRateNormal()
 }
 
 void Node::updatePf(const ros::Time& t, std::vector<bool>& scanners_update, int scanner_index,
-                    int* resample_count, bool* force_publication)
+                    int* resample_count, bool* force_pose_pub)
 {
   // Where the robot was when this scan was taken
   Eigen::Vector3d pose;
@@ -262,7 +262,7 @@ void Node::updatePf(const ros::Time& t, std::vector<bool>& scanners_update, int 
     else
     {
       initOdom(pose, scanners_update);
-      *force_publication = true;
+      *force_pose_pub = true;
       *resample_count = 0;
     }
   }

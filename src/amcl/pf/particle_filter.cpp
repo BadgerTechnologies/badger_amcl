@@ -123,7 +123,7 @@ void ParticleFilter::initWithGaussian(const Eigen::Vector3d& mean, const Eigen::
   w_slow_ = w_fast_ = 0.0;
 
   // Re-compute cluster statistics
-  computeClusterStatsForSet(set);
+  computeClusterStatsForSet();
 
   initConverged();
 }
@@ -152,7 +152,7 @@ void ParticleFilter::initWithPoseFn(std::function<Eigen::Vector3d()> pose_fn)
   }
   w_slow_ = w_fast_ = 0.0;
   // Re-compute cluster statistics
-  computeClusterStatsForSet(set);
+  computeClusterStatsForSet();
 
   initConverged();
 }
@@ -382,9 +382,6 @@ void ParticleFilter::updateResample()
     sample_b->weight /= total;
   }
 
-  // Re-compute cluster statistics
-  computeClusterStatsForSet(set_b);
-
   // Use the newly created sample set
   current_set_ = (current_set_ + 1) % 2;
 
@@ -417,12 +414,14 @@ int ParticleFilter::resampleLimit(int k)
   return n;
 }
 
-// Re-compute the cluster statistics for a sample set
-void ParticleFilter::computeClusterStatsForSet(std::shared_ptr<PFSampleSet> set)
+// Re-compute the cluster statistics for a the current set
+void ParticleFilter::computeClusterStatsForSet()
 {
   double m[4] = {0.0, 0.0, 0.0, 0.0}, c[2*2] = {0.0, 0.0, 0.0, 0.0};
   double weight = 0.0;
 
+  // Get the current set
+  std::shared_ptr<PFSampleSet> set = sets_[current_set_];
   // Cluster the samples
   set->kdtree->cluster();
   for (int i = 0; i < set->cluster_max_count; i++)

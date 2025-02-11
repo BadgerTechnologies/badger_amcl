@@ -72,7 +72,8 @@ private:
   bool resamplePf(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan);
   void updateFreeSpaceIndices();
   void updateLatestScanData(const pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud, int scanner_index);
-  void updateScanner(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan, int scanner_index, bool* resampled);
+  void updateScanner(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan, int scanner_index,
+                     bool force_pose_pub, const ros::Time& stamp);
   void resampleParticles();
   void publishPose(const ros::Time& stamp);
   void getMaxWeightPose(double* max_weight, Eigen::Vector3d* max_pose);
