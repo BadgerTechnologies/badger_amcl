@@ -298,17 +298,15 @@ void Node3D::scanReceived(const sensor_msgs::PointCloud2ConstPtr& point_cloud_sc
   int scanner_index = getFrameToScannerIndex(point_cloud_scan->header.frame_id);
   if(scanner_index >= 0)
   {
-    bool force_publication = false, resampled = false;
-    node_->updatePf(stamp, scanners_update_, scanner_index, &resample_count_, &force_publication);
+    bool force_pose_pub = false;
+    node_->updatePf(stamp, scanners_update_, scanner_index, &resample_count_, &force_pose_pub);
     if(scanners_update_.at(scanner_index))
-      updateScanner(point_cloud_scan, scanner_index, &resampled);
-    if(force_publication or resampled)
-      publishPose(stamp);
+      updateScanner(point_cloud_scan, scanner_index, force_pose_pub, stamp);
   }
 }
 
 void Node3D::updateScanner(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan,
-                           int scanner_index, bool* resampled)
+                           int scanner_index, bool force_pose_pub, const ros::Time& stamp)
 {
   initLatestScanData(point_cloud_scan, scanner_index);
   pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud(new pcl::PointCloud<pcl::PointXYZ>);
@@ -319,12 +317,18 @@ void Node3D::updateScanner(const sensor_msgs::PointCloud2ConstPtr& point_cloud_s
   scanners_[scanner_index]->updateSensor(
       pf_, std::dynamic_pointer_cast<SensorData>(latest_scan_data_));
   scanners_update_.at(scanner_index) = false;
+  pf_->computeClusterStatsForSet();
+  node_->publishParticleCloud();
   if(!(++resample_count_ % resample_interval_))
   {
+    // Publish pose before resampling
+    publishPose(stamp);
     resampleParticles();
-    *resampled = true;
   }
-  node_->publishParticleCloud();
+  else if(force_pose_pub)
+  {
+    publishPose(stamp);
+  }
 }
 
 bool Node3D::isMapInitialized()

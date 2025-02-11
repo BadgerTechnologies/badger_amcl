@@ -107,6 +107,9 @@ public:
   // Resample the distribution
   void updateResample();
 
+  // Re-compute the cluster statistics for the current set
+  void computeClusterStatsForSet();
+
   // Get the statistics for a particular cluster.  Returns false if
   // there is no such cluster.
   bool getClusterStats(int cluster, double* weight, Eigen::Vector3d* mean);
@@ -137,8 +140,6 @@ private:
   // and sets the converged flag in the current set and the pf
   void updateConverged();
 
-  // Re-compute the cluster statistics for a sample set
-  void computeClusterStatsForSet(std::shared_ptr<PFSampleSet> sample_set);
   void initCluster(PFCluster* cluster);
   void normalizeCluster(PFCluster* cluster);
   int getClusterIndexOfSampleInSet(std::shared_ptr<PFSampleSet> set, PFSample* sample);

@@ -62,7 +62,8 @@ public:
   double scorePose(const Eigen::Vector3d& p) override;
 private:
   void scanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan);
-  void updateScanner(const sensor_msgs::LaserScanConstPtr& planar_scan, int scanner_index, bool* resampled);
+  void updateScanner(const sensor_msgs::LaserScanConstPtr& planar_scan, int scanner_index,
+                     bool force_pose_pub, const ros::Time& stamp);
   void updateFreeSpaceIndices();
   void resampleParticles();
   void publishPose(const ros::Time& stamp);
