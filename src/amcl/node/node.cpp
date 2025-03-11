@@ -53,6 +53,7 @@ Node::Node()
     first_reconfigure_call_(true),
     publish_transform_spinner_(1, &publish_transform_queue_),
     global_localization_active_(false),
+    odom_transform_initialized_(false),
     dsrv_(ros::NodeHandle("~")),
     tf_listener_(tf_buffer_)
 {
@@ -727,6 +728,7 @@ bool Node::getOdomPose(const ros::Time& t, Eigen::Vector3d* map_pose)
                                                                             t, ros::Duration(0.5));
     tf2::doTransform(ident_msg, latest_odom_pose_msg, stamped_tf);
     tf2::fromMsg(latest_odom_pose_msg, latest_odom_pose_);
+    odom_transform_initialized_ = true;
   }
   catch (tf2::TransformException e)
   {
@@ -867,12 +869,16 @@ bool Node::getLatestTf(tf2::Transform* latest_tf)
 void Node::getLatestPose(tf2::Transform latest_tf, geometry_msgs::PoseWithCovarianceStamped* latest_pose)
 {
   std::lock_guard<std::mutex> lpl(latest_pose_mutex_);
+  // Get the odometry pose if it has not been looked up already
+  if (!odom_transform_initialized_)
+  {
+    Eigen::Vector3d pose;
+    getOdomPose(ros::Time::now(), &pose);
+  }
   // We need to apply the last transform to the latest odom pose to get
   // the latest map pose to store.  We'll take the covariance from
   // last_published_pose_.
   tf2::Transform map_pose = latest_tf.inverse() * latest_odom_pose_;
-  double yaw, pitch, roll;
-  map_pose.getBasis().getEulerYPR(yaw, pitch, roll);
   geometry_msgs::Pose pose;
   pose = tf2::toMsg(map_pose, pose);
   latest_pose_.pose.pose = pose;
@@ -886,17 +892,24 @@ void Node::getLatestPose(tf2::Transform latest_tf, geometry_msgs::PoseWithCovari
 
 void Node::initialPoseReceived(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg_ptr)
 {
-  std::lock_guard<std::mutex> cfl(configuration_mutex_);
   geometry_msgs::PoseWithCovarianceStamped msg(*msg_ptr);
-  resolveFrameId(msg);
-  if(checkInitialPose(msg))
+  tf2::Transform pose;
   {
-    std::vector<double> cov_vals(36, 0.0);
-    setCovarianceVals(msg, &cov_vals);
-    tf2::Transform pose;
-    transformMsgToTfPose(msg, &pose);
-    setInitialPose(pose, cov_vals);
+    std::lock_guard<std::mutex> cfl(configuration_mutex_);
+    resolveFrameId(msg);
+    if(checkInitialPose(msg))
+    {
+      std::vector<double> cov_vals(36, 0.0);
+      setCovarianceVals(msg, &cov_vals);
+      transformMsgToTfPose(msg, &pose);
+      setInitialPose(pose, cov_vals);
+    }
   }
+  double roll, pitch, yaw;
+  pose.getBasis().getRPY(roll, pitch, yaw);
+  Eigen::Vector3d init_pose(pose.getOrigin().x(), pose.getOrigin().y(), yaw);
+  publishPose(init_pose, ros::Time::now());
+  attemptSavePose(false);
 }
 
 void Node::setInitialPose(const tf2::Transform& pose, const std::vector<double>& covariance)
@@ -1121,9 +1134,8 @@ void Node::setInitialPoseHyp(const tf2::Transform& pose, const std::vector<doubl
 {
   double roll, pitch, yaw;
   pose.getBasis().getRPY(roll, pitch, yaw);
-  ROS_DEBUG("Setting pose (%.6f): %.3f %.3f %.3f", ros::Time::now().toSec(),
-            pose.getOrigin().x(), pose.getOrigin().y(), yaw);
-  ROS_INFO("Initial pose received by AMCL: (%.3f, %.3f)", pose.getOrigin().x(), pose.getOrigin().y());
+  ROS_INFO_STREAM("Initial pose received by AMCL: " <<
+      pose.getOrigin().x() << ", " << pose.getOrigin().y() << ", " << yaw);
   // Re-initialize the filter
   Eigen::Vector3d pf_init_pose_mean;
   pf_init_pose_mean[0] = pose.getOrigin().x();

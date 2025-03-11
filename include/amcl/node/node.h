@@ -167,6 +167,7 @@ private:
   // parameter for what odom to use
   std::string odom_frame_id_;
   // paramater to store latest odom pose
+  bool odom_transform_initialized_;
   tf2::Stamped<tf2::Transform> latest_odom_pose_;
   geometry_msgs::PoseWithCovarianceStamped latest_pose_;
   ros::Subscriber odom_integrator_sub_;
