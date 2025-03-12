@@ -901,17 +901,24 @@ bool Node::getLatestPose(tf2::Transform latest_tf, geometry_msgs::PoseWithCovari
 
 void Node::initialPoseReceived(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg_ptr)
 {
-  std::lock_guard<std::mutex> cfl(configuration_mutex_);
   geometry_msgs::PoseWithCovarianceStamped msg(*msg_ptr);
-  resolveFrameId(msg);
-  if(checkInitialPose(msg))
+  tf2::Transform pose;
   {
-    std::vector<double> cov_vals(36, 0.0);
-    setCovarianceVals(msg, &cov_vals);
-    tf2::Transform pose;
-    transformMsgToTfPose(msg, &pose);
-    setInitialPose(pose, cov_vals);
+    std::lock_guard<std::mutex> cfl(configuration_mutex_);
+    resolveFrameId(msg);
+    if(checkInitialPose(msg))
+    {
+      std::vector<double> cov_vals(36, 0.0);
+      setCovarianceVals(msg, &cov_vals);
+      transformMsgToTfPose(msg, &pose);
+      setInitialPose(pose, cov_vals);
+    }
   }
+  double roll, pitch, yaw;
+  pose.getBasis().getRPY(roll, pitch, yaw);
+  Eigen::Vector3d init_pose(pose.getOrigin().x(), pose.getOrigin().y(), yaw);
+  publishPose(init_pose, msg.header.stamp);
+  attemptSavePose(false);
 }
 
 void Node::setInitialPose(const tf2::Transform& pose, const std::vector<double>& covariance)
