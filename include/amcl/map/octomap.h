@@ -59,7 +59,7 @@ class OctoMap : public Map
 {
 public:
   OctoMap(double resolution, std::string global_frame_id);
-  OctoMap(double resolution, std::string global_frame_id, bool publish_distances_lut);
+  OctoMap(double resolution, std::string global_frame_id, bool publish_distances_lut, double lut_max_z);
   virtual ~OctoMap() = default;
   virtual void initFromOctree(std::shared_ptr<octomap::OcTree> octree, double max_distance_to_object);
   // Convert from voxel indices to point in map frame
@@ -116,6 +116,7 @@ private:
   ros::NodeHandle nh_;
   ros::Publisher distances_lut_pub_;
   bool publish_distances_lut_;
+  double lut_max_z_;
   std::string global_frame_id_;
 };
 }  // namespace amcl
