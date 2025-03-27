@@ -35,11 +35,12 @@ namespace badger_amcl
 {
 
 OctoMap::OctoMap(double resolution, std::string global_frame_id)
-    : OctoMap(resolution, global_frame_id, false) {}
+    : OctoMap(resolution, global_frame_id, false, 10.0) {}
 
-OctoMap::OctoMap(double resolution, std::string global_frame_id, bool publish_distances_lut)
+OctoMap::OctoMap(double resolution, std::string global_frame_id, bool publish_distances_lut, double lut_max_z)
     : Map(resolution),
       publish_distances_lut_(publish_distances_lut),
+      lut_max_z_(lut_max_z),
       cdm_(resolution, 0.0),
       global_frame_id_(global_frame_id)
 {
@@ -207,7 +208,11 @@ void OctoMap::updateDistancesLUT()
   if (publish_distances_lut_)
   {
     publishDistancesLUT();
-    ROS_INFO("Octree published");
+    ROS_INFO("Distances lookup table published");
+  }
+  else
+  {
+    ROS_INFO("Distances lookup table not published");
   }
   distances_lut_created_ = true;
 }
@@ -231,6 +236,8 @@ void OctoMap::iterateObstacleCells(CellDataQueue& q)
       point[0] = it.getX();
       point[1] = it.getY();
       point[2] = it.getZ();
+      if (point[2] > lut_max_z_)
+        continue;
       rasterize(point, &voxel);
       i = voxel[0];
       j = voxel[1];

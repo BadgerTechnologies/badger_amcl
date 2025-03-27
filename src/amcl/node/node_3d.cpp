@@ -78,6 +78,8 @@ Node3D::Node3D(Node* node, std::mutex& configuration_mutex, std::string global_f
   private_nh_.param("global_localization_scanner_non_free_space_factor",
                     global_localization_non_free_space_factor_, 1.0);
   private_nh_.param("map_scale_up_factor", occupancy_map_scale_up_factor_, 1);
+  private_nh_.param("publish_distances_lut", publish_distances_lut_, false);
+  private_nh_.param("lut_max_z", lut_max_z_, 10.0);
 
   auto pcs = std::make_shared<PointCloudSubscriber>();
   pcs->cloud_topic = "cloud";
@@ -219,7 +221,7 @@ std::shared_ptr<OctoMap> Node3D::convertMap(const octomap_msgs::Octomap& map_msg
   }
   double resolution = map_msg.resolution;
   std::shared_ptr<OctoMap> octomap = std::make_shared<OctoMap>(
-      resolution, global_frame_id_, publish_distances_lut_);
+      resolution, global_frame_id_, publish_distances_lut_, lut_max_z_);
   ROS_ASSERT(octomap);
   octomap->initFromOctree(octree_, max_distance_to_object_);
   octree_.reset();
