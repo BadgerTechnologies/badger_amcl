@@ -176,67 +176,14 @@ void Node::reconfigureCB(AMCLConfig& config, uint32_t level)
   a_thresh_ = config.update_min_a;
 
   transform_publish_period_ = ros::Duration(1.0 / config.transform_publish_rate);
+  publish_transform_timer_.setPeriod(transform_publish_period_);
   save_pose_to_file_period_ = ros::Duration(1.0 / config.save_pose_to_file_rate);
+  save_pose_to_file_timer_.setPeriod(save_pose_to_file_period_);
 
   transform_tolerance_.fromSec(config.transform_tolerance);
 
-  alpha1_ = config.odom_alpha1;
-  alpha2_ = config.odom_alpha2;
-  alpha3_ = config.odom_alpha3;
-  alpha4_ = config.odom_alpha4;
-  alpha5_ = config.odom_alpha5;
-
-  if (config.min_particles > config.max_particles)
-  {
-    ROS_WARN("You've set min_particles to be greater than max particles, "
-             "this isn't allowed so they'll be set to be equal.");
-    config.max_particles = config.min_particles;
-  }
-
-  min_particles_ = config.min_particles;
-  max_particles_ = config.max_particles;
-  alpha_slow_ = config.recovery_alpha_slow;
-  alpha_fast_ = config.recovery_alpha_fast;
-  uniform_pose_starting_weight_threshold_ = config.uniform_pose_starting_weight_threshold;
-  uniform_pose_deweight_multiplier_ = config.uniform_pose_deweight_multiplier;
-  global_localization_alpha_slow_ = config.global_localization_alpha_slow;
-  global_localization_alpha_fast_ = config.global_localization_alpha_fast;
-  tf_broadcast_ = config.tf_broadcast;
-  tf_reverse_ = config.tf_reverse;
-
-  uniform_pose_generator_fn_ = std::bind(&Node::uniformPoseGenerator, this);
-  particle_cluster_size_ = Eigen::Vector3d(
-      config.particle_cluster_size_x, config.particle_cluster_size_y, config.particle_cluster_size_yaw);
-  pf_ = std::make_shared<ParticleFilter>(particle_cluster_size_, global_frame_id_,
-                                         min_particles_, max_particles_, pose_estimate_max_particles_,
-                                         alpha_slow_, alpha_fast_,
-                                         global_localization_convergence_threshold_,
-                                         uniform_pose_generator_fn_);
-  pf_err_ = config.kld_err;
-  pf_z_ = config.kld_z;
-  pf_->setPopulationSizeParameters(pf_err_, pf_z_);
-
-  // Initialize the filter
-  Eigen::Vector3d pf_init_pose_mean;
-  pf_init_pose_mean[0] = last_published_pose_->pose.pose.position.x;
-  pf_init_pose_mean[1] = last_published_pose_->pose.pose.position.y;
-  pf_init_pose_mean[2] = tf2::getYaw(last_published_pose_->pose.pose.orientation);
-  Eigen::Matrix3d pf_init_pose_cov;
-  pf_init_pose_cov(0, 0) = last_published_pose_->pose.covariance[COVARIANCE_XX];
-  pf_init_pose_cov(1, 1) = last_published_pose_->pose.covariance[COVARIANCE_YY];
-  pf_init_pose_cov(2, 2) = last_published_pose_->pose.covariance[COVARIANCE_AA];
-  pf_->initWithGaussian(pf_init_pose_mean, pf_init_pose_cov);
-  odom_initialized_ = false;
-  odom_.initModel(alpha1_, alpha2_, alpha3_, alpha4_, alpha5_);
-  odom_frame_id_ = config.odom_frame_id;
-  base_frame_id_ = config.base_frame_id;
-  global_frame_id_ = config.global_frame_id;
-  transform_frame_id_ = config.transform_frame_id;
   node_->reconfigure(config);
   save_pose_ = config.save_pose;
-  saved_pose_filepath_ = config.saved_pose_filepath;
-  publish_transform_timer_.setPeriod(transform_publish_period_);
-  save_pose_to_file_timer_.setPeriod(save_pose_to_file_period_);
 }
 
 void Node::setPfDecayRateNormal()
