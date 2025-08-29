@@ -85,6 +85,14 @@ Node3D::Node3D(Node* node, std::mutex& configuration_mutex, std::string global_f
   cloud_filter_ = std::unique_ptr<tf2_ros::MessageFilter<sensor_msgs::PointCloud2>>(
       new tf2_ros::MessageFilter<sensor_msgs::PointCloud2>(*cloud_sub_, tf_buffer_, node_->getOdomFrameId(), 1, nh_));
   cloud_filter_->registerCallback(std::bind(&Node3D::scanReceived, this, std::placeholders::_1));
+
+  cloud2_topic_ = "cloud2";
+  cloud2_sub_ = std::unique_ptr<message_filters::Subscriber<sensor_msgs::PointCloud2>>(
+      new message_filters::Subscriber<sensor_msgs::PointCloud2>(nh_, cloud2_topic_, 1));
+  cloud2_filter_ = std::unique_ptr<tf2_ros::MessageFilter<sensor_msgs::PointCloud2>>(
+      new tf2_ros::MessageFilter<sensor_msgs::PointCloud2>(*cloud2_sub_, tf_buffer_, node_->getOdomFrameId(), 1, nh_));
+  cloud2_filter_->registerCallback(std::bind(&Node3D::scanReceived, this, std::placeholders::_1));
+
   // 15s timer to warn on lack of receipt of point cloud scans, #5209
   scanner_check_interval_ = ros::Duration(15.0);
   check_scanner_timer_ = nh_.createTimer(scanner_check_interval_, std::bind(&Node3D::checkScanReceived, this,
@@ -287,6 +295,7 @@ void Node3D::updateFreeSpaceIndices()
 
 void Node3D::scanReceived(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan)
 {
+  std::lock_guard<std::mutex> srm(scan_received_mutex_);
   latest_scan_received_ts_ = ros::Time::now();
   if(!isMapInitialized())
     return;

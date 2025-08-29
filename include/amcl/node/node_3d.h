@@ -92,11 +92,15 @@ private:
   std::shared_ptr<PFSampleSet> fake_sample_set_;
   std::shared_ptr<ParticleFilter> pf_;
   std::unique_ptr<message_filters::Subscriber<sensor_msgs::PointCloud2>> cloud_sub_;
+  std::unique_ptr<message_filters::Subscriber<sensor_msgs::PointCloud2>> cloud2_sub_;
   std::unique_ptr<tf2_ros::MessageFilter<sensor_msgs::PointCloud2>> cloud_filter_;
+  std::unique_ptr<tf2_ros::MessageFilter<sensor_msgs::PointCloud2>> cloud2_filter_;
   std::string cloud_topic_;
+  std::string cloud2_topic_;
   std::string global_frame_id_;
   std::map<std::string, int> frame_to_scanner_;
   std::mutex& configuration_mutex_;
+  std::mutex scan_received_mutex_;
   std::vector<std::shared_ptr<PointCloudScanner> > scanners_;
   std::vector<double> occupancy_map_min_, occupancy_map_max_;
   std::vector<bool> scanners_update_;

@@ -86,10 +86,14 @@ private:
   Node* node_;
   std::shared_ptr<OccupancyMap> map_;
   std::unique_ptr<message_filters::Subscriber<sensor_msgs::LaserScan>> scan_sub_;
+  std::unique_ptr<message_filters::Subscriber<sensor_msgs::LaserScan>> scan2_sub_;
   std::unique_ptr<tf2_ros::MessageFilter<sensor_msgs::LaserScan>> scan_filter_;
+  std::unique_ptr<tf2_ros::MessageFilter<sensor_msgs::LaserScan>> scan2_filter_;
   std::string scan_topic_;
+  std::string scan2_topic_;
   std::map<std::string, int> frame_to_scanner_;
   std::mutex& configuration_mutex_;
+  std::mutex scan_received_mutex_;
   std::vector<std::shared_ptr<PlanarScanner>> scanners_;
   std::vector<bool> scanners_update_;
   std::shared_ptr<PlanarData> latest_scan_data_;

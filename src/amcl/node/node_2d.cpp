@@ -89,6 +89,13 @@ Node2D::Node2D(Node* node, std::mutex& configuration_mutex)
       new tf2_ros::MessageFilter<sensor_msgs::LaserScan>(*scan_sub_.get(), tf_buffer_, node_->getOdomFrameId(), 1, nh_));
   scan_filter_->registerCallback(std::bind(&Node2D::scanReceived, this, std::placeholders::_1));
 
+  scan2_topic_ = "scan2";
+  scan2_sub_ = std::unique_ptr<message_filters::Subscriber<sensor_msgs::LaserScan>>(
+      new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, scan2_topic_, 1));
+  scan2_filter_ = std::unique_ptr<tf2_ros::MessageFilter<sensor_msgs::LaserScan>>(
+      new tf2_ros::MessageFilter<sensor_msgs::LaserScan>(*scan2_sub_.get(), tf_buffer_, node_->getOdomFrameId(), 1, nh_));
+  scan2_filter_->registerCallback(std::bind(&Node2D::scanReceived, this, std::placeholders::_1));
+
   // 15s timer to warn on lack of receipt of planar scans, #5209
   check_scanner_interval_ = ros::Duration(15.0);
   check_scanner_timer_ = nh_.createTimer(check_scanner_interval_, std::bind(&Node2D::checkScanReceived, this,
@@ -271,6 +278,7 @@ void Node2D::updateFreeSpaceIndices()
 
 void Node2D::scanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan)
 {
+  std::lock_guard<std::mutex> srm(scan_received_mutex_);
   latest_scan_received_ts_ = ros::Time::now();
   if(!isMapInitialized())
     return;
