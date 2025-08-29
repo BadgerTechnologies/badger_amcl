@@ -43,12 +43,18 @@
 #include "badger_amcl/AMCLConfig.h"
 #include "map/octomap.h"
 #include "node/node_nd.h"
+#include "node/node.h"
 #include "sensors/point_cloud_scanner.h"
 
 namespace badger_amcl
 {
 
-class Node;
+struct PointCloudSubscriber
+{
+  std::unique_ptr<message_filters::Subscriber<sensor_msgs::PointCloud2>> cloud_sub;
+  std::unique_ptr<tf2_ros::MessageFilter<sensor_msgs::PointCloud2>> cloud_filter;
+  std::string cloud_topic;
+};
 
 class Node3D : public NodeND
 {
@@ -84,19 +90,17 @@ private:
   bool getFootprintToFrameTransform(const std::string& scanner_frame_id, geometry_msgs::Transform* stampedTransform);
   int initFrameToScanner();
   void initLatestScanData(const sensor_msgs::PointCloud2ConstPtr& point_cloud_scan, int scanner_index);
-  void checkScanReceived(const ros::TimerEvent& event);
 
   std::shared_ptr<OctoMap> map_;
   std::shared_ptr<octomap::OcTree> octree_;
+  std::vector<std::shared_ptr<PointCloudSubscriber>> point_cloud_subscribers_;
   std::shared_ptr<PointCloudData> latest_scan_data_;
   std::shared_ptr<PFSampleSet> fake_sample_set_;
   std::shared_ptr<ParticleFilter> pf_;
-  std::unique_ptr<message_filters::Subscriber<sensor_msgs::PointCloud2>> cloud_sub_;
-  std::unique_ptr<tf2_ros::MessageFilter<sensor_msgs::PointCloud2>> cloud_filter_;
-  std::string cloud_topic_;
   std::string global_frame_id_;
   std::map<std::string, int> frame_to_scanner_;
   std::mutex& configuration_mutex_;
+  std::mutex scan_received_mutex_;
   std::vector<std::shared_ptr<PointCloudScanner> > scanners_;
   std::vector<double> occupancy_map_min_, occupancy_map_max_;
   std::vector<bool> scanners_update_;
@@ -107,9 +111,6 @@ private:
   ros::NodeHandle private_nh_;
   ros::Subscriber occupancy_map_sub_;
   ros::Subscriber octo_map_sub_;
-  ros::Duration scanner_check_interval_;
-  ros::Timer check_scanner_timer_;
-  ros::Time latest_scan_received_ts_;
   tf2_ros::Buffer tf_buffer_;
   tf2_ros::TransformListener tf_listener_;
   int occupancy_map_scale_up_factor_;

@@ -41,12 +41,18 @@
 #include "badger_amcl/AMCLConfig.h"
 #include "map/occupancy_map.h"
 #include "node/node_nd.h"
+#include "node/node.h"
 #include "sensors/planar_scanner.h"
 
 namespace badger_amcl
 {
 
-class Node;
+struct LaserScanSubscriber
+{
+  std::unique_ptr<message_filters::Subscriber<sensor_msgs::LaserScan>> scan_sub;
+  std::unique_ptr<tf2_ros::MessageFilter<sensor_msgs::LaserScan>> scan_filter;
+  std::string scan_topic;
+};
 
 class Node2D : public NodeND
 {
@@ -75,7 +81,6 @@ private:
   void mapMsgReceived(const nav_msgs::OccupancyGridConstPtr& msg);
   void initFromNewMap();
   std::shared_ptr<OccupancyMap> convertMap(const nav_msgs::OccupancyGrid& map_msg);
-  void checkScanReceived(const ros::TimerEvent& event);
   bool initFrameToScanner(const std::string& scanner_frame_id, tf2::Transform* scanner_pose, int* scanner_index);
   void updateScannerPose(const tf2::Transform& scanner_pose, int scanner_index);
   void initLatestScanData(const sensor_msgs::LaserScanConstPtr& planar_scan, int scanner_index);
@@ -85,11 +90,10 @@ private:
 
   Node* node_;
   std::shared_ptr<OccupancyMap> map_;
-  std::unique_ptr<message_filters::Subscriber<sensor_msgs::LaserScan>> scan_sub_;
-  std::unique_ptr<tf2_ros::MessageFilter<sensor_msgs::LaserScan>> scan_filter_;
-  std::string scan_topic_;
+  std::vector<std::shared_ptr<LaserScanSubscriber>> laser_scan_subscribers_;
   std::map<std::string, int> frame_to_scanner_;
   std::mutex& configuration_mutex_;
+  std::mutex scan_received_mutex_;
   std::vector<std::shared_ptr<PlanarScanner>> scanners_;
   std::vector<bool> scanners_update_;
   std::shared_ptr<PlanarData> latest_scan_data_;
@@ -100,9 +104,6 @@ private:
   ros::NodeHandle nh_;
   ros::NodeHandle private_nh_;
   ros::Subscriber map_sub_;
-  ros::Timer check_scanner_timer_;
-  ros::Time latest_scan_received_ts_;
-  ros::Duration check_scanner_interval_;
   tf2_ros::Buffer tf_buffer_;
   tf2_ros::TransformListener tf_listener_;
   int max_beams_;

@@ -82,17 +82,23 @@ Node2D::Node2D(Node* node, std::mutex& configuration_mutex)
   if (map_scale_up_factor_ > 16)
     map_scale_up_factor_ = 16;
 
-  scan_topic_ = "scan";
-  scan_sub_ = std::unique_ptr<message_filters::Subscriber<sensor_msgs::LaserScan>>(
-      new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, scan_topic_, 1));
-  scan_filter_ = std::unique_ptr<tf2_ros::MessageFilter<sensor_msgs::LaserScan>>(
-      new tf2_ros::MessageFilter<sensor_msgs::LaserScan>(*scan_sub_.get(), tf_buffer_, node_->getOdomFrameId(), 1, nh_));
-  scan_filter_->registerCallback(std::bind(&Node2D::scanReceived, this, std::placeholders::_1));
+  auto lss = std::make_shared<LaserScanSubscriber>();
+  lss->scan_topic = "scan";
+  lss->scan_sub = std::unique_ptr<message_filters::Subscriber<sensor_msgs::LaserScan>>(
+      new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, lss->scan_topic, 1));
+  lss->scan_filter = std::unique_ptr<tf2_ros::MessageFilter<sensor_msgs::LaserScan>>(
+      new tf2_ros::MessageFilter<sensor_msgs::LaserScan>(*lss->scan_sub, tf_buffer_, node_->getOdomFrameId(), 1, nh_));
+  lss->scan_filter->registerCallback(std::bind(&Node2D::scanReceived, this, std::placeholders::_1));
+  laser_scan_subscribers_.push_back(lss);
 
-  // 15s timer to warn on lack of receipt of planar scans, #5209
-  check_scanner_interval_ = ros::Duration(15.0);
-  check_scanner_timer_ = nh_.createTimer(check_scanner_interval_, std::bind(&Node2D::checkScanReceived, this,
-                                                                            std::placeholders::_1));
+  auto lss2 = std::make_shared<LaserScanSubscriber>();
+  lss2->scan_topic = "scan2";
+  lss2->scan_sub = std::unique_ptr<message_filters::Subscriber<sensor_msgs::LaserScan>>(
+      new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, lss2->scan_topic, 1));
+  lss2->scan_filter = std::unique_ptr<tf2_ros::MessageFilter<sensor_msgs::LaserScan>>(
+      new tf2_ros::MessageFilter<sensor_msgs::LaserScan>(*lss2->scan_sub, tf_buffer_, node_->getOdomFrameId(), 1, nh_));
+  lss2->scan_filter->registerCallback(std::bind(&Node2D::scanReceived, this, std::placeholders::_1));
+  laser_scan_subscribers_.push_back(lss2);
 
   first_map_received_ = false;
   map_sub_ = nh_.subscribe("map", 1, &Node2D::mapMsgReceived, this);
@@ -101,7 +107,8 @@ Node2D::Node2D(Node* node, std::mutex& configuration_mutex)
 Node2D::~Node2D()
 {
   // TF message filters must be destroyed before the underlying subsriber.
-  scan_filter_.reset();
+  for (auto& lss: laser_scan_subscribers_)
+    lss->scan_filter.reset();
 }
 
 void Node2D::reconfigure(AMCLConfig& config)
@@ -142,14 +149,14 @@ void Node2D::reconfigure(AMCLConfig& config)
            scanner_.applyGompertz(z_rand_ + z_hit_));
   scanner_.setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
 
-  scan_filter_.reset();
-  scan_sub_.reset();
+  for(auto& lss : laser_scan_subscribers_)
+  {
+    lss->scan_sub.reset(new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, lss->scan_topic, 1));
+    lss->scan_filter.reset(new tf2_ros::MessageFilter<sensor_msgs::LaserScan>(
+          *lss->scan_sub, tf_buffer_, node_->getOdomFrameId(), 1, nh_));
+    lss->scan_filter->registerCallback(std::bind(&Node2D::scanReceived, this, std::placeholders::_1));
+  }
 
-  scan_sub_.reset(new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, scan_topic_, 1));
-  scan_filter_.reset(new tf2_ros::MessageFilter<sensor_msgs::LaserScan>(*scan_sub_.get(), tf_buffer_,
-                                                                        node_->getOdomFrameId(), 1, nh_));
-
-  scan_filter_->registerCallback(std::bind(&Node2D::scanReceived, this, std::placeholders::_1));
   pf_ = node_->getPfPtr();
 }
 
@@ -271,7 +278,7 @@ void Node2D::updateFreeSpaceIndices()
 
 void Node2D::scanReceived(const sensor_msgs::LaserScanConstPtr& planar_scan)
 {
-  latest_scan_received_ts_ = ros::Time::now();
+  std::lock_guard<std::mutex> srm(scan_received_mutex_);
   if(!isMapInitialized())
     return;
 
@@ -530,16 +537,6 @@ void Node2D::getMaxWeightPose(double* max_weight, Eigen::Vector3d* max_pose)
       *max_weight = cluster_weight;
       *max_pose = cluster_pose;
     }
-  }
-}
-
-void Node2D::checkScanReceived(const ros::TimerEvent& event)
-{
-  ros::Duration d = ros::Time::now() - latest_scan_received_ts_;
-  if (d > check_scanner_interval_)
-  {
-    ROS_WARN_STREAM("No planar scan received (and thus no pose updates have been published) for " << d
-                    << " seconds. Verify that data is being published to the topic " << scan_sub_->getTopic() << ".");
   }
 }
 
