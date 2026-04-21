@@ -191,13 +191,10 @@ PFKDTree::Key PFKDTree::getKey(const Eigen::Vector3d& pose)
   // the range [0, 2*pi). This prevents the same angle (e.g. 270 and -90)
   // from being clustered separately.
   Eigen::Vector3d normalized_pose = pose;
-  while (normalized_pose[2] < 0)
+  normalized_pose[2] = std::fmod(normalized_pose[2], 2 * M_PI);
+  if (normalized_pose[2] < 0)
   {
     normalized_pose[2] += 2 * M_PI;
-  }
-  while (normalized_pose[2] >= 2 * M_PI)
-  {
-    normalized_pose[2] -= 2 * M_PI;
   }
 
   Key key;
