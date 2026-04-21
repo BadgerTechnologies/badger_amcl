@@ -442,6 +442,14 @@ bool Node::loadPoseFromFile()
     xx = config["pose"]["covariance"][COVARIANCE_XX].as<double>();
     yy = config["pose"]["covariance"][COVARIANCE_YY].as<double>();
     aa = config["pose"]["covariance"][COVARIANCE_AA].as<double>();
+    // The yaw normalization while loop in pf_kdtree runs aa^0.5 / (2*pi) iterations per
+    // particle; fmod becomes cheaper at ~20 iterations (40*pi), so clamp here to avoid
+    // near-infinite loops during particle initialization.
+    if (aa > (40 * M_PI) * (40 * M_PI))
+    {
+      ROS_WARN("Saved pose yaw covariance (%f) is unreasonably large, using default.", aa);
+      aa = default_cov_vals_[COVARIANCE_AA];
+    }
     if(config["header"]["on_exit"])
       on_exit = config["header"]["on_exit"].as<bool>();
     else
