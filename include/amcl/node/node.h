@@ -31,6 +31,7 @@
 #include <vector>
 
 #include <Eigen/Dense>
+#include <geometry_msgs/PoseArray.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <message_filters/subscriber.h>
 #include <nav_msgs/Odometry.h>
@@ -84,6 +85,7 @@ public:
   std::string getBaseFrameId();
   std::shared_ptr<ParticleFilter> getPfPtr();
   void publishParticleCloud();
+  void publishClusterParticles();
   void publishPose(const Eigen::Vector3d& max_pose, const ros::Time& stamp);
   void updatePf(const ros::Time& t, std::vector<bool>& scanners_update, int scanner_index,
                 int* resample_count, bool* force_publication);
@@ -137,6 +139,7 @@ private:
   ros::Publisher pose_pub_;
   ros::Publisher absolute_motion_pub_;
   ros::Publisher particlecloud_pub_;
+  ros::Publisher cluster_particles_pub_;
   ros::Publisher alt_pose_pub_;
   ros::Publisher alt_particlecloud_pub_;
   ros::Publisher map_odom_transform_pub_;

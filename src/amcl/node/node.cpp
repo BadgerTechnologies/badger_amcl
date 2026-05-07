@@ -111,6 +111,7 @@ Node::Node()
 
   pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("amcl_pose", 2, true);
   particlecloud_pub_ = nh_.advertise<geometry_msgs::PoseArray>("particlecloud", 2, true);
+  cluster_particles_pub_ = nh_.advertise<geometry_msgs::PoseArray>("cluster_particles", 1);
   map_odom_transform_pub_ = nh_.advertise<nav_msgs::Odometry>("amcl_map_odom_transform", 1);
   global_loc_srv_ = nh_.advertiseService("global_localization", &Node::globalLocalizationCallback, this);
 
@@ -207,6 +208,27 @@ void Node::publishParticleCloud()
                cloud_msg.poses[i]);
   }
   particlecloud_pub_.publish(cloud_msg);
+}
+
+void Node::publishClusterParticles()
+{
+  std::shared_ptr<PFSampleSet> set = pf_->getCurrentSet();
+  tf2::Quaternion q;
+  for (int i = 0; i < set->cluster_count; i++)
+  {
+    geometry_msgs::PoseArray msg;
+    msg.header.stamp = ros::Time::now();
+    msg.header.frame_id = global_frame_id_;
+    const std::vector<PFSample*>& samples = set->clusters[i].samples;
+    msg.poses.resize(samples.size());
+    for (size_t j = 0; j < samples.size(); j++)
+    {
+      q.setRPY(0.0, 0.0, samples[j]->pose[2]);
+      tf2::toMsg(tf2::Transform(q, tf2::Vector3(samples[j]->pose[0], samples[j]->pose[1], 0)),
+                 msg.poses[j]);
+    }
+    cluster_particles_pub_.publish(msg);
+  }
 }
 
 void Node::publishPose(const Eigen::Vector3d& max_pose, const ros::Time& stamp)
@@ -528,7 +550,7 @@ void Node::initFromNewMap(std::shared_ptr<Map> new_map, bool use_initial_pose)
 
   // Create the particle filter
   uniform_pose_generator_fn_ = std::bind(&Node::uniformPoseGenerator, this);
-  pf_ = std::make_shared<ParticleFilter>(particle_cluster_size_, global_frame_id_,
+  pf_ = std::make_shared<ParticleFilter>(particle_cluster_size_,
                                          min_particles_, max_particles_, pose_estimate_max_particles_,
                                          alpha_slow_, alpha_fast_,
                                          global_localization_convergence_threshold_,

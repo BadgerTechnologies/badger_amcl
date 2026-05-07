@@ -260,6 +260,7 @@ void Node2D::updateScanner(const sensor_msgs::LaserScanConstPtr& planar_scan,
     scanners_update_.at(scanner_index) = false;
     pf_->computeClusterStatsForSet();
     node_->publishParticleCloud();
+    node_->publishClusterParticles();
     if(!(++resample_count_ % resample_interval_))
     {
       // Publish pose before resampling
