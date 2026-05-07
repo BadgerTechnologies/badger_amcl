@@ -31,7 +31,6 @@
 #include <vector>
 
 #include <Eigen/Dense>
-#include <dynamic_reconfigure/server.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <message_filters/subscriber.h>
 #include <nav_msgs/Odometry.h>
@@ -52,7 +51,6 @@
 #include <tf2_ros/buffer.h>
 #include <yaml-cpp/yaml.h>
 
-#include "badger_amcl/AMCLConfig.h"
 #include "map/map.h"
 #include "node/node_nd.h"
 #include "pf/particle_filter.h"
@@ -93,7 +91,6 @@ public:
   void attemptSavePose(bool exiting);
 
 private:
-  void reconfigureCB(AMCLConfig& config, uint32_t level);
   bool globalLocalizationCallback(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
   // Generate a random pose in a free space on the map
   Eigen::Vector3d randomFreeSpacePose();
@@ -201,12 +198,9 @@ private:
   std::vector<double> default_cov_vals_;
   std::shared_ptr<geometry_msgs::PoseWithCovarianceStamped> last_published_pose_;
 
-  bool first_reconfigure_call_;
   std::mutex configuration_mutex_;
   std::recursive_mutex tf_mutex_;
   std::mutex latest_pose_mutex_;
-  dynamic_reconfigure::Server<AMCLConfig> dsrv_;
-  AMCLConfig default_config_;
   ros::CallbackQueue publish_transform_queue_;
   ros::AsyncSpinner publish_transform_spinner_;
   ros::NodeHandle publish_transform_nh_;

@@ -38,7 +38,6 @@
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/message_filter.h>
 
-#include "badger_amcl/AMCLConfig.h"
 #include "map/occupancy_map.h"
 #include "node/node_nd.h"
 #include "node/node.h"
@@ -63,7 +62,6 @@ public:
   // are designed to be coupled with the Node class.
   Node2D(Node* node, std::mutex& configuration_mutex);
   ~Node2D();
-  void reconfigure(AMCLConfig& config) override;
   void globalLocalizationCallback() override;
   double scorePose(const Eigen::Vector3d& p) override;
 private:

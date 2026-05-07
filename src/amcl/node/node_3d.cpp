@@ -114,47 +114,6 @@ Node3D::~Node3D()
     pcs->cloud_filter.reset();
 }
 
-void Node3D::reconfigure(AMCLConfig& config)
-{
-  resample_interval_ = config.resample_interval;
-  max_beams_ = config.laser_max_beams;
-  z_hit_ = config.laser_z_hit;
-  z_short_ = config.laser_z_short;
-  z_max_ = config.laser_z_max;
-  z_rand_ = config.laser_z_rand;
-  sigma_hit_ = config.laser_sigma_hit;
-  max_distance_to_object_ = config.laser_likelihood_max_dist;
-  off_map_factor_ = config.laser_off_map_factor;
-  non_free_space_factor_ = config.laser_non_free_space_factor;
-  non_free_space_radius_ = config.laser_non_free_space_radius;
-  global_localization_off_map_factor_ = config.global_localization_laser_off_map_factor;
-  global_localization_non_free_space_factor_ = config.global_localization_laser_non_free_space_factor;
-  num_best_fit_particles_ = config.num_best_fit_particles;
-  scanner_.init(
-      max_beams_, map_, global_frame_id_, z_hit_, z_rand_, sigma_hit_, gompertz_a_, gompertz_b_, gompertz_c_,
-      gompertz_input_shift_, gompertz_input_scale_, gompertz_output_shift_, num_best_fit_particles_);
-  ROS_INFO("Gompertz key points by total planar scan match: "
-           "0.0: %f, 0.25: %f, 0.5: %f, 0.75: %f, 1.0: %f",
-           scanner_.applyGompertz(z_rand_),
-           scanner_.applyGompertz(z_rand_ + z_hit_ * .25),
-           scanner_.applyGompertz(z_rand_ + z_hit_ * .5),
-           scanner_.applyGompertz(z_rand_ + z_hit_ * .75),
-           scanner_.applyGompertz(z_rand_ + z_hit_));
-
-  scanner_.setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
-
-  for (auto& pcs: point_cloud_subscribers_)
-  {
-    pcs->cloud_sub.reset(new message_filters::Subscriber<sensor_msgs::PointCloud2>(nh_, pcs->cloud_topic, 1));
-    pcs->cloud_filter.reset(new tf2_ros::MessageFilter<sensor_msgs::PointCloud2>(
-          *pcs->cloud_sub, tf_buffer_, node_->getOdomFrameId(), 1, nh_));
-    pcs->cloud_filter->registerCallback(std::bind(&Node3D::scanReceived, this, std::placeholders::_1));
-  }
-
-  pf_ = node_->getPfPtr();
-  publish_distances_lut_ = config.publish_distances_lut;
-}
-
 void Node3D::occupancyMapMsgReceived(const nav_msgs::OccupancyGridConstPtr& msg)
 {
   std::lock_guard<std::mutex> cfl(configuration_mutex_);
@@ -365,8 +324,8 @@ bool Node3D::isMapInitialized()
 void Node3D::deactivateGlobalLocalizationParams()
 {
   std::lock_guard<std::mutex> cfl(configuration_mutex_);
-  // Handle corner cases like getting dynamically reconfigured or getting a
-  // new map by de-activating the global localization parameters here.
+  // Handle corner cases like getting a new map by de-activating the global
+  // localization parameters here.
   node_->setPfDecayRateNormal();
   scanner_.setMapFactors(off_map_factor_, non_free_space_factor_, non_free_space_radius_);
   for (auto& l : scanners_)

@@ -27,7 +27,6 @@
     <buildtool_depend>catkin</buildtool_depend>
     <test_depend>badger_test_lib</test_depend>
 
-    <depend>dynamic_reconfigure</depend>
     <depend>nav_msgs</depend>
     <depend>roscpp</depend>
     <depend>tf2_ros</depend>

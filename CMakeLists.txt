@@ -9,7 +9,6 @@ find_package(catkin REQUIRED
             tf2_ros
             tf2_geometry_msgs
             tf2_sensor_msgs
-            dynamic_reconfigure
             nav_msgs
             badger_file_lib
             pcl_ros
@@ -21,15 +20,9 @@ find_package(Boost REQUIRED)
 find_package(OCTOMAP REQUIRED)
 find_package(Eigen3 REQUIRED)
 
-# dynamic reconfigure
-generate_dynamic_reconfigure_options(
-    cfg/AMCL.cfg
-)
-
 catkin_package(
     CATKIN_DEPENDS
         roscpp
-        dynamic_reconfigure
         tf2_ros
         tf2_geometry_msgs
         tf2_sensor_msgs
@@ -66,7 +59,6 @@ add_library(badger_amcl
     src/amcl/node/node_3d.cpp
     src/amcl/node/node.cpp
 )
-add_dependencies(badger_amcl ${PROJECT_NAME}_gencfg)
 
 target_link_libraries(badger_amcl
     ${OCTOMAP_LIBRARIES}
@@ -77,7 +69,6 @@ target_link_libraries(badger_amcl
 
 add_executable(badger_amcl_bin
 	src/main.cpp)
-add_dependencies(badger_amcl_bin ${PROJECT_NAME}_gencfg)
 
 target_link_libraries(
     badger_amcl_bin
