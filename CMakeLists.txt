@@ -46,6 +46,7 @@ include_directories(
 )
 
 add_library(badger_amcl
+    src/amcl/amcl_log.cpp
     src/amcl/pf/particle_filter.cpp
     src/amcl/pf/pf_kdtree.cpp
     src/amcl/pf/pdf_gaussian.cpp

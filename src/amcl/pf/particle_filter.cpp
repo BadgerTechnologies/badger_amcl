@@ -20,10 +20,12 @@
 
 #include "pf/particle_filter.h"
 
+#include <cassert>
 #include <cmath>
 #include <cstdlib>
+#include <sstream>
 
-#include <ros/assert.h>
+#include "amcl_log.hpp"
 
 #include "pf/pdf_gaussian.h"
 #include "sensors/sensor.h"
@@ -198,13 +200,15 @@ void ParticleFilter::updateConverged()
   }
 
   percent_converged = static_cast<float>(particles_converged) / static_cast<float>(sample_index) * 100;
-  ROS_INFO_STREAM(percent_converged << "% of the particles are converging");
+  std::ostringstream oss;
+  oss << percent_converged << "% of the particles are converging";
+  amcl::getLogger().info(oss.str());
 
   if (percent_converged >= global_localization_convergence_threshold_)
   {
     set->converged = true;
     converged_ = true;
-    ROS_INFO("The Particles have converged!");
+    amcl::getLogger().info("The Particles have converged!");
   }
   else
   {
@@ -510,7 +514,7 @@ int ParticleFilter::getClusterIndexOfSampleInSet(std::shared_ptr<PFSampleSet> se
 {
   // Get the cluster label for this sample
   int cidx = set->kdtree->getCluster(sample->pose);
-  ROS_ASSERT(cidx >= 0);
+  assert(cidx >= 0);
   if (cidx >= set->cluster_max_count)
     return -1;
   if (cidx + 1 > set->cluster_count)

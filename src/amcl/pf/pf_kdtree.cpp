@@ -20,12 +20,9 @@
 
 #include "pf/pf_kdtree.h"
 
-#include <cmath>
-#include <cstdlib>
-#include <cstring>
-#include <vector>
+#include <cassert>
 
-#include <ros/assert.h>
+#include <cmath>
 
 namespace badger_amcl
 {
@@ -133,7 +130,7 @@ void PFKDTree::traverseNode(PFKDTreeNode* node, Key key, double value, int depth
         node->pivot_dim = i;
       }
     }
-    ROS_ASSERT(node->pivot_dim >= 0);
+    assert(node->pivot_dim >= 0);
     leaf_count_ -= 1;
   }
   int child = key[node->pivot_dim] > node->key[node->pivot_dim];
@@ -177,7 +174,7 @@ void PFKDTree::clusterNode(PFKDTreeNode* node)
       continue;
     if (next_node->cluster >= 0)
     {
-      ROS_ASSERT(next_node->cluster == node->cluster);
+      assert(next_node->cluster == node->cluster);
       continue;
     }
     next_node->cluster = node->cluster;
