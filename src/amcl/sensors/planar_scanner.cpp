@@ -25,7 +25,6 @@
 #include <functional>
 
 #include <angles/angles.h>
-#include <ros/assert.h>
 #include <ros/console.h>
 
 namespace badger_amcl
