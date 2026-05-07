@@ -289,6 +289,7 @@ void Node3D::updateScanner(const sensor_msgs::PointCloud2ConstPtr& point_cloud_s
   scanners_update_.at(scanner_index) = false;
   pf_->computeClusterStatsForSet();
   node_->publishParticleCloud();
+  node_->publishClusterParticles();
   if(!(++resample_count_ % resample_interval_))
   {
     // Publish pose before resampling
