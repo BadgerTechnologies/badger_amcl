@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(badger_amcl)
 
-set(CMAKE_CXX_STANDARD 14)
+if(NOT CMAKE_CXX_STANDARD OR CMAKE_CXX_STANDARD LESS 20)
+  set(CMAKE_CXX_STANDARD 20)
+endif()
 
 find_package(catkin REQUIRED
         COMPONENTS
