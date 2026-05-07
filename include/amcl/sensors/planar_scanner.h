@@ -139,6 +139,6 @@ private:
   std::vector<double> point_;
 };
 
-}  // namespace amcl
+}  // namespace badger_amcl
 
 #endif  // AMCL_SENSORS_PLANAR_SCANNER_H

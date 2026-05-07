@@ -118,6 +118,6 @@ private:
   bool publish_distances_lut_;
   std::string global_frame_id_;
 };
-}  // namespace amcl
+}  // namespace badger_amcl
 
 #endif  // AMCL_MAP_OCTOMAP_H

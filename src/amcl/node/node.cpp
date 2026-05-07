@@ -1119,4 +1119,4 @@ std::string Node::getBaseFrameId()
   return base_frame_id_;
 }
 
-}  // namespace amcl
+}  // namespace badger_amcl

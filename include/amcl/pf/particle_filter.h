@@ -178,6 +178,6 @@ private:
   bool converged_;
 };
 
-}  // namespace amcl
+}  // namespace badger_amcl
 
 #endif  // AMCL_PF_PARTICLE_FILTER_H

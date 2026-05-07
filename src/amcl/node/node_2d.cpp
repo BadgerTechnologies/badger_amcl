@@ -506,4 +506,4 @@ void Node2D::globalLocalizationCallback()
   global_localization_active_ = true;
 }
 
-}  // namespace amcl
+}  // namespace badger_amcl
