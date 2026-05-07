@@ -130,6 +130,6 @@ private:
   bool global_localization_active_;
 };
 
-}  // namespace amcl
+}  // namespace badger_amcl
 
 #endif // AMCL_NODE_NODE_2D_H

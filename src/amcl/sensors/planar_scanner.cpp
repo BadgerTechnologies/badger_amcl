@@ -277,4 +277,4 @@ Eigen::Vector3d PlanarScanner::coordAdd(const Eigen::Vector3d& a, const Eigen::V
   return c;
 }
 
-}  // namespace amcl
+}  // namespace badger_amcl

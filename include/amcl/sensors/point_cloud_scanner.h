@@ -122,6 +122,6 @@ private:
   ros::Publisher best_fit_cloud_pub_, best_fit_particles_pub_;
 };
 
-}  // namespace amcl
+}  // namespace badger_amcl
 
 #endif  // AMCL_SENSORS_POINT_CLOUD_SCANNER_H

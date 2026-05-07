@@ -51,6 +51,6 @@ public:
   virtual ~SensorData() = default;
 };
 
-}  // namespace amcl
+}  // namespace badger_amcl
 
 #endif  // AMCL_SENSORS_SENSOR_H

@@ -139,6 +139,6 @@ private:
   int num_best_fit_particles_;
 };
 
-}  // namespace amcl
+}  // namespace badger_amcl
 
 #endif // AMCL_NODE_NODE_3D_H

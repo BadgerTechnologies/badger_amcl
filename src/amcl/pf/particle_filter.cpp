@@ -590,4 +590,4 @@ bool ParticleFilter::isConverged()
   return converged_;
 }
 
-}  // namespace amcl
+}  // namespace badger_amcl
