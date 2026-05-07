@@ -466,6 +466,7 @@ void ParticleFilter::initCluster(PFCluster* cluster)
   cluster->weight = 0;
   cluster->mean = Eigen::Vector3d();
   cluster->cov = Eigen::Matrix3d();
+  cluster->samples.clear();
 
   for (int j = 0; j < 4; j++)
     cluster->m[j] = 0.0;
