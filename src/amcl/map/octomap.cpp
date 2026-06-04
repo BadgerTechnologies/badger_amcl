@@ -399,4 +399,4 @@ void OctoMap::publishDistancesLUT()
   ROS_INFO_STREAM("Publishing cloud of size: " << cloud->points.size());
 }
 
-}  // namespace amcl
+}  // namespace badger_amcl

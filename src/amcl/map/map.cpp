@@ -40,4 +40,4 @@ bool Map::isDistancesLUTCreated()
   return distances_lut_created_;
 }
 
-}  // namespace amcl
+}  // namespace badger_amcl

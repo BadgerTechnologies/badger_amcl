@@ -361,4 +361,4 @@ double OccupancyMap::calcRange(double ox, double oy, double oa, double max_range
   return max_range;
 }
 
-}  //namespace amcl
+}  // namespace badger_amcl

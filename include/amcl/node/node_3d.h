@@ -40,7 +40,6 @@
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/message_filter.h>
 
-#include "badger_amcl/AMCLConfig.h"
 #include "map/octomap.h"
 #include "node/node_nd.h"
 #include "node/node.h"
@@ -65,7 +64,6 @@ public:
   // are designed to be coupled with the Node class.
   Node3D(Node* node, std::mutex& configuration_mutex, std::string global_frame_id);
   ~Node3D();
-  void reconfigure(AMCLConfig& config) override;
   void globalLocalizationCallback() override;
   double scorePose(const Eigen::Vector3d& p) override;
 private:
@@ -141,6 +139,6 @@ private:
   int num_best_fit_particles_;
 };
 
-}  // namespace amcl
+}  // namespace badger_amcl
 
 #endif // AMCL_NODE_NODE_3D_H

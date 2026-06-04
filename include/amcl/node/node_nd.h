@@ -22,8 +22,6 @@
 
 #include <Eigen/Dense>
 
-#include "badger_amcl/AMCLConfig.h"
-
 namespace badger_amcl
 {
 
@@ -31,11 +29,10 @@ class NodeND
 {
 public:
   virtual ~NodeND() = default;
-  virtual void reconfigure(AMCLConfig& config) = 0;
   virtual void globalLocalizationCallback() = 0;
   virtual double scorePose(const Eigen::Vector3d& p) = 0;
 };
 
-}  // namespace amcl
+}  // namespace badger_amcl
 
 #endif  // AMCL_NODE_NODE_ND_H

@@ -25,8 +25,6 @@
 #include <functional>
 
 #include <angles/angles.h>
-#include <ros/assert.h>
-#include <ros/console.h>
 
 namespace badger_amcl
 {
@@ -277,4 +275,4 @@ Eigen::Vector3d PlanarScanner::coordAdd(const Eigen::Vector3d& a, const Eigen::V
   return c;
 }
 
-}  // namespace amcl
+}  // namespace badger_amcl

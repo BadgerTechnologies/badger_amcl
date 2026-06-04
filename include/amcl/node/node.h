@@ -31,7 +31,7 @@
 #include <vector>
 
 #include <Eigen/Dense>
-#include <dynamic_reconfigure/server.h>
+#include <geometry_msgs/PoseArray.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <message_filters/subscriber.h>
 #include <nav_msgs/Odometry.h>
@@ -52,7 +52,6 @@
 #include <tf2_ros/buffer.h>
 #include <yaml-cpp/yaml.h>
 
-#include "badger_amcl/AMCLConfig.h"
 #include "map/map.h"
 #include "node/node_nd.h"
 #include "pf/particle_filter.h"
@@ -86,6 +85,7 @@ public:
   std::string getBaseFrameId();
   std::shared_ptr<ParticleFilter> getPfPtr();
   void publishParticleCloud();
+  void publishClusterParticles();
   void publishPose(const Eigen::Vector3d& max_pose, const ros::Time& stamp);
   void updatePf(const ros::Time& t, std::vector<bool>& scanners_update, int scanner_index,
                 int* resample_count, bool* force_publication);
@@ -93,7 +93,6 @@ public:
   void attemptSavePose(bool exiting);
 
 private:
-  void reconfigureCB(AMCLConfig& config, uint32_t level);
   bool globalLocalizationCallback(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
   // Generate a random pose in a free space on the map
   Eigen::Vector3d randomFreeSpacePose();
@@ -140,6 +139,7 @@ private:
   ros::Publisher pose_pub_;
   ros::Publisher absolute_motion_pub_;
   ros::Publisher particlecloud_pub_;
+  ros::Publisher cluster_particles_pub_;
   ros::Publisher alt_pose_pub_;
   ros::Publisher alt_particlecloud_pub_;
   ros::Publisher map_odom_transform_pub_;
@@ -201,12 +201,9 @@ private:
   std::vector<double> default_cov_vals_;
   std::shared_ptr<geometry_msgs::PoseWithCovarianceStamped> last_published_pose_;
 
-  bool first_reconfigure_call_;
   std::mutex configuration_mutex_;
   std::recursive_mutex tf_mutex_;
   std::mutex latest_pose_mutex_;
-  dynamic_reconfigure::Server<AMCLConfig> dsrv_;
-  AMCLConfig default_config_;
   ros::CallbackQueue publish_transform_queue_;
   ros::AsyncSpinner publish_transform_spinner_;
   ros::NodeHandle publish_transform_nh_;
@@ -222,6 +219,6 @@ private:
   std::vector<std::pair<int, int>> free_space_indices_;
 };
 
-}  // namespace amcl
+}  // namespace badger_amcl
 
 #endif  // AMCL_NODE_NODE_H

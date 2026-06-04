@@ -20,15 +20,8 @@
 
 #include "pf/particle_filter.h"
 
-#include <stdlib.h>
-
 #include <cmath>
-#include <cstddef>
 #include <cstdlib>
-#include <geometry_msgs/PoseArray.h>
-#include <tf2/LinearMath/Quaternion.h>
-#include <tf2/LinearMath/Transform.h>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
 #include <ros/assert.h>
 
@@ -39,7 +32,7 @@ namespace badger_amcl
 {
 
 // Create a new filter
-ParticleFilter::ParticleFilter(const Eigen::Vector3d& cluster_size, std::string global_frame_id,
+ParticleFilter::ParticleFilter(const Eigen::Vector3d& cluster_size,
                                int min_particles, int max_particles, int pose_estimate_max_particles,
                                double alpha_slow, double alpha_fast,
                                double global_localization_convergence_threshold,
@@ -48,8 +41,6 @@ ParticleFilter::ParticleFilter(const Eigen::Vector3d& cluster_size, std::string 
   int i, j;
   std::shared_ptr<PFSampleSet> set;
   PFSample* sample;
-
-  global_frame_id_ = global_frame_id;
 
   random_pose_fn_ = random_pose_fn;
 
@@ -101,8 +92,6 @@ ParticleFilter::ParticleFilter(const Eigen::Vector3d& cluster_size, std::string 
 
   alpha_slow_ = alpha_slow;
   alpha_fast_ = alpha_fast;
-
-  cluster_particles_pub_ = nh_.advertise<geometry_msgs::PoseArray>("cluster_particles", 1);
 
   initConverged();
 }
@@ -466,6 +455,7 @@ void ParticleFilter::initCluster(PFCluster* cluster)
   cluster->weight = 0;
   cluster->mean = Eigen::Vector3d();
   cluster->cov = Eigen::Matrix3d();
+  cluster->samples.clear();
 
   for (int j = 0; j < 4; j++)
     cluster->m[j] = 0.0;
@@ -502,22 +492,6 @@ void ParticleFilter::computeClusterStats(PFCluster* cluster)
       }
     }
   }
-
-  geometry_msgs::PoseArray cluster_particles_msg;
-  cluster_particles_msg.header.stamp = ros::Time::now();
-  cluster_particles_msg.header.frame_id = global_frame_id_;
-  int num_cluster_particles = cluster->samples.size();
-  cluster_particles_msg.poses.resize(num_cluster_particles);
-  tf2::Quaternion q;
-  PFSample* sample;
-  for (int i = 0; i < num_cluster_particles; i++)
-  {
-    sample = cluster->samples[i];
-    q.setRPY(0.0, 0.0, sample->pose[2]);
-    tf2::toMsg(tf2::Transform(q, tf2::Vector3(sample->pose[0], sample->pose[1], 0)),
-               cluster_particles_msg.poses[i]);
-  }
-  cluster_particles_pub_.publish(cluster_particles_msg);
 
   cluster->mean[0] = cluster->m[0] / cluster->weight;
   cluster->mean[1] = cluster->m[1] / cluster->weight;
@@ -616,4 +590,4 @@ bool ParticleFilter::isConverged()
   return converged_;
 }
 
-}  // namespace amcl
+}  // namespace badger_amcl

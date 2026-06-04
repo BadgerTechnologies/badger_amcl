@@ -119,6 +119,6 @@ private:
   std::vector<int> pixel_;
   std::vector<double> point_;
 };
-}  // namespace amcl
+}  // namespace badger_amcl
 
 #endif  // AMCL_MAP_OCCUPANCY_MAP_H

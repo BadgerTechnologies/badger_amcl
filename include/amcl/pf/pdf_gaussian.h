@@ -59,6 +59,6 @@ private:
   Eigen::Vector3d cd_;
 };
 
-}  // namespace amcl
+}  // namespace badger_amcl
 
 #endif  // AMCL_PF_PDF_GAUSSIAN_H

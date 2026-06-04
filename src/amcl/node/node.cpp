@@ -50,16 +50,19 @@ Node::Node()
     map_(NULL),
     private_nh_("~"),
     initial_pose_hyp_(NULL),
-    first_reconfigure_call_(true),
     publish_transform_spinner_(1, &publish_transform_queue_),
     global_localization_active_(false),
     odom_transform_initialized_(false),
-    dsrv_(ros::NodeHandle("~")),
     tf_listener_(tf_buffer_)
 {
   std::lock_guard<std::mutex> cfl(configuration_mutex_);
 
   private_nh_.param("map_type", map_type_, 0);
+  if (map_type_ != 2 && map_type_ != 3)
+  {
+    ROS_FATAL("map_type must be 2 (planar/occupancy) or 3 (octomap/point cloud); got %d", map_type_);
+    std::exit(1);
+  }
 
   double param_val;
   private_nh_.param("transform_publish_rate", param_val, 50.0);
@@ -80,7 +83,7 @@ Node::Node()
   private_nh_.param("odom_alpha5", alpha5_, 0.2);
   private_nh_.param("global_localization_convergence_threshold", global_localization_convergence_threshold_, 95.0);
 
-  private_nh_.param("save_pose", save_pose_, false);
+  private_nh_.param("save_pose", save_pose_, true);
   const std::string default_filepath = "badger_amcl_saved_pose.yaml";
   private_nh_.param("saved_pose_filepath", saved_pose_filepath_, default_filepath);
 
@@ -108,6 +111,7 @@ Node::Node()
 
   pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("amcl_pose", 2, true);
   particlecloud_pub_ = nh_.advertise<geometry_msgs::PoseArray>("particlecloud", 2, true);
+  cluster_particles_pub_ = nh_.advertise<geometry_msgs::PoseArray>("cluster_particles", 1);
   map_odom_transform_pub_ = nh_.advertise<nav_msgs::Odometry>("amcl_map_odom_transform", 1);
   global_loc_srv_ = nh_.advertiseService("global_localization", &Node::globalLocalizationCallback, this);
 
@@ -133,10 +137,6 @@ Node::Node()
     node_ = std::make_shared<Node3D>(this, configuration_mutex_, global_frame_id_);
   }
 
-  dynamic_reconfigure::Server<AMCLConfig>::CallbackType cb = std::bind(&Node::reconfigureCB, this,
-                                                                       std::placeholders::_1, std::placeholders::_2);
-  dsrv_.setCallback(cb);
-
   publish_transform_nh_ = nh_;
   publish_transform_nh_.setCallbackQueue(&publish_transform_queue_);
   publish_transform_timer_ = publish_transform_nh_.createTimer(transform_publish_period_,
@@ -150,93 +150,6 @@ Node::Node()
   save_pose_to_file_timer_ = nh_.createTimer(
       save_pose_to_file_period_,
       std::bind(&Node::attemptSavePose, this, false));
-}
-
-void Node::reconfigureCB(AMCLConfig& config, uint32_t level)
-{
-  // we don't want to do anything on the first call
-  // which corresponds to startup
-  if (first_reconfigure_call_)
-  {
-    first_reconfigure_call_ = false;
-    default_config_ = config;
-    return;
-  }
-
-  std::lock_guard<std::mutex> cfl(configuration_mutex_);
-
-  if (config.restore_defaults)
-  {
-    config = default_config_;
-    // avoid looping
-    config.restore_defaults = false;
-  }
-
-  d_thresh_ = config.update_min_d;
-  a_thresh_ = config.update_min_a;
-
-  transform_publish_period_ = ros::Duration(1.0 / config.transform_publish_rate);
-  save_pose_to_file_period_ = ros::Duration(1.0 / config.save_pose_to_file_rate);
-
-  transform_tolerance_.fromSec(config.transform_tolerance);
-
-  alpha1_ = config.odom_alpha1;
-  alpha2_ = config.odom_alpha2;
-  alpha3_ = config.odom_alpha3;
-  alpha4_ = config.odom_alpha4;
-  alpha5_ = config.odom_alpha5;
-
-  if (config.min_particles > config.max_particles)
-  {
-    ROS_WARN("You've set min_particles to be greater than max particles, "
-             "this isn't allowed so they'll be set to be equal.");
-    config.max_particles = config.min_particles;
-  }
-
-  min_particles_ = config.min_particles;
-  max_particles_ = config.max_particles;
-  alpha_slow_ = config.recovery_alpha_slow;
-  alpha_fast_ = config.recovery_alpha_fast;
-  uniform_pose_starting_weight_threshold_ = config.uniform_pose_starting_weight_threshold;
-  uniform_pose_deweight_multiplier_ = config.uniform_pose_deweight_multiplier;
-  global_localization_alpha_slow_ = config.global_localization_alpha_slow;
-  global_localization_alpha_fast_ = config.global_localization_alpha_fast;
-  tf_broadcast_ = config.tf_broadcast;
-  tf_reverse_ = config.tf_reverse;
-
-  uniform_pose_generator_fn_ = std::bind(&Node::uniformPoseGenerator, this);
-  particle_cluster_size_ = Eigen::Vector3d(
-      config.particle_cluster_size_x, config.particle_cluster_size_y, config.particle_cluster_size_yaw);
-  pf_ = std::make_shared<ParticleFilter>(particle_cluster_size_, global_frame_id_,
-                                         min_particles_, max_particles_, pose_estimate_max_particles_,
-                                         alpha_slow_, alpha_fast_,
-                                         global_localization_convergence_threshold_,
-                                         uniform_pose_generator_fn_);
-  pf_err_ = config.kld_err;
-  pf_z_ = config.kld_z;
-  pf_->setPopulationSizeParameters(pf_err_, pf_z_);
-
-  // Initialize the filter
-  Eigen::Vector3d pf_init_pose_mean;
-  pf_init_pose_mean[0] = last_published_pose_->pose.pose.position.x;
-  pf_init_pose_mean[1] = last_published_pose_->pose.pose.position.y;
-  pf_init_pose_mean[2] = tf2::getYaw(last_published_pose_->pose.pose.orientation);
-  Eigen::Matrix3d pf_init_pose_cov;
-  pf_init_pose_cov(0, 0) = last_published_pose_->pose.covariance[COVARIANCE_XX];
-  pf_init_pose_cov(1, 1) = last_published_pose_->pose.covariance[COVARIANCE_YY];
-  pf_init_pose_cov(2, 2) = last_published_pose_->pose.covariance[COVARIANCE_AA];
-  pf_->initWithGaussian(pf_init_pose_mean, pf_init_pose_cov);
-  odom_initialized_ = false;
-  odom_.initModel(alpha1_, alpha2_, alpha3_, alpha4_, alpha5_);
-  odom_frame_id_ = config.odom_frame_id;
-  base_frame_id_ = config.base_frame_id;
-  global_frame_id_ = config.global_frame_id;
-  transform_frame_id_ = config.transform_frame_id;
-  node_->reconfigure(config);
-  save_pose_ = config.save_pose;
-  saved_pose_filepath_ = config.saved_pose_filepath;
-  publish_transform_timer_.setPeriod(transform_publish_period_);
-  save_pose_to_file_timer_.setPeriod(save_pose_to_file_period_);
 }
 
 void Node::setPfDecayRateNormal()
@@ -295,6 +208,27 @@ void Node::publishParticleCloud()
                cloud_msg.poses[i]);
   }
   particlecloud_pub_.publish(cloud_msg);
+}
+
+void Node::publishClusterParticles()
+{
+  std::shared_ptr<PFSampleSet> set = pf_->getCurrentSet();
+  tf2::Quaternion q;
+  for (int i = 0; i < set->cluster_count; i++)
+  {
+    geometry_msgs::PoseArray msg;
+    msg.header.stamp = ros::Time::now();
+    msg.header.frame_id = global_frame_id_;
+    const std::vector<PFSample*>& samples = set->clusters[i].samples;
+    msg.poses.resize(samples.size());
+    for (size_t j = 0; j < samples.size(); j++)
+    {
+      q.setRPY(0.0, 0.0, samples[j]->pose[2]);
+      tf2::toMsg(tf2::Transform(q, tf2::Vector3(samples[j]->pose[0], samples[j]->pose[1], 0)),
+                 msg.poses[j]);
+    }
+    cluster_particles_pub_.publish(msg);
+  }
 }
 
 void Node::publishPose(const Eigen::Vector3d& max_pose, const ros::Time& stamp)
@@ -616,7 +550,7 @@ void Node::initFromNewMap(std::shared_ptr<Map> new_map, bool use_initial_pose)
 
   // Create the particle filter
   uniform_pose_generator_fn_ = std::bind(&Node::uniformPoseGenerator, this);
-  pf_ = std::make_shared<ParticleFilter>(particle_cluster_size_, global_frame_id_,
+  pf_ = std::make_shared<ParticleFilter>(particle_cluster_size_,
                                          min_particles_, max_particles_, pose_estimate_max_particles_,
                                          alpha_slow_, alpha_fast_,
                                          global_localization_convergence_threshold_,
@@ -1185,4 +1119,4 @@ std::string Node::getBaseFrameId()
   return base_frame_id_;
 }
 
-}  // namespace amcl
+}  // namespace badger_amcl
